@@ -1,0 +1,23 @@
+
+#include "pattern-fill.h"
+
+std::string fillPattern(const std::string &pattern, const Replacer *replacers, int count) {
+    std::string str;
+    str.reserve(2*pattern.size());
+    const char *cur = pattern.c_str();
+    const char *end = cur+pattern.size();
+    while (cur < end) {
+        if (*cur == '$') {
+            ++cur;
+            for (int i = 0; i < count; ++i) {
+                if (replacers[i].key == *cur) {
+                    str += replacers[i].value;
+                    break;
+                }
+            }
+        } else
+            str.push_back(*cur);
+        ++cur;
+    }
+    return str;
+}
