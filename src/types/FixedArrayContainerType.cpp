@@ -12,10 +12,6 @@ const FixedArrayContainerTemplate * FixedArrayContainerType::fixedArrayContainer
     return static_cast<const FixedArrayContainerTemplate *>(containerTemplate);
 }
 
-const Type * FixedArrayContainerType::elementType() const {
-    return std::get<0>(templateArgs);
-}
-
 std::string FixedArrayContainerType::generateParserFunctionBody(ParserGenerator *generator, const std::string &indent) const {
     std::string body;
     body += indent+arrayContainerType->name().variableDeclaration("elems")+";\n";

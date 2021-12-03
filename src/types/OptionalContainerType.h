@@ -5,12 +5,11 @@
 
 class OptionalContainerTemplate;
 
-class OptionalContainerType : public ContainerType<const Type *> {
+class OptionalContainerType : public ContainerType<> {
 
 public:
     OptionalContainerType(const OptionalContainerTemplate *containerTemplate, const Type *elementType);
     const OptionalContainerTemplate * optionalContainerTemplate() const;
-    const Type * elementType() const;
     inline virtual bool isOptionalType() const override { return true; }
     inline virtual bool isArrayType() const override { return false; }
     inline virtual bool isObjectType() const override { return false; }

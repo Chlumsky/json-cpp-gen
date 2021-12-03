@@ -11,15 +11,15 @@ class TemplateInstanceCache {
 
 public:
     template <typename... T>
-    const ContainerType<T...> * get(const ContainerTemplate<T...> *containerTemplate, T... templateArgs);
+    const ContainerType<T...> * get(const ContainerTemplate<T...> *containerTemplate, const Type *elementType, T... templateArgs);
 
 private:
     template <typename... T>
-    using Cache = std::map<std::tuple<const ContainerTemplate<T...> *, T...>, std::unique_ptr<ContainerType<T...> > >;
+    using Cache = std::map<std::tuple<const ContainerTemplate<T...> *, const Type *, T...>, std::unique_ptr<ContainerType<T...> > >;
 
-    Cache<const Type *> containerCache;
-    Cache<const StringType *, const Type *> objectMapContainerCache;
-    Cache<const Type *, int> staticArrayContainerCache;
+    Cache<> containerCache;
+    Cache<int> staticArrayContainerCache;
+    Cache<const Type *> objectMapContainerCache;
 
     template <typename... T>
     Cache<T...> & cache();
@@ -27,13 +27,13 @@ private:
 };
 
 template <typename... T>
-const ContainerType<T...> * TemplateInstanceCache::get(const ContainerTemplate<T...> *containerTemplate, T... templateArgs) {
+const ContainerType<T...> * TemplateInstanceCache::get(const ContainerTemplate<T...> *containerTemplate, const Type *elementType, T... templateArgs) {
     Cache<T...> &c = cache<T...>();
-    std::tuple<const ContainerTemplate<T...> *, T...> key(containerTemplate, templateArgs...);
+    std::tuple<const ContainerTemplate<T...> *, const Type *, T...> key(containerTemplate, elementType, templateArgs...);
     typename Cache<T...>::iterator it = c.find(key);
     if (it != c.end())
         return it->second.get();
-    std::unique_ptr<ContainerType<T...> > containerType = containerTemplate->instantiate(this, templateArgs...);
+    std::unique_ptr<ContainerType<T...> > containerType = containerTemplate->instantiate(this, elementType, templateArgs...);
     const ContainerType<T...> *outType = containerType.get();
     c.insert(std::make_pair(key, std::move(containerType)));
     return outType;

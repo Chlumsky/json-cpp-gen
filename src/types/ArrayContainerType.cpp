@@ -12,10 +12,6 @@ const ArrayContainerTemplate * ArrayContainerType::arrayContainerTemplate() cons
     return static_cast<const ArrayContainerTemplate *>(containerTemplate);
 }
 
-const Type * ArrayContainerType::elementType() const {
-    return std::get<0>(templateArgs);
-}
-
 std::string ArrayContainerType::generateParserFunctionBody(ParserGenerator *generator, const std::string &indent) const {
     std::string body;
     if (generator->settings().noThrow) {

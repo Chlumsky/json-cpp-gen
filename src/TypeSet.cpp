@@ -66,14 +66,15 @@ TypeSet::TypeSet() {
     addBasicType("uint64_t", BasicType::UINT64_T);
     addBasicType("std::uint64_t", BasicType::UINT64_T);
     add(std::unique_ptr<Type>(new StringType(StringType::STD_STRING)));
-    addContainerTemplate(std::unique_ptr<ContainerTemplate<const Type *> >(new ArrayContainerTemplate(ArrayContainerTemplate::STD_VECTOR)));
-    addContainerTemplate(std::unique_ptr<ContainerTemplate<const Type *> >(new ArrayContainerTemplate(ArrayContainerTemplate::STD_DEQUE)));
-    addContainerTemplate(std::unique_ptr<ContainerTemplate<const Type *> >(new ArrayContainerTemplate(ArrayContainerTemplate::STD_LIST)));
-    addContainerTemplate(std::unique_ptr<ContainerTemplate<const Type *, int> >(new StaticArrayContainerTemplate(StaticArrayContainerTemplate::STD_ARRAY)));
-    addContainerTemplate(std::unique_ptr<ContainerTemplate<const StringType *, const Type *> >(new ObjectMapContainerTemplate(ObjectMapContainerTemplate::STD_MAP)));
-    addContainerTemplate(std::unique_ptr<ContainerTemplate<const Type *> >(new OptionalContainerTemplate(OptionalContainerTemplate::STD_AUTO_PTR)));
-    addContainerTemplate(std::unique_ptr<ContainerTemplate<const Type *> >(new OptionalContainerTemplate(OptionalContainerTemplate::STD_UNIQUE_PTR)));
-    addContainerTemplate(std::unique_ptr<ContainerTemplate<const Type *> >(new OptionalContainerTemplate(OptionalContainerTemplate::STD_SHARED_PTR)));
+    addContainerTemplate(std::unique_ptr<ContainerTemplate<> >(new ArrayContainerTemplate(ArrayContainerTemplate::STD_VECTOR)));
+    addContainerTemplate(std::unique_ptr<ContainerTemplate<> >(new ArrayContainerTemplate(ArrayContainerTemplate::STD_DEQUE)));
+    addContainerTemplate(std::unique_ptr<ContainerTemplate<> >(new ArrayContainerTemplate(ArrayContainerTemplate::STD_LIST)));
+    addContainerTemplate(std::unique_ptr<ContainerTemplate<int> >(new StaticArrayContainerTemplate(StaticArrayContainerTemplate::STD_ARRAY)));
+    addContainerTemplate(std::unique_ptr<ContainerTemplate<const Type *> >(new ObjectMapContainerTemplate(ObjectMapContainerTemplate::STD_MAP)));
+    addContainerTemplate(std::unique_ptr<ContainerTemplate<> >(new OptionalContainerTemplate(OptionalContainerTemplate::STD_OPTIONAL)));
+    addContainerTemplate(std::unique_ptr<ContainerTemplate<> >(new OptionalContainerTemplate(OptionalContainerTemplate::STD_AUTO_PTR)));
+    addContainerTemplate(std::unique_ptr<ContainerTemplate<> >(new OptionalContainerTemplate(OptionalContainerTemplate::STD_UNIQUE_PTR)));
+    addContainerTemplate(std::unique_ptr<ContainerTemplate<> >(new OptionalContainerTemplate(OptionalContainerTemplate::STD_SHARED_PTR)));
 }
 
 void TypeSet::addBasicType(const char *name, BasicType::Type type) {
@@ -107,16 +108,16 @@ void TypeSet::addAnonymous(std::unique_ptr<Type> &&type) {
 }
 
 template <>
-TypeSet::ContainerTemplateMap<const Type *> & TypeSet::containerTemplateMap() {
+TypeSet::ContainerTemplateMap<> & TypeSet::containerTemplateMap() {
     return containerTemplates;
 }
 
 template <>
-TypeSet::ContainerTemplateMap<const StringType *, const Type *> & TypeSet::containerTemplateMap() {
-    return objectMapContainerTemplates;
+TypeSet::ContainerTemplateMap<int> & TypeSet::containerTemplateMap() {
+    return staticArrayContainerTemplates;
 }
 
 template <>
-TypeSet::ContainerTemplateMap<const Type *, int> & TypeSet::containerTemplateMap() {
-    return staticArrayContainerTemplates;
+TypeSet::ContainerTemplateMap<const Type *> & TypeSet::containerTemplateMap() {
+    return objectMapContainerTemplates;
 }

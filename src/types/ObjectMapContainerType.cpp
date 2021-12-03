@@ -7,26 +7,22 @@
 #include "../ParserGenerator.h"
 #include "../SerializerGenerator.h"
 
-ObjectMapContainerType::ObjectMapContainerType(const ObjectMapContainerTemplate *containerTemplate, const StringType *keyType, const Type *elementType) : ContainerType(containerTemplate, keyType, elementType) { }
+ObjectMapContainerType::ObjectMapContainerType(const ObjectMapContainerTemplate *containerTemplate, const Type *elementType, const Type *keyType) : ContainerType(containerTemplate, elementType, keyType) { }
 
 const ObjectMapContainerTemplate * ObjectMapContainerType::objectMapContainerTemplate() const {
     return static_cast<const ObjectMapContainerTemplate *>(containerTemplate);
 }
 
-const StringType * ObjectMapContainerType::keyType() const {
+const Type * ObjectMapContainerType::keyType() const {
     return std::get<0>(templateArgs);
-}
-
-const Type * ObjectMapContainerType::elementType() const {
-    return std::get<1>(templateArgs);
 }
 
 // TODO: remaining methods are exact duplicates of ObjectContainerType
 
 std::string ObjectMapContainerType::generateParserFunctionBody(ParserGenerator *generator, const std::string &indent) const {
     std::string body;
-    const Type *keyType = generator->stringType(); // should be keyType() ?
-    body += indent+keyType->name().variableDeclaration("key")+";\n";
+    // TODO if keyType() == generator->stringType() use global string buffer when available
+    body += indent+keyType()->name().variableDeclaration("key")+";\n";
     if (generator->settings().noThrow) {
         body += indent+"if (!matchSymbol('{'))\n";
         body += indent+INDENT+generator->generateErrorStatement(ParserGenerator::Error::TYPE_MISMATCH)+";\n";
@@ -40,7 +36,7 @@ std::string ObjectMapContainerType::generateParserFunctionBody(ParserGenerator *
         body += indent+INDENT "if (!separatorCheck)\n";
         body += indent+INDENT INDENT+generator->generateErrorStatement(ParserGenerator::Error::JSON_SYNTAX_ERROR)+";\n";
     }
-    body += generator->generateValueParse(keyType, "key", indent+INDENT);
+    body += generator->generateValueParse(keyType(), "key", indent+INDENT);
     if (generator->settings().noThrow) {
         body += indent+INDENT "if (!requireSymbol(':'))\n";
         body += indent+INDENT INDENT+generator->generateErrorStatement(ParserGenerator::Error::JSON_SYNTAX_ERROR)+";\n";

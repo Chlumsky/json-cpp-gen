@@ -12,12 +12,8 @@ const StaticArrayContainerTemplate * StaticArrayContainerType::staticArrayContai
     return static_cast<const StaticArrayContainerTemplate *>(containerTemplate);
 }
 
-const Type * StaticArrayContainerType::elementType() const {
-    return std::get<0>(templateArgs);
-}
-
 int StaticArrayContainerType::length() const {
-    return std::get<1>(templateArgs);
+    return std::get<0>(templateArgs);
 }
 
 std::string StaticArrayContainerType::generateParserFunctionBody(ParserGenerator *generator, const std::string &indent) const {

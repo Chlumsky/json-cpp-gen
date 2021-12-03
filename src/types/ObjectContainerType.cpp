@@ -7,24 +7,20 @@
 #include "../ParserGenerator.h"
 #include "../SerializerGenerator.h"
 
-ObjectContainerType::ObjectContainerType(const ObjectContainerTemplate *containerTemplate, const StringType *keyType, const Type *elementType) : ContainerType(containerTemplate, elementType) { }
+ObjectContainerType::ObjectContainerType(const ObjectContainerTemplate *containerTemplate, const Type *elementType) : ContainerType(containerTemplate, elementType) { }
 
 const ObjectContainerTemplate * ObjectContainerType::objectContainerTemplate() const {
     return static_cast<const ObjectContainerTemplate *>(containerTemplate);
 }
 
-const StringType * ObjectContainerType::keyType() const {
+const Type * ObjectContainerType::keyType() const {
     return objectContainerTemplate()->keyType();
-}
-
-const Type * ObjectContainerType::elementType() const {
-    return std::get<0>(templateArgs);
 }
 
 std::string ObjectContainerType::generateParserFunctionBody(ParserGenerator *generator, const std::string &indent) const {
     std::string body;
-    const Type *keyType = generator->stringType(); // should be keyType() ?
-    body += indent+keyType->name().variableDeclaration("key")+";\n";
+    // TODO if keyType() == generator->stringType() use global string buffer when available
+    body += indent+keyType()->name().variableDeclaration("key")+";\n";
     if (generator->settings().noThrow) {
         body += indent+"if (!matchSymbol('{'))\n";
         body += indent+INDENT+generator->generateErrorStatement(ParserGenerator::Error::TYPE_MISMATCH)+";\n";
@@ -38,7 +34,7 @@ std::string ObjectContainerType::generateParserFunctionBody(ParserGenerator *gen
         body += indent+INDENT "if (!separatorCheck)\n";
         body += indent+INDENT INDENT+generator->generateErrorStatement(ParserGenerator::Error::JSON_SYNTAX_ERROR)+";\n";
     }
-    body += generator->generateValueParse(keyType, "key", indent+INDENT);
+    body += generator->generateValueParse(keyType(), "key", indent+INDENT);
     if (generator->settings().noThrow) {
         body += indent+INDENT "if (!requireSymbol(':'))\n";
         body += indent+INDENT INDENT+generator->generateErrorStatement(ParserGenerator::Error::JSON_SYNTAX_ERROR)+";\n";

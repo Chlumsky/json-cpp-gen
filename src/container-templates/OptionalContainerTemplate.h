@@ -4,7 +4,7 @@
 #include "../ContainerTemplate.h"
 #include "../Configuration.h"
 
-class OptionalContainerTemplate : public ContainerTemplate<const Type *> {
+class OptionalContainerTemplate : public ContainerTemplate<> {
 
 public:
     static const OptionalContainerTemplate STD_OPTIONAL;
@@ -14,7 +14,7 @@ public:
 
     OptionalContainerTemplate(const std::string &name, const OptionalContainerAPI &api);
     virtual TypeName instanceName(const Type *elementType) const override;
-    virtual std::unique_ptr<ContainerType<const Type *> > instantiate(TemplateInstanceCache *, const Type *elementType) const override;
+    virtual std::unique_ptr<ContainerType<> > instantiate(TemplateInstanceCache *, const Type *elementType) const override;
     inline const OptionalContainerAPI & api() const { return containerAPI; }
 
 private:

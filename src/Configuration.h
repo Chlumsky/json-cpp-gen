@@ -62,7 +62,7 @@ struct StringAPI {
     std::string clear;
     // $S = subject string, $X = char to append
     std::string appendChar;
-    // $S = subject string, $X = char to append
+    // $S = subject string, $X = C string to append
     std::string appendCStr;
     // $S = subject string, $E = name of element (char) variable, $F = loop body
     std::string iterateChars;
@@ -154,7 +154,7 @@ struct Configuration {
     };
     struct ObjectContainerDef {
         std::string name;
-        std::string stringType;
+        std::string keyType;
         ObjectContainerAPI api;
     };
     struct ObjectMapContainerDef {

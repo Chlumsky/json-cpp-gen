@@ -6,12 +6,11 @@
 
 class FixedArrayContainerTemplate;
 
-class FixedArrayContainerType : public ContainerType<const Type *> {
+class FixedArrayContainerType : public ContainerType<> {
 
 public:
     FixedArrayContainerType(const FixedArrayContainerTemplate *containerTemplate, const ArrayContainerType *arrayContainerType, const Type *elementType);
     const FixedArrayContainerTemplate * fixedArrayContainerTemplate() const;
-    const Type * elementType() const;
     inline virtual bool isOptionalType() const override { return false; }
     inline virtual bool isArrayType() const override { return true; }
     inline virtual bool isObjectType() const override { return false; }

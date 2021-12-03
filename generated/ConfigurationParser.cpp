@@ -661,8 +661,8 @@ void ConfigurationParser::parseConfigurationObjectContainerDef(Configuration::Ob
         requireSymbol(':');
         if (key == "name")
             parseStdString(value.name);
-        else if (key == "stringType")
-            parseStdString(value.stringType);
+        else if (key == "keyType")
+            parseStdString(value.keyType);
         else if (key == "api")
             parseObjectContainerAPI(value.api);
         else

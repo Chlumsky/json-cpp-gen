@@ -19,9 +19,9 @@ class ContainerTemplate {
 public:
     virtual ~ContainerTemplate() = default;
     inline const std::string & name() const { return templateName; }
-    virtual TypeName instanceName(T... templateArgs) const = 0;
+    virtual TypeName instanceName(const Type *elementType, T... templateArgs) const = 0;
     int templateArgIndex(char c) const;
-    virtual std::unique_ptr<ContainerType<T...> > instantiate(TemplateInstanceCache *instanceCache, T... templateArgs) const = 0;
+    virtual std::unique_ptr<ContainerType<T...> > instantiate(TemplateInstanceCache *instanceCache, const Type *elementType, T... templateArgs) const = 0;
 
 protected:
     inline explicit ContainerTemplate(const std::string &name) : templateName(name) { }

@@ -5,12 +5,11 @@
 
 class StaticArrayContainerTemplate;
 
-class StaticArrayContainerType : public ContainerType<const Type *, int> {
+class StaticArrayContainerType : public ContainerType<int> {
 
 public:
     StaticArrayContainerType(const StaticArrayContainerTemplate *containerTemplate, const Type *elementType, int length);
     const StaticArrayContainerTemplate * staticArrayContainerTemplate() const;
-    const Type * elementType() const;
     int length() const;
     inline virtual bool isOptionalType() const override { return false; }
     inline virtual bool isArrayType() const override { return true; }

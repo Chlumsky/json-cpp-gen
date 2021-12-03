@@ -12,10 +12,6 @@ const OptionalContainerTemplate * OptionalContainerType::optionalContainerTempla
     return static_cast<const OptionalContainerTemplate *>(containerTemplate);
 }
 
-const Type * OptionalContainerType::elementType() const {
-    return std::get<0>(templateArgs);
-}
-
 std::string OptionalContainerType::generateParserFunctionBody(ParserGenerator *generator, const std::string &indent) const {
     std::string body;
     body += indent+"skipWhitespace();\n";

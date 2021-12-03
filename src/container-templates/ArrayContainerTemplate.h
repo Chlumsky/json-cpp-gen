@@ -4,7 +4,7 @@
 #include "../ContainerTemplate.h"
 #include "../Configuration.h"
 
-class ArrayContainerTemplate : public ContainerTemplate<const Type *> {
+class ArrayContainerTemplate : public ContainerTemplate<> {
 
 public:
     static const ArrayContainerTemplate STD_VECTOR;
@@ -13,7 +13,7 @@ public:
 
     ArrayContainerTemplate(const std::string &name, const ArrayContainerAPI &api);
     virtual TypeName instanceName(const Type *elementType) const override;
-    virtual std::unique_ptr<ContainerType<const Type *> > instantiate(TemplateInstanceCache *, const Type *elementType) const override;
+    virtual std::unique_ptr<ContainerType<> > instantiate(TemplateInstanceCache *, const Type *elementType) const override;
     inline const ArrayContainerAPI & api() const { return containerAPI; }
 
 private:

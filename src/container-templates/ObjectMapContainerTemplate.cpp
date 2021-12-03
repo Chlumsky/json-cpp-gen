@@ -16,7 +16,7 @@ const ObjectMapContainerTemplate ObjectMapContainerTemplate::STD_MAP("std::map<$
 
 ObjectMapContainerTemplate::ObjectMapContainerTemplate(const std::string &name, const ObjectContainerAPI &api) : ContainerTemplate(name), containerAPI(api) { }
 
-TypeName ObjectMapContainerTemplate::instanceName(const StringType *keyType, const Type *elementType) const {
+TypeName ObjectMapContainerTemplate::instanceName(const Type *elementType, const Type *keyType) const {
     Replacer r[] = {
         { 'K', keyType->name().body().c_str() },
         { 'T', elementType->name().body().c_str() }
@@ -24,6 +24,6 @@ TypeName ObjectMapContainerTemplate::instanceName(const StringType *keyType, con
     return TypeName(fillPattern(ContainerTemplate::name(), r, ARRAY_LENGTH(r)));
 }
 
-std::unique_ptr<ContainerType<const StringType *, const Type *> > ObjectMapContainerTemplate::instantiate(TemplateInstanceCache *, const StringType *keyType, const Type *elementType) const {
-    return std::unique_ptr<ContainerType<const StringType *, const Type *> >(new ObjectMapContainerType(this, keyType, elementType));
+std::unique_ptr<ContainerType<const Type *> > ObjectMapContainerTemplate::instantiate(TemplateInstanceCache *, const Type *elementType, const Type *keyType) const {
+    return std::unique_ptr<ContainerType<const Type *> >(new ObjectMapContainerType(this, elementType, keyType));
 }

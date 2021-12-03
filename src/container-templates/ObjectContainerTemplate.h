@@ -3,19 +3,18 @@
 
 #include "../ContainerTemplate.h"
 #include "../Configuration.h"
-#include "../types/StringType.h"
 
-class ObjectContainerTemplate : public ContainerTemplate<const Type *> {
+class ObjectContainerTemplate : public ContainerTemplate<> {
 
 public:
-    ObjectContainerTemplate(const std::string &name, const StringType *keyType, const ObjectContainerAPI &api);
+    ObjectContainerTemplate(const std::string &name, const Type *keyType, const ObjectContainerAPI &api);
     virtual TypeName instanceName(const Type *elementType) const override;
-    virtual std::unique_ptr<ContainerType<const Type *> > instantiate(TemplateInstanceCache *, const Type *elementType) const override;
-    inline const StringType * keyType() const { return keyStringType; }
+    virtual std::unique_ptr<ContainerType<> > instantiate(TemplateInstanceCache *, const Type *elementType) const override;
+    inline const Type * keyType() const { return kType; }
     inline const ObjectContainerAPI & api() const { return containerAPI; }
 
 private:
-    const StringType *keyStringType;
+    const Type *kType;
     ObjectContainerAPI containerAPI;
 
 };

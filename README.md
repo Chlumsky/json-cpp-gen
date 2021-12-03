@@ -224,7 +224,7 @@ Note: `$N` is array length.
 ```json
 "objectContainerTypes": [ {
     "name": "std::map<std::string, $T>",
-    "stringType": "std::string",
+    "keyType": "std::string",
     "api": {
         "clear": "$S.clear()",
         "refByKey": "$S[$K]",
@@ -233,7 +233,7 @@ Note: `$N` is array length.
 } ]
 ```
 
-Notes: A string key type must be specified as `stringType` (can be `std::string`).
+Notes: A key type must be specified as `keyType` (can be `std::string`).
 The `refByKey` operation must create the element if it doesn't already exist
 and return a modifiable reference to its value.
 The `iterateElements` operation must provide keys and values separately as `$K` and `$V`.

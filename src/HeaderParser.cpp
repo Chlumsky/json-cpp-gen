@@ -288,7 +288,7 @@ const Type * HeaderParser::parseType() {
             skipWhitespaceAndComments(MULTI_LINE);
             const Type *elementType = nullptr;
             // regular container
-            if (ContainerTemplate<const Type *> *containerTemplate = findContainerTemplate<const Type *>(typeName)) {
+            if (ContainerTemplate<> *containerTemplate = findContainerTemplate<>(typeName)) {
                 int elementTypeIndex = containerTemplate->templateArgIndex('T');
                 for (int index = 0; !matchSymbol('>'); ++index) {
                     if (cur >= end)
@@ -309,7 +309,7 @@ const Type * HeaderParser::parseType() {
                 }
             }
             // static array container
-            else if (ContainerTemplate<const Type *, int> *containerTemplate = findContainerTemplate<const Type *, int>(typeName)) {
+            else if (ContainerTemplate<int> *containerTemplate = findContainerTemplate<int>(typeName)) {
                 int arrayLength = -1;
                 int elementTypeIndex = containerTemplate->templateArgIndex('T');
                 int arrayLengthIndex = containerTemplate->templateArgIndex('N');
@@ -334,8 +334,8 @@ const Type * HeaderParser::parseType() {
                 }
             }
             // object map container
-            else if (ContainerTemplate<const StringType *, const Type *> *containerTemplate = findContainerTemplate<const StringType *, const Type *>(typeName)) {
-                const StringType *keyType = nullptr;
+            else if (ContainerTemplate<const Type *> *containerTemplate = findContainerTemplate<const Type *>(typeName)) {
+                const Type *keyType = nullptr;
                 int keyTypeIndex = containerTemplate->templateArgIndex('K');
                 int elementTypeIndex = containerTemplate->templateArgIndex('T');
                 for (int index = 0; !matchSymbol('>'); ++index) {
@@ -345,7 +345,7 @@ const Type * HeaderParser::parseType() {
                         throw Error::INVALID_TYPENAME_SYNTAX;
                     skipWhitespaceAndComments(MULTI_LINE);
                     if (index == keyTypeIndex) {
-                        if (!(keyType = dynamic_cast<const StringType *>(parseType())))
+                        if (!(keyType = parseType()))
                             throw Error::UNSUPPORTED_TYPE;
                     } else if (index == elementTypeIndex) {
                         if (!(elementType = parseType()))
@@ -355,7 +355,7 @@ const Type * HeaderParser::parseType() {
                     skipWhitespaceAndComments(MULTI_LINE);
                 }
                 if (keyType && elementType) {
-                    if (const Type *type = typeSet->getContainerType(containerTemplate, keyType, elementType))
+                    if (const Type *type = typeSet->getContainerType(containerTemplate, elementType, keyType))
                         return type;
                 }
             }

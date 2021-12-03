@@ -23,6 +23,6 @@ TypeName StaticArrayContainerTemplate::instanceName(const Type *elementType, int
     return TypeName(fillPattern(ContainerTemplate::name(), r, ARRAY_LENGTH(r)));
 }
 
-std::unique_ptr<ContainerType<const Type *, int> > StaticArrayContainerTemplate::instantiate(TemplateInstanceCache *, const Type *elementType, int length) const {
-    return std::unique_ptr<ContainerType<const Type *, int> >(new StaticArrayContainerType(this, elementType, length));
+std::unique_ptr<ContainerType<int> > StaticArrayContainerTemplate::instantiate(TemplateInstanceCache *, const Type *elementType, int length) const {
+    return std::unique_ptr<ContainerType<int> >(new StaticArrayContainerType(this, elementType, length));
 }

@@ -90,29 +90,29 @@ int main(int argc, const char * const *argv) {
             }
         }
         for (const Configuration::ArrayContainerDef &arrayContainerDef : config.arrayContainerTypes)
-            typeSet.addContainerTemplate(std::unique_ptr<ContainerTemplate<const Type *> >(new ArrayContainerTemplate(arrayContainerDef.name, arrayContainerDef.api)));
+            typeSet.addContainerTemplate(std::unique_ptr<ContainerTemplate<> >(new ArrayContainerTemplate(arrayContainerDef.name, arrayContainerDef.api)));
         for (const Configuration::FixedArrayContainerDef &fixedArrayContainerDef : config.fixedArrayContainerTypes) {
             if (const ArrayContainerTemplate *arrayContainerTemplate = dynamic_cast<const ArrayContainerTemplate *>(typeSet.findContainerTemplate<const Type *>(fixedArrayContainerDef.arrayContainerType)))
-                typeSet.addContainerTemplate(std::unique_ptr<ContainerTemplate<const Type *> >(new FixedArrayContainerTemplate(fixedArrayContainerDef.name, arrayContainerTemplate, fixedArrayContainerDef.api)));
+                typeSet.addContainerTemplate(std::unique_ptr<ContainerTemplate<> >(new FixedArrayContainerTemplate(fixedArrayContainerDef.name, arrayContainerTemplate, fixedArrayContainerDef.api)));
             else {
                 fprintf(stderr, "Error: Array container type '%s' not found, skipping fixed array container type '%s'\n", fixedArrayContainerDef.arrayContainerType.c_str(), fixedArrayContainerDef.name.c_str());
                 continue;
             }
         }
         for (const Configuration::StaticArrayContainerDef &staticArrayContainerDef : config.staticArrayContainerTypes)
-            typeSet.addContainerTemplate(std::unique_ptr<ContainerTemplate<const Type *, int> >(new StaticArrayContainerTemplate(staticArrayContainerDef.name, staticArrayContainerDef.api)));
+            typeSet.addContainerTemplate(std::unique_ptr<ContainerTemplate<int> >(new StaticArrayContainerTemplate(staticArrayContainerDef.name, staticArrayContainerDef.api)));
         for (const Configuration::ObjectContainerDef &objectContainerDef : config.objectContainerTypes) {
-            if (const StringType *keyType = findStringType(typeSet, objectContainerDef.stringType))
-                typeSet.addContainerTemplate(std::unique_ptr<ContainerTemplate<const Type *> >(new ObjectContainerTemplate(objectContainerDef.name, keyType, objectContainerDef.api)));
+            if (const Type *keyType = typeSet.find(objectContainerDef.keyType))
+                typeSet.addContainerTemplate(std::unique_ptr<ContainerTemplate<> >(new ObjectContainerTemplate(objectContainerDef.name, keyType, objectContainerDef.api)));
             else {
-                fprintf(stderr, "Error: String type '%s' not found, skipping object container type '%s'\n", objectContainerDef.stringType.c_str(), objectContainerDef.name.c_str());
+                fprintf(stderr, "Error: Key type '%s' not found, skipping object container type '%s'\n", objectContainerDef.keyType.c_str(), objectContainerDef.name.c_str());
                 continue;
             }
         }
         for (const Configuration::ObjectMapContainerDef &objectMapContainerDef : config.objectMapContainerTypes)
-            typeSet.addContainerTemplate(std::unique_ptr<ContainerTemplate<const StringType *, const Type *> >(new ObjectMapContainerTemplate(objectMapContainerDef.name, objectMapContainerDef.api)));
+            typeSet.addContainerTemplate(std::unique_ptr<ContainerTemplate<const Type *> >(new ObjectMapContainerTemplate(objectMapContainerDef.name, objectMapContainerDef.api)));
         for (const Configuration::OptionalContainerDef &optionalContainerDef : config.optionalContainerTypes)
-            typeSet.addContainerTemplate(std::unique_ptr<ContainerTemplate<const Type *> >(new OptionalContainerTemplate(optionalContainerDef.name, optionalContainerDef.api)));
+            typeSet.addContainerTemplate(std::unique_ptr<ContainerTemplate<> >(new OptionalContainerTemplate(optionalContainerDef.name, optionalContainerDef.api)));
     }
 
     // STRING TYPE DEFINITION

@@ -15,6 +15,6 @@ TypeName FixedArrayContainerTemplate::instanceName(const Type *elementType) cons
     return TypeName(fillPattern(ContainerTemplate::name(), r, ARRAY_LENGTH(r)));
 }
 
-std::unique_ptr<ContainerType<const Type *> > FixedArrayContainerTemplate::instantiate(TemplateInstanceCache *instanceCache, const Type *elementType) const {
-    return std::unique_ptr<ContainerType<const Type *> >(new FixedArrayContainerType(this, static_cast<const ArrayContainerType *>(instanceCache->get(arrayContainerTemplate, elementType)), elementType));
+std::unique_ptr<ContainerType<> > FixedArrayContainerTemplate::instantiate(TemplateInstanceCache *instanceCache, const Type *elementType) const {
+    return std::unique_ptr<ContainerType<> >(new FixedArrayContainerType(this, static_cast<const ArrayContainerType *>(instanceCache->get(arrayContainerTemplate, elementType)), elementType));
 }

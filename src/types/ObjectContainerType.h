@@ -6,13 +6,12 @@
 
 class ObjectContainerTemplate;
 
-class ObjectContainerType : public ContainerType<const Type *> {
+class ObjectContainerType : public ContainerType<> {
 
 public:
-    ObjectContainerType(const ObjectContainerTemplate *containerTemplate, const StringType *keyType, const Type *elementType);
+    ObjectContainerType(const ObjectContainerTemplate *containerTemplate, const Type *elementType);
     const ObjectContainerTemplate * objectContainerTemplate() const;
-    const StringType * keyType() const;
-    const Type * elementType() const;
+    const Type * keyType() const;
     inline virtual bool isOptionalType() const override { return false; }
     inline virtual bool isArrayType() const override { return false; }
     inline virtual bool isObjectType() const override { return true; }

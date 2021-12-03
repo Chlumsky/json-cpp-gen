@@ -2,16 +2,16 @@
 #include "TemplateInstanceCache.h"
 
 template <>
-TemplateInstanceCache::Cache<const Type *> & TemplateInstanceCache::cache() {
+TemplateInstanceCache::Cache<> & TemplateInstanceCache::cache() {
     return containerCache;
 }
 
 template <>
-TemplateInstanceCache::Cache<const StringType *, const Type *> & TemplateInstanceCache::cache() {
-    return objectMapContainerCache;
+TemplateInstanceCache::Cache<int> & TemplateInstanceCache::cache() {
+    return staticArrayContainerCache;
 }
 
 template <>
-TemplateInstanceCache::Cache<const Type *, int> & TemplateInstanceCache::cache() {
-    return staticArrayContainerCache;
+TemplateInstanceCache::Cache<const Type *> & TemplateInstanceCache::cache() {
+    return objectMapContainerCache;
 }

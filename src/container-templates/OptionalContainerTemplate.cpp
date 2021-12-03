@@ -36,6 +36,6 @@ TypeName OptionalContainerTemplate::instanceName(const Type *elementType) const 
     return TypeName(fillPattern(ContainerTemplate::name(), r, ARRAY_LENGTH(r)));
 }
 
-std::unique_ptr<ContainerType<const Type *> > OptionalContainerTemplate::instantiate(TemplateInstanceCache *, const Type *elementType) const {
-    return std::unique_ptr<ContainerType<const Type *> >(new OptionalContainerType(this, elementType));
+std::unique_ptr<ContainerType<> > OptionalContainerTemplate::instantiate(TemplateInstanceCache *, const Type *elementType) const {
+    return std::unique_ptr<ContainerType<> >(new OptionalContainerType(this, elementType));
 }

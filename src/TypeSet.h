@@ -28,7 +28,7 @@ public:
     template <typename... T>
     void addContainerTemplate(std::unique_ptr<ContainerTemplate<T...> > &&containerTemplate);
     template <typename... T>
-    const ContainerType<T...> * getContainerType(const ContainerTemplate<T...> *containerTemplate, T... templateArgs);
+    const ContainerType<T...> * getContainerType(const ContainerTemplate<T...> *containerTemplate, const Type *elementType, T... templateArgs);
 
 private:
     template <typename... T>
@@ -37,9 +37,9 @@ private:
     std::map<std::string, std::unique_ptr<Type> > types;
     std::vector<std::unique_ptr<Type> > anonymousTypes;
     TemplateInstanceCache templateInstanceCache;
-    ContainerTemplateMap<const Type *> containerTemplates;
-    ContainerTemplateMap<const StringType *, const Type *> objectMapContainerTemplates;
-    ContainerTemplateMap<const Type *, int> staticArrayContainerTemplates;
+    ContainerTemplateMap<> containerTemplates;
+    ContainerTemplateMap<int> staticArrayContainerTemplates;
+    ContainerTemplateMap<const Type *> objectMapContainerTemplates;
 
     void addBasicType(const char *name, BasicType::Type type);
     template <typename... T>
@@ -73,8 +73,8 @@ void TypeSet::addContainerTemplate(std::unique_ptr<ContainerTemplate<T...> > &&c
 }
 
 template <typename... T>
-const ContainerType<T...> * TypeSet::getContainerType(const ContainerTemplate<T...> *containerTemplate, T... templateArgs) {
+const ContainerType<T...> * TypeSet::getContainerType(const ContainerTemplate<T...> *containerTemplate, const Type *elementType, T... templateArgs) {
     if (containerTemplate)
-        return templateInstanceCache.get(containerTemplate, templateArgs...);
+        return templateInstanceCache.get(containerTemplate, elementType, templateArgs...);
     return nullptr;
 }

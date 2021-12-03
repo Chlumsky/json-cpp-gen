@@ -25,6 +25,6 @@ TypeName ArrayContainerTemplate::instanceName(const Type *elementType) const {
     return TypeName(fillPattern(ContainerTemplate::name(), r, ARRAY_LENGTH(r)));
 }
 
-std::unique_ptr<ContainerType<const Type *> > ArrayContainerTemplate::instantiate(TemplateInstanceCache *, const Type *elementType) const {
-    return std::unique_ptr<ContainerType<const Type *> >(new ArrayContainerType(this, elementType));
+std::unique_ptr<ContainerType<> > ArrayContainerTemplate::instantiate(TemplateInstanceCache *, const Type *elementType) const {
+    return std::unique_ptr<ContainerType<> >(new ArrayContainerType(this, elementType));
 }

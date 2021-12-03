@@ -6,13 +6,12 @@
 
 class ObjectMapContainerTemplate;
 
-class ObjectMapContainerType : public ContainerType<const StringType *, const Type *> {
+class ObjectMapContainerType : public ContainerType<const Type *> {
 
 public:
-    ObjectMapContainerType(const ObjectMapContainerTemplate *containerTemplate, const StringType *keyType, const Type *elementType);
+    ObjectMapContainerType(const ObjectMapContainerTemplate *containerTemplate, const Type *elementType, const Type *keyType);
     const ObjectMapContainerTemplate * objectMapContainerTemplate() const;
-    const StringType * keyType() const;
-    const Type * elementType() const;
+    const Type * keyType() const;
     inline virtual bool isOptionalType() const override { return false; }
     inline virtual bool isArrayType() const override { return false; }
     inline virtual bool isObjectType() const override { return true; }
