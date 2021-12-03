@@ -104,12 +104,8 @@ const Type * HeaderParser::parseStruct() {
             skipWhitespaceAndComments(MULTI_LINE);
             if (cur < end && *cur == '<')
                 skipBlock(ANY_BRACES_INCLUDING_ANGLED);
-            else if (!nonPublic && !baseTypeName.empty()) {
-                if (const Type *baseType = typeSet->find(baseTypeName)) {
-                    if (baseType->isStructure())
-                        baseStructType = static_cast<const StructureType *>(baseType);
-                }
-            }
+            else if (!nonPublic && !baseTypeName.empty())
+                baseStructType = dynamic_cast<const StructureType *>(typeSet->find(baseTypeName));
             skipWhitespaceAndComments(MULTI_LINE);
         }
         if (!matchSymbol('{'))
@@ -121,11 +117,10 @@ const Type * HeaderParser::parseStruct() {
     }
     StructureType *structType = nullptr;
     if (Type *type = typeSet->find(fullStructName)) {
-        if (!type->isStructure())
+        if (!(structType = dynamic_cast<StructureType *>(type)))
             throw Error::TYPE_REDEFINITION;
         if (forwardDeclaration)
             return type;
-        structType = static_cast<StructureType *>(type);
         if (structType->isFinalized())
             throw Error::TYPE_REDEFINITION;
     } else {

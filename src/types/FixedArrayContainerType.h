@@ -11,9 +11,6 @@ class FixedArrayContainerType : public ContainerType<> {
 public:
     FixedArrayContainerType(const FixedArrayContainerTemplate *containerTemplate, const ArrayContainerType *arrayContainerType, const Type *elementType);
     const FixedArrayContainerTemplate * fixedArrayContainerTemplate() const;
-    inline virtual bool isOptionalType() const override { return false; }
-    inline virtual bool isArrayType() const override { return true; }
-    inline virtual bool isObjectType() const override { return false; }
     virtual std::string generateParserFunctionBody(ParserGenerator *generator, const std::string &indent) const override;
     virtual std::string generateSerializerFunctionBody(SerializerGenerator *generator, const std::string &indent) const override;
     std::string generateCopyFromArrayContainer(const char *subject, const char *x) const;
