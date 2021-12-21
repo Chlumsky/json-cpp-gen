@@ -41,8 +41,8 @@ struct Settings {
         UPPERCASE_NAN_STRING_VALUE, // "NAN"
         LOWERCASE_NAN_STRING_VALUE, // "nan"
         MIXED_CASE_NAN_STRING_VALUE // "NaN"
-    } nanPolicy = NanPolicy::SERIALIZER_ERROR; // TODO IMPLEMENT
-    /// Floating-point infinity cannon be represented in JSON. The following dictates how it will be resolved in the serializer.
+    } nanPolicy = NanPolicy::SERIALIZER_ERROR;
+    /// Floating-point infinity cannot be represented in JSON. The following dictates how it will be resolved in the serializer.
     enum class InfPolicy {
         SERIALIZER_ERROR,
         EXPONENT_OVERFLOW, // 1e999
@@ -54,7 +54,7 @@ struct Settings {
         UPPERCASE_INFINITY_STRING_VALUE, // "INFINITY"
         LOWERCASE_INFINITY_STRING_VALUE, // "infinity"
         CAPITALIZED_INFINITY_STRING_VALUE // "Infinity"
-    } infPolicy = InfPolicy::EXPONENT_OVERFLOW; // TODO IMPLEMENT
+    } infPolicy = InfPolicy::EXPONENT_OVERFLOW;
 };
 
 struct StringAPI {
