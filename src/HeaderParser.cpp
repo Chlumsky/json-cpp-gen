@@ -100,12 +100,21 @@ const Type * HeaderParser::parseStruct() {
                 skipWhitespaceAndComments(MULTI_LINE);
             }
             matchKeyword("virtual");
-            std::string baseTypeName = readIdentifier();
-            skipWhitespaceAndComments(MULTI_LINE);
-            if (cur < end && *cur == '<')
-                skipBlock(ANY_BRACES_INCLUDING_ANGLED);
-            else if (!nonPublic && !baseTypeName.empty())
-                baseStructType = dynamic_cast<const StructureType *>(findType(baseTypeName));
+            if (const Type *baseType = parseType()) {
+                if (!nonPublic)
+                    baseStructType = dynamic_cast<const StructureType *>(baseType);
+            } else {
+                // Skip unrecognized type name - modified skipExpression()
+                while (skipWhitespaceAndComments(MULTI_LINE), cur < end) {
+                    if (*cur == '{' || *cur == ';' || *cur == ',')
+                        break;
+                    const char *prev = cur;
+                    skipBlock(ANY_BRACES_INCLUDING_ANGLED);
+                    skipDirective();
+                    skipStringLiteral();
+                    cur += cur == prev;
+                }
+            }
             skipWhitespaceAndComments(MULTI_LINE);
         }
         if (!matchSymbol('{'))
