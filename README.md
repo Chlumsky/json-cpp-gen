@@ -45,7 +45,7 @@ data is read directly to / from the input structures.
 ## How to use
 
 To build the program, simply use the provided [CMake file](CMakeLists.txt).
-JSON-CPP-gen has no dependencies except the C++ standard library.
+JSON-CPP-gen has no dependencies besides the C++ standard library.
 
 To run the program, you must provide a JSON configuration file
 that corresponds to the [`Configuration`](src/Configuration.h) structure

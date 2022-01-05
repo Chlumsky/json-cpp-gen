@@ -193,13 +193,11 @@ void ConfigurationParser::parseNameFormat(NameFormat &value) {
 
 void ConfigurationParser::parseBool(bool &value) {
     skipWhitespace();
-    if (cur[0] == 'f' && cur[1] == 'a' && cur[2] == 'l' && cur[3] == 's' && cur[4] == 'e' && !isalnum(cur[5]) && cur[5] != '_') {
+    if (cur[0] == 'f' && cur[1] == 'a' && cur[2] == 'l' && cur[3] == 's' && cur[4] == 'e' && !isalnum(cur[5]) && cur[5] != '_' && ((cur += 5), true))
         value = false;
-        cur += 5;
-    } else if (cur[0] == 't' && cur[1] == 'r' && cur[2] == 'u' && cur[3] == 'e' && !isalnum(cur[4]) && cur[4] != '_') {
+    else if (cur[0] == 't' && cur[1] == 'r' && cur[2] == 'u' && cur[3] == 'e' && !isalnum(cur[4]) && cur[4] != '_' && ((cur += 4), true))
         value = true;
-        cur += 4;
-    } else
+    else
         throw Error::TYPE_MISMATCH;
 }
 

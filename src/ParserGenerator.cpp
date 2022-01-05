@@ -246,7 +246,7 @@ std::string ParserGenerator::generateMatchKeyword(const char *keyword) {
     for (i = 0; *keyword; ++i, ++keyword)
         expr += "cur["+std::to_string(i)+"] == '"+*keyword+"' && ";
     std::string iStr = std::to_string(i);
-    expr += "!isalnum(cur["+iStr+"]) && cur["+iStr+"] != '_'";
+    expr += "!isalnum(cur["+iStr+"]) && cur["+iStr+"] != '_' && ((cur += "+iStr+"), true)";
     return expr;
 }
 

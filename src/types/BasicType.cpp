@@ -191,13 +191,11 @@ std::string BasicType::generateParserFunctionBody(ParserGenerator *generator, co
         case BOOL: {
             std::string body;
             body += indent+"skipWhitespace();\n";
-            body += indent+"if ("+ParserGenerator::generateMatchKeyword("false")+") {\n";
+            body += indent+"if ("+ParserGenerator::generateMatchKeyword("false")+")\n";
             body += indent+INDENT "value = false;\n";
-            body += indent+INDENT "cur += 5;\n";
-            body += indent+"} else if ("+ParserGenerator::generateMatchKeyword("true")+") {\n";
+            body += indent+"else if ("+ParserGenerator::generateMatchKeyword("true")+")\n";
             body += indent+INDENT "value = true;\n";
-            body += indent+INDENT "cur += 4;\n";
-            body += indent+"} else\n";
+            body += indent+"else\n";
             body += indent+INDENT+generator->generateErrorStatement(ParserGenerator::Error::TYPE_MISMATCH)+";\n";
             return body;
         }
