@@ -5,18 +5,13 @@
 #include "../ParserGenerator.h"
 #include "../SerializerGenerator.h"
 
-StructureType::StructureType(const std::string &name, const StructureType *baseType) : DirectType(TypeName(name)) {
-    if (baseType) {
-        members = baseType->members;
-        orderedMembers = baseType->orderedMembers;
-    }
-}
+StructureType::StructureType(const std::string &name) : DirectType(TypeName(name)) { }
 
-StructureType::StructureType(std::string &&name, const StructureType *baseType) : DirectType(TypeName((std::string &&) name)) {
-    if (baseType) {
-        members = baseType->members;
-        orderedMembers = baseType->orderedMembers;
-    }
+StructureType::StructureType(std::string &&name) : DirectType(TypeName((std::string &&) name)) { }
+
+void StructureType::inheritFrom(const StructureType *baseType) {
+    members.insert(baseType->members.begin(), baseType->members.end());
+    orderedMembers.insert(orderedMembers.end(), baseType->orderedMembers.begin(), baseType->orderedMembers.end());
 }
 
 std::string StructureType::generateParserFunctionBody(ParserGenerator *generator, const std::string &indent) const {

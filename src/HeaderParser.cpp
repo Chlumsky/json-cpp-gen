@@ -105,7 +105,7 @@ const Type * HeaderParser::parseStruct() {
             if (cur < end && *cur == '<')
                 skipBlock(ANY_BRACES_INCLUDING_ANGLED);
             else if (!nonPublic && !baseTypeName.empty())
-                baseStructType = dynamic_cast<const StructureType *>(typeSet->find(baseTypeName));
+                baseStructType = dynamic_cast<const StructureType *>(findType(baseTypeName));
             skipWhitespaceAndComments(MULTI_LINE);
         }
         if (!matchSymbol('{'))
@@ -124,12 +124,14 @@ const Type * HeaderParser::parseStruct() {
         if (structType->isFinalized())
             throw Error::TYPE_REDEFINITION;
     } else {
-        std::unique_ptr<StructureType> newType(new StructureType(fullStructName, baseStructType));
+        std::unique_ptr<StructureType> newType(new StructureType(fullStructName));
         structType = newType.get();
         typeSet->add(fullStructName, std::move(newType));
         if (forwardDeclaration)
             return structType;
     }
+    if (baseStructType)
+        structType->inheritFrom(baseStructType);
     curNamespace.push_back(structName);
     for (skipWhitespaceAndComments(MULTI_LINE); !matchSymbol('}'); skipWhitespaceAndComments(MULTI_LINE)) {
         if (cur >= end)
