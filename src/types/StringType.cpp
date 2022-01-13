@@ -29,10 +29,10 @@ std::string StringType::generateParserFunctionBody(ParserGenerator *generator, c
     body += indent+INDENT "if (*cur == '\\\\') {\n";
     body += indent+INDENT INDENT "char buffer[8];\n";
     if (generator->settings().noThrow) {
-        body += indent+INDENT INDENT "if (Error error = parseEscaped(buffer))\n";
+        body += indent+INDENT INDENT "if (Error error = unescape(buffer))\n";
         body += indent+INDENT INDENT INDENT "return error;\n";
     } else
-        body += indent+INDENT INDENT "parseEscaped(buffer);\n";
+        body += indent+INDENT INDENT "unescape(buffer);\n";
     body += indent+INDENT INDENT+generateAppendCStr("value", "buffer")+";\n";
     body += indent+INDENT INDENT "continue;\n";
     body += indent+INDENT "}\n";

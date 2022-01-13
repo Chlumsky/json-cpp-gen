@@ -2,5 +2,5 @@
 /linux_build/
 /test/
 /generate-configuration-parser.bat
-/run-cmake.bat
+/cmake-gen.bat
 /install.bat

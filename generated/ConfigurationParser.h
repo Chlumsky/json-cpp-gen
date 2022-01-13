@@ -34,7 +34,8 @@ protected:
     void skipValue();
     void requireSymbol(char s);
     bool matchSymbol(char s);
-    void parseEscaped(char *sequence);
+    void unescape(char *codepoints);
+    static bool isAlphanumeric(char c);
 
     void parseStdString(std::string &value);
     void parseStdVectorStdString(std::vector<std::string> &value);

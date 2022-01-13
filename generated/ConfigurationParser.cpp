@@ -43,8 +43,8 @@ void ConfigurationParser::skipValue() {
             ++cur;
             return;
         default:
-            if (isalnum(*cur) || *cur == '-' || *cur == '.') {
-                while (isalnum(*++cur) || *cur == '+' || *cur == '-' || *cur == '.');
+            if (isAlphanumeric(*cur) || *cur == '-' || *cur == '.') {
+                while (isAlphanumeric(*++cur) || *cur == '+' || *cur == '-' || *cur == '.');
                 return;
             }
     }
@@ -66,25 +66,25 @@ bool ConfigurationParser::matchSymbol(char s) {
     return false;
 }
 
-void ConfigurationParser::parseEscaped(char *sequence) {
+void ConfigurationParser::unescape(char *codepoints) {
     switch (*++cur) {
         case '\0':
             throw Error::UNEXPECTED_END_OF_FILE;
-        case 'B': case 'b': sequence[0] = '\b'; break;
-        case 'F': case 'f': sequence[0] = '\f'; break;
-        case 'N': case 'n': sequence[0] = '\n'; break;
-        case 'R': case 'r': sequence[0] = '\r'; break;
-        case 'T': case 't': sequence[0] = '\t'; break;
+        case 'B': case 'b': codepoints[0] = '\b'; break;
+        case 'F': case 'f': codepoints[0] = '\f'; break;
+        case 'N': case 'n': codepoints[0] = '\n'; break;
+        case 'R': case 'r': codepoints[0] = '\r'; break;
+        case 'T': case 't': codepoints[0] = '\t'; break;
         case 'U': case 'u': {
             unsigned long cp;
             unsigned short wc;
             ++cur;
             if (!(cur[0] && cur[1] && cur[2] && cur[3]))
                 throw Error::JSON_SYNTAX_ERROR;
-            sequence[0] = cur[0], sequence[1] = cur[1], sequence[2] = cur[2], sequence[3] = cur[3];
-            sequence[4] = '\0';
+            codepoints[0] = cur[0], codepoints[1] = cur[1], codepoints[2] = cur[2], codepoints[3] = cur[3];
+            codepoints[4] = '\0';
             cur += 3;
-            if (sscanf(sequence, "%hx", &wc) != 1)
+            if (sscanf(codepoints, "%hx", &wc) != 1)
                 throw Error::JSON_SYNTAX_ERROR;
             if ((wc&0xfc00) == 0xd800) {
                 if (!(cur[1] == '\\' && (cur[2] == 'u' || cur[2] == 'U')))
@@ -93,10 +93,10 @@ void ConfigurationParser::parseEscaped(char *sequence) {
                 cur += 3;
                 if (!(cur[0] && cur[1] && cur[2] && cur[3]))
                     throw Error::JSON_SYNTAX_ERROR;
-                sequence[0] = cur[0], sequence[1] = cur[1], sequence[2] = cur[2], sequence[3] = cur[3];
-                sequence[4] = '\0';
+                codepoints[0] = cur[0], codepoints[1] = cur[1], codepoints[2] = cur[2], codepoints[3] = cur[3];
+                codepoints[4] = '\0';
                 cur += 3;
-                if (sscanf(sequence, "%hx", &wc) != 1)
+                if (sscanf(codepoints, "%hx", &wc) != 1)
                     throw Error::JSON_SYNTAX_ERROR;
                 if ((wc&0xfc00) != 0xdc00)
                     throw Error::UTF16_ENCODING_ERROR;
@@ -106,17 +106,32 @@ void ConfigurationParser::parseEscaped(char *sequence) {
             if (cp&0xffffff80) {
                 int len;
                 for (len = 1; cp>>(5*len+1) && len < 6; ++len);
-                sequence[0] = (char) (0xff<<(8-len)|cp>>6*(len-1));
+                codepoints[0] = (char) (0xff<<(8-len)|cp>>6*(len-1));
                 for (int i = 1; i < len; ++i)
-                    *++sequence = (char) (0x80|(cp>>6*(len-i-1)&0x3f));
+                    *++codepoints = (char) (0x80|(cp>>6*(len-i-1)&0x3f));
             } else
-                sequence[0] = (char) cp;
+                codepoints[0] = (char) cp;
             break;
         }
         default:
-            sequence[0] = *cur;
+            codepoints[0] = *cur;
     }
-    sequence[1] = '\0';
+    codepoints[1] = '\0';
+}
+
+bool ConfigurationParser::isAlphanumeric(char c) {
+    switch (c) {
+        case 'A': case 'B': case 'C': case 'D': case 'E': case 'F': case 'G': case 'H': case 'I':
+        case 'J': case 'K': case 'L': case 'M': case 'N': case 'O': case 'P': case 'Q': case 'R':
+        case 'S': case 'T': case 'U': case 'V': case 'W': case 'X': case 'Y': case 'Z':
+        case 'a': case 'b': case 'c': case 'd': case 'e': case 'f': case 'g': case 'h': case 'i':
+        case 'j': case 'k': case 'l': case 'm': case 'n': case 'o': case 'p': case 'q': case 'r':
+        case 's': case 't': case 'u': case 'v': case 'w': case 'x': case 'y': case 'z':
+        case '0': case '1': case '2': case '3': case '4': case '5': case '6': case '7': case '8': case '9':
+            return true;
+        default:
+            return false;
+    }
 }
 
 ConfigurationParser::Error ConfigurationParser::parse(Configuration &output, const char *jsonString) {
@@ -136,7 +151,7 @@ void ConfigurationParser::parseStdString(std::string &value) {
     while (*++cur != '"') {
         if (*cur == '\\') {
             char buffer[8];
-            parseEscaped(buffer);
+            unescape(buffer);
             value += buffer;
             continue;
         }
@@ -193,9 +208,9 @@ void ConfigurationParser::parseNameFormat(NameFormat &value) {
 
 void ConfigurationParser::parseBool(bool &value) {
     skipWhitespace();
-    if (cur[0] == 'f' && cur[1] == 'a' && cur[2] == 'l' && cur[3] == 's' && cur[4] == 'e' && !isalnum(cur[5]) && cur[5] != '_' && ((cur += 5), true))
+    if (cur[0] == 'f' && cur[1] == 'a' && cur[2] == 'l' && cur[3] == 's' && cur[4] == 'e' && !isAlphanumeric(cur[5]) && cur[5] != '_' && ((cur += 5), true))
         value = false;
-    else if (cur[0] == 't' && cur[1] == 'r' && cur[2] == 'u' && cur[3] == 'e' && !isalnum(cur[4]) && cur[4] != '_' && ((cur += 4), true))
+    else if (cur[0] == 't' && cur[1] == 'r' && cur[2] == 'u' && cur[3] == 'e' && !isAlphanumeric(cur[4]) && cur[4] != '_' && ((cur += 4), true))
         value = true;
     else
         throw Error::TYPE_MISMATCH;

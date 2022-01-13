@@ -49,10 +49,11 @@ $::Error $::skipValue() {
                         break;
                 }
             }
+            ++cur;
             return Error::OK;
         default:
-            if (isalnum(*cur) || *cur == '-' || *cur == '.') {
-                while (isalnum(*++cur) || *cur == '+' || *cur == '-' || *cur == '.');
+            if (isAlphanumeric(*cur) || *cur == '-' || *cur == '.') {
+                while (isAlphanumeric(*++cur) || *cur == '+' || *cur == '-' || *cur == '.');
                 return Error::OK;
             }
     }
@@ -68,25 +69,25 @@ bool $::matchSymbol(char s) {
     return false;
 }
 
-$::Error $::parseEscaped(char *sequence) {
+$::Error $::unescape(char *codepoints) {
     switch (*++cur) {
         case '\0':
             return Error::UNEXPECTED_END_OF_FILE;
-        case 'B': case 'b': sequence[0] = '\b'; break;
-        case 'F': case 'f': sequence[0] = '\f'; break;
-        case 'N': case 'n': sequence[0] = '\n'; break;
-        case 'R': case 'r': sequence[0] = '\r'; break;
-        case 'T': case 't': sequence[0] = '\t'; break;
+        case 'B': case 'b': codepoints[0] = '\b'; break;
+        case 'F': case 'f': codepoints[0] = '\f'; break;
+        case 'N': case 'n': codepoints[0] = '\n'; break;
+        case 'R': case 'r': codepoints[0] = '\r'; break;
+        case 'T': case 't': codepoints[0] = '\t'; break;
         case 'U': case 'u': {
             unsigned long cp;
             unsigned short wc;
             ++cur;
             if (!(cur[0] && cur[1] && cur[2] && cur[3]))
                 return Error::JSON_SYNTAX_ERROR;
-            sequence[0] = cur[0], sequence[1] = cur[1], sequence[2] = cur[2], sequence[3] = cur[3];
-            sequence[4] = '\0';
+            codepoints[0] = cur[0], codepoints[1] = cur[1], codepoints[2] = cur[2], codepoints[3] = cur[3];
+            codepoints[4] = '\0';
             cur += 3;
-            if (sscanf(sequence, "%hx", &wc) != 1)
+            if (sscanf(codepoints, "%hx", &wc) != 1)
                 return Error::JSON_SYNTAX_ERROR;
             if ((wc&0xfc00) == 0xd800) {
                 if (!(cur[1] == '\\' && (cur[2] == 'u' || cur[2] == 'U')))
@@ -95,10 +96,10 @@ $::Error $::parseEscaped(char *sequence) {
                 cur += 3;
                 if (!(cur[0] && cur[1] && cur[2] && cur[3]))
                     return Error::JSON_SYNTAX_ERROR;
-                sequence[0] = cur[0], sequence[1] = cur[1], sequence[2] = cur[2], sequence[3] = cur[3];
-                sequence[4] = '\0';
+                codepoints[0] = cur[0], codepoints[1] = cur[1], codepoints[2] = cur[2], codepoints[3] = cur[3];
+                codepoints[4] = '\0';
                 cur += 3;
-                if (sscanf(sequence, "%hx", &wc) != 1)
+                if (sscanf(codepoints, "%hx", &wc) != 1)
                     return Error::JSON_SYNTAX_ERROR;
                 if ((wc&0xfc00) != 0xdc00)
                     return Error::UTF16_ENCODING_ERROR;
@@ -108,17 +109,17 @@ $::Error $::parseEscaped(char *sequence) {
             if (cp&0xffffff80) {
                 int len;
                 for (len = 1; cp>>(5*len+1) && len < 6; ++len);
-                sequence[0] = (char) (0xff<<(8-len)|cp>>6*(len-1));
+                codepoints[0] = (char) (0xff<<(8-len)|cp>>6*(len-1));
                 for (int i = 1; i < len; ++i)
-                    *++sequence = (char) (0x80|(cp>>6*(len-i-1)&0x3f));
+                    *++codepoints = (char) (0x80|(cp>>6*(len-i-1)&0x3f));
             } else
-                sequence[0] = (char) cp;
+                codepoints[0] = (char) cp;
             break;
         }
         default:
-            sequence[0] = *cur;
+            codepoints[0] = *cur;
     }
-    sequence[1] = '\0';
+    codepoints[1] = '\0';
     return Error::OK;
 }
 )";
@@ -163,8 +164,8 @@ void $::skipValue() {
             ++cur;
             return;
         default:
-            if (isalnum(*cur) || *cur == '-' || *cur == '.') {
-                while (isalnum(*++cur) || *cur == '+' || *cur == '-' || *cur == '.');
+            if (isAlphanumeric(*cur) || *cur == '-' || *cur == '.') {
+                while (isAlphanumeric(*++cur) || *cur == '+' || *cur == '-' || *cur == '.');
                 return;
             }
     }
@@ -186,25 +187,25 @@ bool $::matchSymbol(char s) {
     return false;
 }
 
-void $::parseEscaped(char *sequence) {
+void $::unescape(char *codepoints) {
     switch (*++cur) {
         case '\0':
             throw Error::UNEXPECTED_END_OF_FILE;
-        case 'B': case 'b': sequence[0] = '\b'; break;
-        case 'F': case 'f': sequence[0] = '\f'; break;
-        case 'N': case 'n': sequence[0] = '\n'; break;
-        case 'R': case 'r': sequence[0] = '\r'; break;
-        case 'T': case 't': sequence[0] = '\t'; break;
+        case 'B': case 'b': codepoints[0] = '\b'; break;
+        case 'F': case 'f': codepoints[0] = '\f'; break;
+        case 'N': case 'n': codepoints[0] = '\n'; break;
+        case 'R': case 'r': codepoints[0] = '\r'; break;
+        case 'T': case 't': codepoints[0] = '\t'; break;
         case 'U': case 'u': {
             unsigned long cp;
             unsigned short wc;
             ++cur;
             if (!(cur[0] && cur[1] && cur[2] && cur[3]))
                 throw Error::JSON_SYNTAX_ERROR;
-            sequence[0] = cur[0], sequence[1] = cur[1], sequence[2] = cur[2], sequence[3] = cur[3];
-            sequence[4] = '\0';
+            codepoints[0] = cur[0], codepoints[1] = cur[1], codepoints[2] = cur[2], codepoints[3] = cur[3];
+            codepoints[4] = '\0';
             cur += 3;
-            if (sscanf(sequence, "%hx", &wc) != 1)
+            if (sscanf(codepoints, "%hx", &wc) != 1)
                 throw Error::JSON_SYNTAX_ERROR;
             if ((wc&0xfc00) == 0xd800) {
                 if (!(cur[1] == '\\' && (cur[2] == 'u' || cur[2] == 'U')))
@@ -213,10 +214,10 @@ void $::parseEscaped(char *sequence) {
                 cur += 3;
                 if (!(cur[0] && cur[1] && cur[2] && cur[3]))
                     throw Error::JSON_SYNTAX_ERROR;
-                sequence[0] = cur[0], sequence[1] = cur[1], sequence[2] = cur[2], sequence[3] = cur[3];
-                sequence[4] = '\0';
+                codepoints[0] = cur[0], codepoints[1] = cur[1], codepoints[2] = cur[2], codepoints[3] = cur[3];
+                codepoints[4] = '\0';
                 cur += 3;
-                if (sscanf(sequence, "%hx", &wc) != 1)
+                if (sscanf(codepoints, "%hx", &wc) != 1)
                     throw Error::JSON_SYNTAX_ERROR;
                 if ((wc&0xfc00) != 0xdc00)
                     throw Error::UTF16_ENCODING_ERROR;
@@ -226,17 +227,17 @@ void $::parseEscaped(char *sequence) {
             if (cp&0xffffff80) {
                 int len;
                 for (len = 1; cp>>(5*len+1) && len < 6; ++len);
-                sequence[0] = (char) (0xff<<(8-len)|cp>>6*(len-1));
+                codepoints[0] = (char) (0xff<<(8-len)|cp>>6*(len-1));
                 for (int i = 1; i < len; ++i)
-                    *++sequence = (char) (0x80|(cp>>6*(len-i-1)&0x3f));
+                    *++codepoints = (char) (0x80|(cp>>6*(len-i-1)&0x3f));
             } else
-                sequence[0] = (char) cp;
+                codepoints[0] = (char) cp;
             break;
         }
         default:
-            sequence[0] = *cur;
+            codepoints[0] = *cur;
     }
-    sequence[1] = '\0';
+    codepoints[1] = '\0';
 }
 )";
 
@@ -246,7 +247,7 @@ std::string ParserGenerator::generateMatchKeyword(const char *keyword) {
     for (i = 0; *keyword; ++i, ++keyword)
         expr += "cur["+std::to_string(i)+"] == '"+*keyword+"' && ";
     std::string iStr = std::to_string(i);
-    expr += "!isalnum(cur["+iStr+"]) && cur["+iStr+"] != '_' && ((cur += "+iStr+"), true)";
+    expr += "!isAlphanumeric(cur["+iStr+"]) && cur["+iStr+"] != '_' && ((cur += "+iStr+"), true)";
     return expr;
 }
 
@@ -315,7 +316,8 @@ std::string ParserGenerator::generateHeader() {
     if (!settings().noThrow)
         code += INDENT "void requireSymbol(char s);\n";
     code += INDENT "bool matchSymbol(char s);\n";
-    code += std::string(INDENT)+(settings().noThrow ? "Error" : "void")+" parseEscaped(char *sequence);\n";
+    code += std::string(INDENT)+(settings().noThrow ? "Error" : "void")+" unescape(char *codepoints);\n";
+    code += INDENT "static bool isAlphanumeric(char c);\n";
     code += "\n";
     for (const Function &parseFunction : functions)
         code += std::string(INDENT)+(settings().noThrow ? "Error " : "void ")+parseFunction.name+"("+parseFunction.type->name().refArgDeclaration("value")+");\n";
@@ -339,6 +341,23 @@ std::string ParserGenerator::generateSource(const std::string &relativeHeaderAdd
         else
             code.push_back(*c);
     }
+    // isAlphanumeric
+    code += "\n";
+    code += "bool "+className+"::isAlphanumeric(char c) {\n";
+    code += INDENT "switch (c) {";
+    for (int i = 0; i < 26+26+10; ++i) {
+        if (!(i%26%9) && i != 26+26+9)
+            code += "\n" INDENT INDENT;
+        else
+            code.push_back(' ');
+        code += std::string("case '")+"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"[i]+"':";
+    }
+    code += "\n" INDENT INDENT INDENT "return true;\n";
+    code += INDENT INDENT "default:\n";
+    code += INDENT INDENT INDENT "return false;\n";
+    code += INDENT "}\n";
+    code += "}\n";
+    // public parse functions
     for (const Function &parseFunction : functions) {
         if (parseFunction.rootStructure) {
             code += "\n";
@@ -356,6 +375,7 @@ std::string ParserGenerator::generateSource(const std::string &relativeHeaderAdd
             code += "}\n";
         }
     }
+    // private parse functions
     for (const Function &parseFunction : functions) {
         code += "\n";
         if (settings().noThrow)
