@@ -38,7 +38,7 @@ std::string ObjectMapContainerType::generateParserFunctionBody(ParserGenerator *
     }
     body += generator->generateValueParse(keyType(), "key", indent+INDENT);
     if (generator->settings().noThrow) {
-        body += indent+INDENT "if (!requireSymbol(':'))\n";
+        body += indent+INDENT "if (!matchSymbol(':'))\n";
         body += indent+INDENT INDENT+generator->generateErrorStatement(ParserGenerator::Error::JSON_SYNTAX_ERROR)+";\n";
     } else
         body += indent+INDENT "requireSymbol(':');\n";
