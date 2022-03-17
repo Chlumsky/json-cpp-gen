@@ -126,6 +126,7 @@ struct Configuration {
         std::string name;
         std::string baseClass;
         std::vector<std::string> types;
+        std::vector<std::string> replacementIncludes;
         std::string headerOutput;
         std::string sourceOutput;
     };

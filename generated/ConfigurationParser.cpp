@@ -322,6 +322,8 @@ void ConfigurationParser::parseConfigurationGeneratorDef(Configuration::Generato
             parseStdString(value.baseClass);
         else if (key == "types")
             parseStdVectorStdString(value.types);
+        else if (key == "replacementIncludes")
+            parseStdVectorStdString(value.replacementIncludes);
         else if (key == "headerOutput")
             parseStdString(value.headerOutput);
         else if (key == "sourceOutput")

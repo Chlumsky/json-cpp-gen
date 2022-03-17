@@ -145,10 +145,15 @@ int main(int argc, const char * const *argv) {
         ParserGenerator parserGen(parserDef.name, stringType, config.settings);
         AbsPath headerPath = basePath+parserDef.headerOutput;
         AbsPath sourcePath = basePath+parserDef.sourceOutput;
-        for (const std::string &include : config.includes)
-            parserGen.addTypeInclude(*include.c_str() == '<' || *include.c_str() == '"' ? include : "\""+(basePath+include-headerPath)+"\"");
-        for (const std::string &input : config.inputs)
-            parserGen.addTypeInclude("\""+(basePath+input-headerPath)+"\"");
+        if (parserDef.replacementIncludes.empty()) {
+            for (const std::string &include : config.includes)
+                parserGen.addTypeInclude(*include.c_str() == '<' || *include.c_str() == '"' ? include : "\""+(basePath+include-headerPath)+"\"");
+            for (const std::string &input : config.inputs)
+                parserGen.addTypeInclude("\""+(basePath+input-headerPath)+"\"");
+        } else {
+            for (const std::string &include : parserDef.replacementIncludes)
+                parserGen.addTypeInclude(*include.c_str() == '<' || *include.c_str() == '"' ? include : "\""+(basePath+include-headerPath)+"\"");
+        }
         // TODO baseClass
         for (const std::string &typeName : parserDef.types) {
             const Type *type = typeSet.find(typeName);
@@ -175,10 +180,15 @@ int main(int argc, const char * const *argv) {
         SerializerGenerator serializerGen(serializerDef.name, stringType, config.settings);
         AbsPath headerPath = basePath+serializerDef.headerOutput;
         AbsPath sourcePath = basePath+serializerDef.sourceOutput;
-        for (const std::string &include : config.includes)
-            serializerGen.addTypeInclude(*include.c_str() == '<' || *include.c_str() == '"' ? include : "\""+(basePath+include-headerPath)+"\"");
-        for (const std::string &input : config.inputs)
-            serializerGen.addTypeInclude("\""+(basePath+input-headerPath)+"\"");
+        if (serializerDef.replacementIncludes.empty()) {
+            for (const std::string &include : config.includes)
+                serializerGen.addTypeInclude(*include.c_str() == '<' || *include.c_str() == '"' ? include : "\""+(basePath+include-headerPath)+"\"");
+            for (const std::string &input : config.inputs)
+                serializerGen.addTypeInclude("\""+(basePath+input-headerPath)+"\"");
+        } else {
+            for (const std::string &include : serializerDef.replacementIncludes)
+                serializerGen.addTypeInclude(*include.c_str() == '<' || *include.c_str() == '"' ? include : "\""+(basePath+include-headerPath)+"\"");
+        }
         // TODO baseClass
         for (const std::string &typeName : serializerDef.types) {
             const Type *type = typeSet.find(typeName);
