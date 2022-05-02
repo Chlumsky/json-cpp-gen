@@ -53,11 +53,11 @@ static std::string generateSscanf(ParserGenerator *generator, const char *patter
     return body;
 }
 
-static std::string generateIndirectSscanf(ParserGenerator *generator, const char *intermediateType, const char *pattern, const std::string &indent) {
+static std::string generateIndirectSscanf(ParserGenerator *generator, const TypeName &outputType, const char *intermediateType, const char *pattern, const std::string &indent) {
     std::string body;
     body += indent+intermediateType+" intermediate;\n";
     body += generateSscanf(generator, pattern, "intermediate", indent);
-    body += indent+"value = static_cast<decltype(value)>(intermediate);\n"; // TODO get rid of decltype
+    body += indent+"value = static_cast<"+outputType.body()+">(intermediate);\n";
     if (generator->settings().checkIntegerOverflow) {
         body += indent+"if (static_cast<"+intermediateType+">(value) != intermediate)\n";
         body += indent+INDENT+generator->generateErrorStatement(ParserGenerator::Error::VALUE_OUT_OF_RANGE)+";\n";
@@ -200,17 +200,17 @@ std::string BasicType::generateParserFunctionBody(ParserGenerator *generator, co
             return body;
         }
         case CHAR: case SIGNED_CHAR: case SHORT: case WCHAR_T: case INT8_T: case INT16_T: // via signed int
-            return generateIndirectSscanf(generator, "int", "%d", indent);
+            return generateIndirectSscanf(generator, name(), "int", "%d", indent);
         case UNSIGNED_CHAR: case UNSIGNED_SHORT: case CHAR8_T: case CHAR16_T: case UINT8_T: case UINT16_T: // via unsigned int
-            return generateIndirectSscanf(generator, "unsigned", "%u", indent);
+            return generateIndirectSscanf(generator, name(), "unsigned", "%u", indent);
         case INT32_T: // via signed long
-            return generateIndirectSscanf(generator, "long", "%ld", indent);
+            return generateIndirectSscanf(generator, name(), "long", "%ld", indent);
         case CHAR32_T: case UINT32_T: // via unsigned long
-            return generateIndirectSscanf(generator, "unsigned long", "%lu", indent);
+            return generateIndirectSscanf(generator, name(), "unsigned long", "%lu", indent);
         case INTPTR_T: case PTRDIFF_T: case INT64_T: // via signed long long
-            return generateIndirectSscanf(generator, "long long", "%lld", indent);
+            return generateIndirectSscanf(generator, name(), "long long", "%lld", indent);
         case UINTPTR_T: case SIZE_T: case UINT64_T: // via unsigned long long
-            return generateIndirectSscanf(generator, "unsigned long long", "%llu", indent);
+            return generateIndirectSscanf(generator, name(), "unsigned long long", "%llu", indent);
         case INT: case UNSIGNED_INT: case LONG: case UNSIGNED_LONG: case LONG_LONG: case UNSIGNED_LONG_LONG: case FLOAT: case DOUBLE: case LONG_DOUBLE: { // exact type
             const char *pattern = nullptr;
             switch (type) {

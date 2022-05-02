@@ -36,32 +36,36 @@ std::string StructureType::generateParserFunctionBody(ParserGenerator *generator
         body += indent+INDENT INDENT+generator->generateErrorStatement(ParserGenerator::Error::JSON_SYNTAX_ERROR)+";\n";
     } else
         body += indent+INDENT "requireSymbol(':');\n";
-    bool first = true;
-    if (generator->settings().noThrow) {
-        for (const std::pair<std::string, const Type *> &member : orderedMembers) {
-            body += indent+INDENT+(first ? "if" : "} else if")+" (key == "+generator->getJsonMemberNameLiteral(member.first)+") {\n";
-            body += indent+INDENT INDENT+"if (Error error = "+generator->generateParserFunctionCall(member.second, "value."+member.first, false)+")\n";
-            body += indent+INDENT INDENT INDENT "return error;\n";
-            first = false;
+    std::string elseIndent = indent;
+    if (!orderedMembers.empty()) {
+        bool first = true;
+        if (generator->settings().noThrow) {
+            for (const std::pair<std::string, const Type *> &member : orderedMembers) {
+                body += indent+INDENT+(first ? "if" : "} else if")+" (key == "+generator->getJsonMemberNameLiteral(member.first)+") {\n";
+                body += indent+INDENT INDENT+"if (Error error = "+generator->generateParserFunctionCall(member.second, "value."+member.first, false)+")\n";
+                body += indent+INDENT INDENT INDENT "return error;\n";
+                first = false;
+            }
+            body += indent+INDENT "} else {\n";
+        } else {
+            for (const std::pair<std::string, const Type *> &member : orderedMembers) {
+                body += indent+INDENT+(first ? "if" : "else if")+" (key == "+generator->getJsonMemberNameLiteral(member.first)+")\n";
+                body += indent+INDENT INDENT+generator->generateParserFunctionCall(member.second, "value."+member.first, false)+";\n";
+                first = false;
+            }
+            body += indent+INDENT "else\n";
         }
-        body += indent+INDENT "} else {\n";
-    } else {
-        for (const std::pair<std::string, const Type *> &member : orderedMembers) {
-            body += indent+INDENT+(first ? "if" : "else if")+" (key == "+generator->getJsonMemberNameLiteral(member.first)+")\n";
-            body += indent+INDENT INDENT+generator->generateParserFunctionCall(member.second, "value."+member.first, false)+";\n";
-            first = false;
-        }
-        body += indent+INDENT "else\n";
+        elseIndent += INDENT;
     }
     if (generator->settings().ignoreExtraKeys) {
         if (generator->settings().noThrow) {
-            body += indent+INDENT INDENT "if (Error error = skipValue())\n";
-            body += indent+INDENT INDENT INDENT "return error;\n";
+            body += elseIndent+INDENT "if (Error error = skipValue())\n";
+            body += elseIndent+INDENT INDENT "return error;\n";
         } else
-            body += indent+INDENT INDENT "skipValue();\n";
+            body += elseIndent+INDENT "skipValue();\n";
     } else
-        body += indent+INDENT INDENT+generator->generateErrorStatement(ParserGenerator::Error::UNKNOWN_KEY)+";\n";
-    if (generator->settings().noThrow)
+        body += elseIndent+INDENT+generator->generateErrorStatement(ParserGenerator::Error::UNKNOWN_KEY)+";\n";
+    if (!orderedMembers.empty() && generator->settings().noThrow)
         body += indent+INDENT "}\n";
     if (generator->settings().strictSyntaxCheck)
         body += indent+INDENT "separatorCheck = matchSymbol(',');\n";
@@ -76,6 +80,8 @@ std::string StructureType::generateParserFunctionBody(ParserGenerator *generator
 }
 
 std::string StructureType::generateSerializerFunctionBody(SerializerGenerator *generator, const std::string &indent) const {
+    if (orderedMembers.empty())
+        return indent+"write(\"{}\");\n";
     std::string body;
     bool first = true;
     bool maybeFirst = false;

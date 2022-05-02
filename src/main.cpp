@@ -92,7 +92,7 @@ int main(int argc, const char * const *argv) {
         for (const Configuration::ArrayContainerDef &arrayContainerDef : config.arrayContainerTypes)
             typeSet.addContainerTemplate(std::unique_ptr<ContainerTemplate<> >(new ArrayContainerTemplate(arrayContainerDef.name, arrayContainerDef.api)));
         for (const Configuration::FixedArrayContainerDef &fixedArrayContainerDef : config.fixedArrayContainerTypes) {
-            if (const ArrayContainerTemplate *arrayContainerTemplate = dynamic_cast<const ArrayContainerTemplate *>(typeSet.findContainerTemplate<const Type *>(fixedArrayContainerDef.arrayContainerType)))
+            if (const ArrayContainerTemplate *arrayContainerTemplate = dynamic_cast<const ArrayContainerTemplate *>(typeSet.findContainerTemplate<>(fixedArrayContainerDef.arrayContainerType)))
                 typeSet.addContainerTemplate(std::unique_ptr<ContainerTemplate<> >(new FixedArrayContainerTemplate(fixedArrayContainerDef.name, arrayContainerTemplate, fixedArrayContainerDef.api)));
             else {
                 fprintf(stderr, "Error: Array container type '%s' not found, skipping fixed array container type '%s'\n", fixedArrayContainerDef.arrayContainerType.c_str(), fixedArrayContainerDef.name.c_str());
