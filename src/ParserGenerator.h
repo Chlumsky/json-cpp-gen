@@ -28,7 +28,7 @@ public:
 
     explicit ParserGenerator(const std::string &className, const StringType *stringType = &StringType::STD_STRING, const Settings &settings = Settings());
     void generateParserFunction(const Type *type);
-    std::string generateParserFunctionCall(const Type *type, const std::string &outputArg, bool rootStructure);
+    std::string generateParserFunctionCall(const Type *type, const std::string &outputArg);
     std::string generateValueParse(const Type *type, const std::string &outputArg, const std::string &indent);
 
     std::string generateHeader();

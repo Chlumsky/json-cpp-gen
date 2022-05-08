@@ -42,7 +42,7 @@ std::string StructureType::generateParserFunctionBody(ParserGenerator *generator
         if (generator->settings().noThrow) {
             for (const std::pair<std::string, const Type *> &member : orderedMembers) {
                 body += indent+INDENT+(first ? "if" : "} else if")+" (key == "+generator->getJsonMemberNameLiteral(member.first)+") {\n";
-                body += indent+INDENT INDENT+"if (Error error = "+generator->generateParserFunctionCall(member.second, "value."+member.first, false)+")\n";
+                body += indent+INDENT INDENT+"if (Error error = "+generator->generateParserFunctionCall(member.second, "value."+member.first)+")\n";
                 body += indent+INDENT INDENT INDENT "return error;\n";
                 first = false;
             }
@@ -50,7 +50,7 @@ std::string StructureType::generateParserFunctionBody(ParserGenerator *generator
         } else {
             for (const std::pair<std::string, const Type *> &member : orderedMembers) {
                 body += indent+INDENT+(first ? "if" : "else if")+" (key == "+generator->getJsonMemberNameLiteral(member.first)+")\n";
-                body += indent+INDENT INDENT+generator->generateParserFunctionCall(member.second, "value."+member.first, false)+";\n";
+                body += indent+INDENT INDENT+generator->generateParserFunctionCall(member.second, "value."+member.first)+";\n";
                 first = false;
             }
             body += indent+INDENT "else\n";

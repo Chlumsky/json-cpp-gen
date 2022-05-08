@@ -7,7 +7,10 @@ const char * const SerializerGenerator::Error::UNKNOWN_ENUM_VALUE = "UNKNOWN_ENU
 SerializerGenerator::SerializerGenerator(const std::string &className, const StringType *stringType, const Settings &settings) : Generator(className, stringType, settings) { }
 
 void SerializerGenerator::generateSerializerFunction(const Type *type) {
-    generateSerializerFunctionCall(type, "value", true);
+    if (type) {
+        generateSerializerFunctionCall(type, "value", true);
+        entryTypes.push_back(type);
+    }
 }
 
 std::string SerializerGenerator::generateSerializerFunctionCall(const Type *type, const std::string &inputArg, bool rootStructure) {
@@ -20,7 +23,6 @@ std::string SerializerGenerator::generateSerializerFunctionCall(const Type *type
         serializeFunction.type = type;
         serializeFunction.name = functionName;
         serializeFunction.body = type->generateSerializerFunctionBody(this, INDENT);
-        serializeFunction.rootStructure = rootStructure;
         functions.push_back(std::move(serializeFunction));
     }
     return functionName+"("+inputArg+")";
@@ -49,9 +51,10 @@ std::string SerializerGenerator::generateHeader() {
     code += std::string(INDENT INDENT)+Error::UNREPRESENTABLE_FLOAT_VALUE+",\n";
     code += std::string(INDENT INDENT)+Error::UNKNOWN_ENUM_VALUE+",\n";
     code += INDENT "};\n\n";
-    for (const Function &parseFunction : functions) {
-        if (parseFunction.rootStructure)
-            code += INDENT "static Error serialize("+stringType()->name().refArgDeclaration("jsonString")+", "+parseFunction.type->name().constRefArgDeclaration("input")+");\n";
+    for (const Type *type : entryTypes) {
+        std::map<std::string, std::string>::const_iterator it = functionNames.find(type->name().fullName());
+        if (it != functionNames.end())
+            code += INDENT "static Error serialize("+stringType()->name().refArgDeclaration("jsonString")+", "+type->name().constRefArgDeclaration("input")+");\n";
     }
     code += "\nprotected:\n";
     code += INDENT+stringType()->name().refArgDeclaration("json")+";\n\n";
@@ -122,15 +125,16 @@ std::string SerializerGenerator::generateSource(const std::string &relativeHeade
     code += INDENT "}\n";
     code += "}\n";
     // serialize
-    for (const Function &serializeFunction : functions) {
-        if (serializeFunction.rootStructure) {
+    for (const Type *type : entryTypes) {
+        std::map<std::string, std::string>::const_iterator it = functionNames.find(type->name().fullName());
+        if (it != functionNames.end()) {
             code += "\n";
-            code += className+"::Error "+className+"::serialize("+stringType()->name().refArgDeclaration("jsonString")+", "+serializeFunction.type->name().constRefArgDeclaration("input")+") {\n";
+            code += className+"::Error "+className+"::serialize("+stringType()->name().refArgDeclaration("jsonString")+", "+type->name().constRefArgDeclaration("input")+") {\n";
             if (settings().noThrow)
-                code += INDENT "return "+className+"(jsonString)."+serializeFunction.name+"(input);\n";
+                code += INDENT "return "+className+"(jsonString)."+it->second+"(input);\n";
             else {
                 code += INDENT "try {\n";
-                code += INDENT INDENT+className+"(jsonString)."+serializeFunction.name+"(input);\n";
+                code += INDENT INDENT+className+"(jsonString)."+it->second+"(input);\n";
                 code += INDENT "} catch (Error error) {\n";
                 code += INDENT INDENT "return error;\n";
                 code += INDENT "}\n";

@@ -19,11 +19,11 @@ std::string OptionalContainerType::generateParserFunctionBody(ParserGenerator *g
     body += indent+INDENT+generateClear("value")+";\n";
     std::string elemRef = generateRefInitialized("value");
     if (generator->settings().noThrow) {
-        body += indent+"else if (Error error = "+generator->generateParserFunctionCall(elementType(), elemRef, false)+")\n";
+        body += indent+"else if (Error error = "+generator->generateParserFunctionCall(elementType(), elemRef)+")\n";
         body += indent+INDENT "return error;\n";
     } else {
         body += indent+"else\n";
-        body += indent+INDENT+generator->generateParserFunctionCall(elementType(), elemRef, false)+";\n";
+        body += indent+INDENT+generator->generateParserFunctionCall(elementType(), elemRef)+";\n";
     }
     return body;
 }

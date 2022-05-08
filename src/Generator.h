@@ -30,7 +30,6 @@ protected:
         const Type *type;
         std::string name;
         std::string body;
-        bool rootStructure;
     };
 
     static const char * const signature;
@@ -43,6 +42,7 @@ protected:
     std::vector<Function> functions;
     std::map<std::string, std::string> functionNames;
     std::set<std::string> usedFunctionNames;
+    std::vector<const Type *> entryTypes;
     std::string generateFunctionName(const char *prefix, const Type *type);
     std::string beginNamespace() const;
     std::string endNamespace() const;

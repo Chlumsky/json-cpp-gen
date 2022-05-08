@@ -254,10 +254,13 @@ std::string ParserGenerator::generateMatchKeyword(const char *keyword) {
 ParserGenerator::ParserGenerator(const std::string &className, const StringType *stringType, const Settings &settings) : Generator(className, stringType, settings) { }
 
 void ParserGenerator::generateParserFunction(const Type *type) {
-    generateParserFunctionCall(type, "value", true);
+    if (type) {
+        generateParserFunctionCall(type, "value");
+        entryTypes.push_back(type);
+    }
 }
 
-std::string ParserGenerator::generateParserFunctionCall(const Type *type, const std::string &outputArg, bool rootStructure) {
+std::string ParserGenerator::generateParserFunctionCall(const Type *type, const std::string &outputArg) {
     if (!type)
         return std::string();
     std::string &functionName = functionNames[type->name().fullName()];
@@ -267,7 +270,6 @@ std::string ParserGenerator::generateParserFunctionCall(const Type *type, const 
         parseFunction.type = type;
         parseFunction.name = functionName;
         parseFunction.body = type->generateParserFunctionBody(this, INDENT);
-        parseFunction.rootStructure = rootStructure;
         functions.push_back(std::move(parseFunction));
     }
     return functionName+"("+outputArg+")";
@@ -275,10 +277,10 @@ std::string ParserGenerator::generateParserFunctionCall(const Type *type, const 
 
 std::string ParserGenerator::generateValueParse(const Type *type, const std::string &outputArg, const std::string &indent) {
     if (settings().noThrow) {
-        return indent+"if (Error error = "+generateParserFunctionCall(type, outputArg, false)+")\n"+
+        return indent+"if (Error error = "+generateParserFunctionCall(type, outputArg)+")\n"+
             indent+INDENT "return error;\n";
     } else
-        return indent+generateParserFunctionCall(type, outputArg, false)+";\n";
+        return indent+generateParserFunctionCall(type, outputArg)+";\n";
 }
 
 std::string ParserGenerator::generateHeader() {
@@ -304,9 +306,10 @@ std::string ParserGenerator::generateHeader() {
     code += std::string(INDENT INDENT)+Error::STRING_EXPECTED+",\n";
     code += std::string(INDENT INDENT)+Error::UTF16_ENCODING_ERROR+",\n";
     code += INDENT "};\n\n";
-    for (const Function &parseFunction : functions) {
-        if (parseFunction.rootStructure)
-            code += INDENT "static Error parse("+parseFunction.type->name().refArgDeclaration("output")+", const char *jsonString);\n";
+    for (const Type *type : entryTypes) {
+        std::map<std::string, std::string>::const_iterator it = functionNames.find(type->name().fullName());
+        if (it != functionNames.end())
+            code += INDENT "static Error parse("+type->name().refArgDeclaration("output")+", const char *jsonString);\n";
     }
     code += "\nprotected:\n";
     code += INDENT "const char *cur;\n\n";
@@ -358,15 +361,16 @@ std::string ParserGenerator::generateSource(const std::string &relativeHeaderAdd
     code += INDENT "}\n";
     code += "}\n";
     // public parse functions
-    for (const Function &parseFunction : functions) {
-        if (parseFunction.rootStructure) {
+    for (const Type *type : entryTypes) {
+        std::map<std::string, std::string>::const_iterator it = functionNames.find(type->name().fullName());
+        if (it != functionNames.end()) {
             code += "\n";
-            code += className+"::Error "+className+"::parse("+parseFunction.type->name().refArgDeclaration("output")+", const char *jsonString) {\n";
+            code += className+"::Error "+className+"::parse("+type->name().refArgDeclaration("output")+", const char *jsonString) {\n";
             if (settings().noThrow)
-                code += INDENT "return "+className+"(jsonString)."+parseFunction.name+"(output);\n";
+                code += INDENT "return "+className+"(jsonString)."+it->second+"(output);\n";
             else {
                 code += INDENT "try {\n";
-                code += INDENT INDENT+className+"(jsonString)."+parseFunction.name+"(output);\n";
+                code += INDENT INDENT+className+"(jsonString)."+it->second+"(output);\n";
                 code += INDENT "} catch (Error error) {\n";
                 code += INDENT INDENT "return error;\n";
                 code += INDENT "}\n";
