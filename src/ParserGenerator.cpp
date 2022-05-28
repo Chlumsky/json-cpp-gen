@@ -255,7 +255,7 @@ ParserGenerator::ParserGenerator(const std::string &className, const StringType 
 
 void ParserGenerator::generateParserFunction(const Type *type) {
     if (type) {
-        generateParserFunctionCall(type, "value");
+        generateParserFunctionCall(type, "");
         entryTypes.push_back(type);
     }
 }
@@ -323,7 +323,7 @@ std::string ParserGenerator::generateHeader() {
     code += INDENT "static bool isAlphanumeric(char c);\n";
     code += "\n";
     for (const Function &parseFunction : functions)
-        code += std::string(INDENT)+(settings().noThrow ? "Error " : "void ")+parseFunction.name+"("+parseFunction.type->name().refArgDeclaration("value")+");\n";
+        code += std::string(INDENT)+(settings().noThrow ? "Error " : "void ")+parseFunction.name+"("+parseFunction.type->parserOutputArgDeclaration()+");\n";
     code += "\n};\n";
     code += endNamespace();
     return code;
@@ -386,7 +386,7 @@ std::string ParserGenerator::generateSource(const std::string &relativeHeaderAdd
             code += className+"::Error ";
         else
             code += "void ";
-        code += className+"::"+parseFunction.name+"("+parseFunction.type->name().refArgDeclaration("value")+") {\n";
+        code += className+"::"+parseFunction.name+"("+parseFunction.type->parserOutputArgDeclaration()+") {\n";
         code += parseFunction.body;
         if (settings().noThrow)
             code += INDENT "return Error::OK;\n";

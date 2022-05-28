@@ -8,12 +8,12 @@ SerializerGenerator::SerializerGenerator(const std::string &className, const Str
 
 void SerializerGenerator::generateSerializerFunction(const Type *type) {
     if (type) {
-        generateSerializerFunctionCall(type, "value", true);
+        generateSerializerFunctionCall(type, "");
         entryTypes.push_back(type);
     }
 }
 
-std::string SerializerGenerator::generateSerializerFunctionCall(const Type *type, const std::string &inputArg, bool rootStructure) {
+std::string SerializerGenerator::generateSerializerFunctionCall(const Type *type, const std::string &inputArg) {
     if (!type)
         return std::string();
     std::string &functionName = functionNames[type->name().fullName()];
@@ -30,9 +30,9 @@ std::string SerializerGenerator::generateSerializerFunctionCall(const Type *type
 
 std::string SerializerGenerator::generateValueSerialization(const Type *type, const std::string &inputArg, const std::string &indent) {
     if (settings().noThrow)
-        return indent+"if (Error error = "+generateSerializerFunctionCall(type, inputArg, false)+(indent.empty() ? ") " : ")\n"+indent+INDENT)+"return error;"+(indent.empty() ? "" : "\n");
+        return indent+"if (Error error = "+generateSerializerFunctionCall(type, inputArg)+(indent.empty() ? ") " : ")\n"+indent+INDENT)+"return error;"+(indent.empty() ? "" : "\n");
     else
-        return indent+generateSerializerFunctionCall(type, inputArg, false)+(indent.empty() ? ";" : ";\n");
+        return indent+generateSerializerFunctionCall(type, inputArg)+(indent.empty() ? ";" : ";\n");
 }
 
 std::string SerializerGenerator::generateHeader() {
@@ -69,7 +69,7 @@ std::string SerializerGenerator::generateHeader() {
             code += "Error ";
         else
             code += "void ";
-        code += serializeFunction.name+"("+serializeFunction.type->name().constRefArgDeclaration("value")+");\n";
+        code += serializeFunction.name+"("+serializeFunction.type->serializerInputArgDeclaration()+");\n";
     }
     code += "\n};\n";
     code += endNamespace();
@@ -150,7 +150,7 @@ std::string SerializerGenerator::generateSource(const std::string &relativeHeade
             code += className+"::Error ";
         else
             code += "void ";
-        code += className+"::"+serializeFunction.name+"("+serializeFunction.type->name().constRefArgDeclaration("value")+") {\n";
+        code += className+"::"+serializeFunction.name+"("+serializeFunction.type->serializerInputArgDeclaration()+") {\n";
         code += serializeFunction.body;
         if (settings().noThrow)
             code += INDENT "return Error::OK;\n";

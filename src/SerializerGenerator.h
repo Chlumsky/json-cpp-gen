@@ -14,7 +14,7 @@ public:
 
     explicit SerializerGenerator(const std::string &className, const StringType *stringType = &StringType::STD_STRING, const Settings &settings = Settings());
     void generateSerializerFunction(const Type *type);
-    std::string generateSerializerFunctionCall(const Type *type, const std::string &inputArg, bool rootStructure);
+    std::string generateSerializerFunctionCall(const Type *type, const std::string &inputArg);
     std::string generateValueSerialization(const Type *type, const std::string &inputArg, const std::string &indent = std::string());
 
     std::string generateHeader();
