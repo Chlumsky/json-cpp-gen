@@ -1,10 +1,6 @@
 
 #include "Type.h"
 
-const TypeName & Type::name() const {
-    return typeName;
-}
-
 std::string Type::parserOutputArgDeclaration() const {
     return typeName.refArgDeclaration("value");
 }

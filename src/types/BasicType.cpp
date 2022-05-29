@@ -61,28 +61,32 @@ std::string BasicType::serializerInputArgDeclaration() const {
     return name().body()+" value";
 }
 
-static std::string generateSscanf(ParserGenerator *generator, const char *pattern, const char *outputVar, const std::string &indent) {
+static std::string delegateParserFunctionBody(ParserGenerator *generator, BasicType::Type valueType, BasicType::Type intermediateType, bool isSigned, const std::string &indent) {
     std::string body;
-    body += indent+"int consumed = 0;\n";
-    body += indent+"if (sscanf(cur, \""+pattern+"%n\", &"+outputVar+", &consumed) != 1)\n";
-    body += indent+INDENT+generator->generateErrorStatement(ParserGenerator::Error::TYPE_MISMATCH)+";\n";
-    body += indent+"cur += consumed;\n";
+    body += indent+BasicType::getTypeName(intermediateType)+" intermediate;\n";
+    if (generator->settings().noThrow) {
+        body += indent+"if (Error error = "+(isSigned ? "readSigned" : "readUnsigned")+"(intermediate))\n";
+        body += indent+INDENT "return error;\n";
+    } else
+        body += indent+(isSigned ? "readSigned" : "readUnsigned")+"(intermediate);\n";
+    body += indent+"value = static_cast<"+BasicType::getTypeName(valueType)+">(intermediate);\n";
     return body;
 }
 
-static std::string generateIndirectSscanf(ParserGenerator *generator, const TypeName &outputType, const char *intermediateType, const char *pattern, const std::string &indent) {
-    std::string body;
-    body += indent+intermediateType+" intermediate;\n";
-    body += generateSscanf(generator, pattern, "intermediate", indent);
-    body += indent+"value = static_cast<"+outputType.body()+">(intermediate);\n";
-    if (generator->settings().checkIntegerOverflow) {
-        body += indent+"if (static_cast<"+intermediateType+">(value) != intermediate)\n";
-        body += indent+INDENT+generator->generateErrorStatement(ParserGenerator::Error::VALUE_OUT_OF_RANGE)+";\n";
-    }
-    return body;
+static std::string delegateSerializerFunctionBody(SerializerGenerator *generator, const BasicType *targetType, const std::string &indent) {
+    return indent+"return "+generator->generateSerializerFunctionCall(targetType, "static_cast<"+targetType->name().fullName()+">(value)")+";\n";
+}
+
+static std::string generateSignedSerializerFunctionBody(SerializerGenerator *generator, const BasicType *unsignedType, const std::string &indent) {
+    return (
+        indent+"if (value < 0)\n"+
+        indent+INDENT "write('-'), value = -value;\n"+
+        delegateSerializerFunctionBody(generator, unsignedType, indent)
+    );
 }
 
 static std::string generateFloatSprintf(SerializerGenerator *generator, const char *pattern, const std::string &indent) {
+    generator->addFeature(Generator::FEATURE_CSTDIO);
     std::string body;
     body += indent+"char buffer[32];\n";
     body += indent+"sprintf(buffer, \""+pattern+"\", value);\n";
@@ -189,78 +193,88 @@ std::string BasicType::generateParserFunctionBody(ParserGenerator *generator, co
     switch (type) {
         case VOID:
             break;
-        case BOOL: {
-            std::string body;
-            body += indent+"skipWhitespace();\n";
-            body += indent+"if ("+ParserGenerator::generateMatchKeyword("false")+")\n";
-            body += indent+INDENT "value = false;\n";
-            body += indent+"else if ("+ParserGenerator::generateMatchKeyword("true")+")\n";
-            body += indent+INDENT "value = true;\n";
-            body += indent+"else\n";
-            body += indent+INDENT+generator->generateErrorStatement(ParserGenerator::Error::TYPE_MISMATCH)+";\n";
-            return body;
-        }
-        case CHAR: case SIGNED_CHAR: case SHORT: case WCHAR_T: case INT8_T: case INT16_T: // via signed int
-            return generateIndirectSscanf(generator, name(), "int", "%d", indent);
-        case UNSIGNED_CHAR: case UNSIGNED_SHORT: case CHAR8_T: case CHAR16_T: case UINT8_T: case UINT16_T: // via unsigned int
-            return generateIndirectSscanf(generator, name(), "unsigned", "%u", indent);
-        case INT32_T: // via signed long
-            return generateIndirectSscanf(generator, name(), "long", "%ld", indent);
-        case CHAR32_T: case UINT32_T: // via unsigned long
-            return generateIndirectSscanf(generator, name(), "unsigned long", "%lu", indent);
-        case INTPTR_T: case PTRDIFF_T: case INT64_T: // via signed long long
-            return generateIndirectSscanf(generator, name(), "long long", "%lld", indent);
-        case UINTPTR_T: case SIZE_T: case UINT64_T: // via unsigned long long
-            return generateIndirectSscanf(generator, name(), "unsigned long long", "%llu", indent);
-        case INT: case UNSIGNED_INT: case LONG: case UNSIGNED_LONG: case LONG_LONG: case UNSIGNED_LONG_LONG: case FLOAT: case DOUBLE: case LONG_DOUBLE: { // exact type
-            const char *pattern = nullptr;
-            switch (type) {
-                case INT:
-                    pattern = "%d";
-                    break;
-                case UNSIGNED_INT:
-                    pattern = "%u";
-                    break;
-                case LONG:
-                    pattern = "%ld";
-                    break;
-                case UNSIGNED_LONG:
-                    pattern = "%lu";
-                    break;
-                case LONG_LONG:
-                    pattern = "%lld";
-                    break;
-                case UNSIGNED_LONG_LONG:
-                    pattern = "%llu";
-                    break;
-                case FLOAT:
-                    pattern = "%f";
-                    break;
-                case DOUBLE:
-                    pattern = "%lf";
-                    break;
-                case LONG_DOUBLE:
-                    pattern = "%Lf";
-                    break;
-                default:
-                    return std::string(); // ERROR
-            }
-            return generateSscanf(generator, pattern, "value", indent);
-        }
+        case BOOL:
+            return (
+                indent+"skipWhitespace();\n"+
+                indent+"if ("+ParserGenerator::generateMatchKeyword("false")+")\n"+
+                indent+INDENT "value = false;\n"+
+                indent+"else if ("+ParserGenerator::generateMatchKeyword("true")+")\n"+
+                indent+INDENT "value = true;\n"+
+                indent+"else\n"+
+                indent+INDENT+generator->generateErrorStatement(ParserGenerator::Error::TYPE_MISMATCH)+";\n"
+            );
+        // Signed integer types
+        case CHAR:
+        case SIGNED_CHAR:
+        case SHORT:
+        case INT:
+        case LONG:
+        case LONG_LONG:
+        case PTRDIFF_T:
+        case INT8_T:
+        case INT16_T:
+        case INT32_T:
+        case INT64_T:
+        case WCHAR_T: // signedness of wchar_t is not certain but readSigned should cover both possibilities well enough
+            generator->addFeature(ParserGenerator::FEATURE_READ_SIGNED);
+            return (
+                indent+"skipWhitespace();\n"+
+                indent+"return readSigned(value);\n"
+            );
+        // Unsigned integer types
+        case UNSIGNED_CHAR:
+        case UNSIGNED_SHORT:
+        case UNSIGNED_INT:
+        case UNSIGNED_LONG:
+        case UNSIGNED_LONG_LONG:
+        case SIZE_T:
+        case CHAR8_T:
+        case CHAR16_T:
+        case CHAR32_T:
+        case UINT8_T:
+        case UINT16_T:
+        case UINT32_T:
+        case UINT64_T:
+            generator->addFeature(ParserGenerator::FEATURE_READ_UNSIGNED);
+            return (
+                indent+"skipWhitespace();\n"+
+                indent+"return readUnsigned(value);\n"
+            );
+        // Floating point types
+        case FLOAT:
+            generator->addFeature(Generator::FEATURE_CSTDLIB);
+            return (
+                indent+"char *end;\n"+
+                indent+"value = static_cast<float>(strtod(cur, &end));\n"+
+                indent+"if (end == cur)\n"+
+                indent+INDENT+generator->generateErrorStatement(ParserGenerator::Error::TYPE_MISMATCH)+";\n"+
+                indent+"cur = end;\n"
+            );
+        case DOUBLE:
+            generator->addFeature(Generator::FEATURE_CSTDLIB);
+            return (
+                indent+"char *end;\n"+
+                indent+"value = strtod(cur, &end);\n"+
+                indent+"if (end == cur)\n"+
+                indent+INDENT+generator->generateErrorStatement(ParserGenerator::Error::TYPE_MISMATCH)+";\n"+
+                indent+"cur = end;\n"
+            );
+        case LONG_DOUBLE:
+            generator->addFeature(Generator::FEATURE_CSTDLIB);
+            return (
+                indent+"char *end;\n"+
+                indent+"value = strtold(cur, &end);\n"+
+                indent+"if (end == cur)\n"+
+                indent+INDENT+generator->generateErrorStatement(ParserGenerator::Error::TYPE_MISMATCH)+";\n"+
+                indent+"cur = end;\n"
+            );
+        // Special cases
+        case INTPTR_T:
+            return delegateParserFunctionBody(generator, INTPTR_T, PTRDIFF_T, true, indent);
+        case UINTPTR_T:
+            return delegateParserFunctionBody(generator, UINTPTR_T, SIZE_T, false, indent);
     }
     return std::string();
-}
-
-static std::string delegateSerializerFunctionBody(SerializerGenerator *generator, const BasicType *targetType, const std::string &indent) {
-    return indent+"return "+generator->generateSerializerFunctionCall(targetType, "static_cast<"+targetType->name().fullName()+">(value)")+";\n";
-}
-
-static std::string generateSignedSerializerFunctionBody(SerializerGenerator *generator, const BasicType *unsignedType, const std::string &indent) {
-    return (
-        indent+"if (value < 0)\n"+
-        indent+INDENT "write('-'), value = -value;\n"+
-        delegateSerializerFunctionBody(generator, unsignedType, indent)
-    );
 }
 
 std::string BasicType::generateSerializerFunctionBody(SerializerGenerator *generator, const std::string &indent) const {

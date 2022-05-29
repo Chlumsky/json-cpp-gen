@@ -11,7 +11,7 @@ class Type {
 
 public:
     virtual ~Type() = default;
-    const TypeName & name() const;
+    inline const TypeName & name() const { return typeName; }
     virtual std::string parserOutputArgDeclaration() const;
     virtual std::string serializerInputArgDeclaration() const;
     virtual std::string generateParserFunctionBody(ParserGenerator *generator, const std::string &indent) const = 0;

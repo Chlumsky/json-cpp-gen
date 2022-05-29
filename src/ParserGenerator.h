@@ -24,6 +24,9 @@ public:
         static const char * const UTF16_ENCODING_ERROR;
     };
 
+    static const unsigned FEATURE_READ_UNSIGNED;
+    static const unsigned FEATURE_READ_SIGNED;
+
     static std::string generateMatchKeyword(const char *keyword);
 
     explicit ParserGenerator(const std::string &className, const StringType *stringType = &StringType::STD_STRING, const Settings &settings = Settings());

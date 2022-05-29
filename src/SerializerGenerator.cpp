@@ -82,7 +82,10 @@ std::string SerializerGenerator::generateSource() {
 
 std::string SerializerGenerator::generateSource(const std::string &relativeHeaderAddress) {
     std::string code;
-    code += "\n#include \""+relativeHeaderAddress+"\"\n\n";
+    code += "\n";
+    if (featureBits&FEATURE_CSTDIO)
+        code += "#include <cstdio>\n";
+    code += "#include \""+relativeHeaderAddress+"\"\n\n";
     code += signature;
     code += beginNamespace();
     // Constructor

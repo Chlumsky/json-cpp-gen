@@ -11,6 +11,9 @@ const char * const ParserGenerator::Error::VALUE_OUT_OF_RANGE = "VALUE_OUT_OF_RA
 const char * const ParserGenerator::Error::STRING_EXPECTED = "STRING_EXPECTED";
 const char * const ParserGenerator::Error::UTF16_ENCODING_ERROR = "UTF16_ENCODING_ERROR";
 
+const unsigned ParserGenerator::FEATURE_READ_UNSIGNED = 0x0100;
+const unsigned ParserGenerator::FEATURE_READ_SIGNED = 0x0200;
+
 static constexpr const char * const COMMON_FUNCTION_IMPL_NO_THROW =
 R"($::$(const char *str) : cur(str) { }
 
@@ -324,6 +327,17 @@ std::string ParserGenerator::generateHeader() {
     code += "\n";
     for (const Function &parseFunction : functions)
         code += std::string(INDENT)+(settings().noThrow ? "Error " : "void ")+parseFunction.name+"("+parseFunction.type->parserOutputArgDeclaration()+");\n";
+    if (featureBits&(FEATURE_READ_UNSIGNED|FEATURE_READ_SIGNED)) {
+        code += "\nprivate:\n";
+        if (featureBits&(FEATURE_READ_UNSIGNED|FEATURE_READ_SIGNED)) {
+            code += INDENT "template <typename T>\n";
+            code += std::string(INDENT)+(settings().noThrow ? "Error" : "void")+" readUnsigned(T &value);\n";
+        }
+        if (featureBits&FEATURE_READ_SIGNED) {
+            code += INDENT "template <typename T>\n";
+            code += std::string(INDENT)+(settings().noThrow ? "Error" : "void")+" readSigned(T &value);\n";
+        }
+    }
     code += "\n};\n";
     code += endNamespace();
     return code;
@@ -335,7 +349,11 @@ std::string ParserGenerator::generateSource() {
 
 std::string ParserGenerator::generateSource(const std::string &relativeHeaderAddress) {
     std::string code;
-    code += "\n#include \""+relativeHeaderAddress+"\"\n\n";
+    code += "\n";
+    if (featureBits&FEATURE_CSTDLIB)
+        code += "#include <cstdlib>\n";
+    code += "#include <cstdio>\n"; // Currently always required for unescape function
+    code += "#include \""+relativeHeaderAddress+"\"\n\n";
     code += signature;
     code += beginNamespace();
     for (const char *c = settings().noThrow ? COMMON_FUNCTION_IMPL_NO_THROW : COMMON_FUNCTION_IMPL_THROW; *c; ++c) {
@@ -360,6 +378,44 @@ std::string ParserGenerator::generateSource(const std::string &relativeHeaderAdd
     code += INDENT INDENT INDENT "return false;\n";
     code += INDENT "}\n";
     code += "}\n";
+    // integer read functions
+    if (featureBits&(FEATURE_READ_UNSIGNED|FEATURE_READ_SIGNED)) {
+        code += "\n";
+        code += "template <typename T>\n";
+        code += (settings().noThrow ? className+"::Error " : "void ")+className+"::readUnsigned(T &value) {\n";
+        code += INDENT "if (*cur >= '0' && *cur <= '9')\n";
+        code += INDENT INDENT "value = *cur++-'0';\n";
+        code += INDENT "else\n";
+        code += INDENT INDENT+generateErrorStatement(ParserGenerator::Error::TYPE_MISMATCH)+";\n";
+        code += INDENT "while (*cur >= '0' && *cur <= '9')";
+        if (settings().checkIntegerOverflow) {
+            code += " {\n";
+            code += INDENT INDENT "if (10*value < value)\n";
+            code += INDENT INDENT INDENT+generateErrorStatement(ParserGenerator::Error::VALUE_OUT_OF_RANGE)+";\n";
+            code += INDENT INDENT "value = 10*value+(*cur++-'0');\n";
+            code += INDENT "}\n";
+        } else
+            code += "\n" INDENT INDENT "value = 10*value+(*cur++-'0');\n";
+        if (settings().noThrow)
+            code += INDENT "return Error::OK;\n";
+        code += "}\n";
+    }
+    if (featureBits&FEATURE_READ_SIGNED) {
+        code += "\n";
+        code += "template <typename T>\n";
+        code += (settings().noThrow ? className+"::Error " : "void ")+className+"::readSigned(T &value) {\n";
+        code += INDENT "bool negative = *cur == '-' && (++cur, true);\n";
+        if (settings().noThrow) {
+            code += INDENT "if (Error error = readUnsigned(value))\n";
+            code += INDENT INDENT "return error;\n";
+        } else
+            code += INDENT "readUnsigned(value);\n";
+        code += INDENT "if (negative)\n";
+        code += INDENT INDENT "value = -value;\n";
+        if (settings().noThrow)
+            code += INDENT "return Error::OK;\n";
+        code += "}\n";
+    }
     // public parse functions
     for (const Type *type : entryTypes) {
         std::map<std::string, std::string>::const_iterator it = functionNames.find(type->name().fullName());

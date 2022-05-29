@@ -16,8 +16,12 @@
 class Generator {
 
 public:
+    static const unsigned FEATURE_CSTDLIB;
+    static const unsigned FEATURE_CSTDIO;
+
     Generator(const std::string &className, const StringType *stringType, const Settings &settings);
     void addTypeInclude(const std::string &includeAddress);
+    void addFeature(unsigned featureBit);
     std::string getJsonMemberNameLiteral(const std::string &memberName) const;
     std::string getJsonEnumValueLiteral(const std::string &enumValue) const;
     inline const StringType * stringType() const { return mStringType; }
@@ -43,6 +47,8 @@ protected:
     std::map<std::string, std::string> functionNames;
     std::set<std::string> usedFunctionNames;
     std::vector<const Type *> entryTypes;
+    unsigned featureBits;
+
     std::string generateFunctionName(const char *prefix, const Type *type);
     std::string beginNamespace() const;
     std::string endNamespace() const;
