@@ -11,8 +11,8 @@ const char * const ParserGenerator::Error::VALUE_OUT_OF_RANGE = "VALUE_OUT_OF_RA
 const char * const ParserGenerator::Error::STRING_EXPECTED = "STRING_EXPECTED";
 const char * const ParserGenerator::Error::UTF16_ENCODING_ERROR = "UTF16_ENCODING_ERROR";
 
-const unsigned ParserGenerator::FEATURE_READ_UNSIGNED = 0x0100;
-const unsigned ParserGenerator::FEATURE_READ_SIGNED = 0x0200;
+const unsigned ParserGenerator::FEATURE_READ_SIGNED = 0x0100;
+const unsigned ParserGenerator::FEATURE_READ_UNSIGNED = 0x0200;
 
 static constexpr const char * const COMMON_FUNCTION_IMPL_NO_THROW =
 R"($::$(const char *str) : cur(str) { }
@@ -326,16 +326,16 @@ std::string ParserGenerator::generateHeader() {
     code += INDENT "static bool isAlphanumeric(char c);\n";
     code += "\n";
     for (const Function &parseFunction : functions)
-        code += std::string(INDENT)+(settings().noThrow ? "Error " : "void ")+parseFunction.name+"("+parseFunction.type->parserOutputArgDeclaration()+");\n";
-    if (featureBits&(FEATURE_READ_UNSIGNED|FEATURE_READ_SIGNED)) {
+        code += std::string(INDENT)+(settings().noThrow ? "Error " : "void ")+parseFunction.name+"("+parseFunction.type->name().refArgDeclaration("value")+");\n";
+    if (featureBits&(FEATURE_READ_SIGNED|FEATURE_READ_UNSIGNED)) {
         code += "\nprivate:\n";
-        if (featureBits&(FEATURE_READ_UNSIGNED|FEATURE_READ_SIGNED)) {
-            code += INDENT "template <typename T>\n";
-            code += std::string(INDENT)+(settings().noThrow ? "Error" : "void")+" readUnsigned(T &value);\n";
-        }
         if (featureBits&FEATURE_READ_SIGNED) {
             code += INDENT "template <typename T>\n";
             code += std::string(INDENT)+(settings().noThrow ? "Error" : "void")+" readSigned(T &value);\n";
+        }
+        if (featureBits&FEATURE_READ_UNSIGNED) {
+            code += INDENT "template <typename T>\n";
+            code += std::string(INDENT)+(settings().noThrow ? "Error" : "void")+" readUnsigned(T &value);\n";
         }
     }
     code += "\n};\n";
@@ -378,45 +378,45 @@ std::string ParserGenerator::generateSource(const std::string &relativeHeaderAdd
     code += INDENT INDENT INDENT "return false;\n";
     code += INDENT "}\n";
     code += "}\n";
-    // integer read functions
-    if (featureBits&(FEATURE_READ_UNSIGNED|FEATURE_READ_SIGNED)) {
-        code += "\n";
-        code += "template <typename T>\n";
-        code += (settings().noThrow ? className+"::Error " : "void ")+className+"::readUnsigned(T &value) {\n";
-        code += INDENT "if (*cur >= '0' && *cur <= '9')\n";
-        code += INDENT INDENT "value = *cur++-'0';\n";
-        code += INDENT "else\n";
-        code += INDENT INDENT+generateErrorStatement(ParserGenerator::Error::TYPE_MISMATCH)+";\n";
-        code += INDENT "while (*cur >= '0' && *cur <= '9')";
+    // Integer read functions
+    std::string readUnsignedBody;
+    if (featureBits&(FEATURE_READ_SIGNED|FEATURE_READ_UNSIGNED)) {
+        readUnsignedBody += INDENT "if (*cur >= '0' && *cur <= '9')\n";
+        readUnsignedBody += INDENT INDENT "value = *cur++-'0';\n";
+        readUnsignedBody += INDENT "else\n";
+        readUnsignedBody += INDENT INDENT+generateErrorStatement(ParserGenerator::Error::TYPE_MISMATCH)+";\n";
+        readUnsignedBody += INDENT "while (*cur >= '0' && *cur <= '9')";
         if (settings().checkIntegerOverflow) {
-            code += " {\n";
-            code += INDENT INDENT "if (10*value < value)\n";
-            code += INDENT INDENT INDENT+generateErrorStatement(ParserGenerator::Error::VALUE_OUT_OF_RANGE)+";\n";
-            code += INDENT INDENT "value = 10*value+(*cur++-'0');\n";
-            code += INDENT "}\n";
+            readUnsignedBody += " {\n";
+            readUnsignedBody += INDENT INDENT "if (10*value < value)\n";
+            readUnsignedBody += INDENT INDENT INDENT+generateErrorStatement(ParserGenerator::Error::VALUE_OUT_OF_RANGE)+";\n";
+            readUnsignedBody += INDENT INDENT "value = 10*value+(*cur++-'0');\n";
+            readUnsignedBody += INDENT "}\n";
         } else
-            code += "\n" INDENT INDENT "value = 10*value+(*cur++-'0');\n";
-        if (settings().noThrow)
-            code += INDENT "return Error::OK;\n";
-        code += "}\n";
+            readUnsignedBody += "\n" INDENT INDENT "value = 10*value+(*cur++-'0');\n";
     }
     if (featureBits&FEATURE_READ_SIGNED) {
         code += "\n";
         code += "template <typename T>\n";
         code += (settings().noThrow ? className+"::Error " : "void ")+className+"::readSigned(T &value) {\n";
         code += INDENT "bool negative = *cur == '-' && (++cur, true);\n";
-        if (settings().noThrow) {
-            code += INDENT "if (Error error = readUnsigned(value))\n";
-            code += INDENT INDENT "return error;\n";
-        } else
-            code += INDENT "readUnsigned(value);\n";
+        code += readUnsignedBody;
         code += INDENT "if (negative)\n";
         code += INDENT INDENT "value = -value;\n";
         if (settings().noThrow)
             code += INDENT "return Error::OK;\n";
         code += "}\n";
     }
-    // public parse functions
+    if (featureBits&FEATURE_READ_UNSIGNED) {
+        code += "\n";
+        code += "template <typename T>\n";
+        code += (settings().noThrow ? className+"::Error " : "void ")+className+"::readUnsigned(T &value) {\n";
+        code += readUnsignedBody;
+        if (settings().noThrow)
+            code += INDENT "return Error::OK;\n";
+        code += "}\n";
+    }
+    // Public parse functions
     for (const Type *type : entryTypes) {
         std::map<std::string, std::string>::const_iterator it = functionNames.find(type->name().fullName());
         if (it != functionNames.end()) {
@@ -435,14 +435,14 @@ std::string ParserGenerator::generateSource(const std::string &relativeHeaderAdd
             code += "}\n";
         }
     }
-    // private parse functions
+    // Private parse functions
     for (const Function &parseFunction : functions) {
         code += "\n";
         if (settings().noThrow)
             code += className+"::Error ";
         else
             code += "void ";
-        code += className+"::"+parseFunction.name+"("+parseFunction.type->parserOutputArgDeclaration()+") {\n";
+        code += className+"::"+parseFunction.name+"("+parseFunction.type->name().refArgDeclaration("value")+") {\n";
         code += parseFunction.body;
         if (settings().noThrow)
             code += INDENT "return Error::OK;\n";

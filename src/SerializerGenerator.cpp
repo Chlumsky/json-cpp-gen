@@ -4,6 +4,9 @@
 const char * const SerializerGenerator::Error::UNREPRESENTABLE_FLOAT_VALUE = "UNREPRESENTABLE_FLOAT_VALUE";
 const char * const SerializerGenerator::Error::UNKNOWN_ENUM_VALUE = "UNKNOWN_ENUM_VALUE";
 
+const unsigned SerializerGenerator::FEATURE_WRITE_SIGNED = 0x0100;
+const unsigned SerializerGenerator::FEATURE_WRITE_UNSIGNED = 0x0200;
+
 SerializerGenerator::SerializerGenerator(const std::string &className, const StringType *stringType, const Settings &settings) : Generator(className, stringType, settings) { }
 
 void SerializerGenerator::generateSerializerFunction(const Type *type) {
@@ -69,7 +72,18 @@ std::string SerializerGenerator::generateHeader() {
             code += "Error ";
         else
             code += "void ";
-        code += serializeFunction.name+"("+serializeFunction.type->serializerInputArgDeclaration()+");\n";
+        code += serializeFunction.name+"("+serializeFunction.type->name().constRefArgDeclaration("value")+");\n";
+    }
+    if (featureBits&(FEATURE_WRITE_SIGNED|FEATURE_WRITE_UNSIGNED)) {
+        code += "\nprivate:\n";
+        if (featureBits&FEATURE_WRITE_SIGNED) {
+            code += INDENT "template <typename U, typename T>\n";
+            code += INDENT "void writeSigned(T value);\n";
+        }
+        if (featureBits&FEATURE_WRITE_UNSIGNED) {
+            code += INDENT "template <typename T>\n";
+            code += INDENT "void writeUnsigned(T value);\n";
+        }
     }
     code += "\n};\n";
     code += endNamespace();
@@ -127,7 +141,29 @@ std::string SerializerGenerator::generateSource(const std::string &relativeHeade
     code += INDENT INDENT INDENT "write(c);\n";
     code += INDENT "}\n";
     code += "}\n";
-    // serialize
+    // Integer write functions
+    if (featureBits&FEATURE_WRITE_SIGNED) {
+        code += "\n";
+        code += "template <typename U, typename T>\n";
+        code += "void "+className+"::writeSigned(T value) {\n";
+        code += INDENT "if (value < 0)\n";
+        code += INDENT INDENT "write('-'), value = -value;\n";
+        code += INDENT "U unsignedValue = static_cast<U>(value);\n";
+        code += INDENT "char buffer[4*(sizeof(U)+1)], *cur = &(buffer[4*(sizeof(U)+1)-1] = '\\0');\n";
+        code += INDENT "do *--cur = '0'+unsignedValue%10; while (unsignedValue /= 10);\n";
+        code += INDENT "write(cur);\n";
+        code += "}\n";
+    }
+    if (featureBits&FEATURE_WRITE_UNSIGNED) {
+        code += "\n";
+        code += "template <typename T>\n";
+        code += "void "+className+"::writeUnsigned(T value) {\n";
+        code += INDENT "char buffer[4*(sizeof(T)+1)], *cur = &(buffer[4*(sizeof(T)+1)-1] = '\\0');\n";
+        code += INDENT "do *--cur = '0'+value%10; while (value /= 10);\n";
+        code += INDENT "write(cur);\n";
+        code += "}\n";
+    }
+    // Public serialize functions
     for (const Type *type : entryTypes) {
         std::map<std::string, std::string>::const_iterator it = functionNames.find(type->name().fullName());
         if (it != functionNames.end()) {
@@ -146,14 +182,14 @@ std::string SerializerGenerator::generateSource(const std::string &relativeHeade
             code += "}\n";
         }
     }
-    // serializeTYPENAME
+    // Private serialize functions
     for (const Function &serializeFunction : functions) {
         code += "\n";
         if (settings().noThrow)
             code += className+"::Error ";
         else
             code += "void ";
-        code += className+"::"+serializeFunction.name+"("+serializeFunction.type->serializerInputArgDeclaration()+") {\n";
+        code += className+"::"+serializeFunction.name+"("+serializeFunction.type->name().constRefArgDeclaration("value")+") {\n";
         code += serializeFunction.body;
         if (settings().noThrow)
             code += INDENT "return Error::OK;\n";

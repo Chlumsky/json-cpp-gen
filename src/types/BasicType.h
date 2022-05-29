@@ -44,7 +44,6 @@ public:
     static const char * getTypeName(Type type);
 
     BasicType(Type type = VOID);
-    virtual std::string serializerInputArgDeclaration() const override;
     virtual std::string generateParserFunctionBody(ParserGenerator *generator, const std::string &indent) const override;
     virtual std::string generateSerializerFunctionBody(SerializerGenerator *generator, const std::string &indent) const override;
 

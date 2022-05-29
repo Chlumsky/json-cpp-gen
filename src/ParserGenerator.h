@@ -24,8 +24,8 @@ public:
         static const char * const UTF16_ENCODING_ERROR;
     };
 
-    static const unsigned FEATURE_READ_UNSIGNED;
     static const unsigned FEATURE_READ_SIGNED;
+    static const unsigned FEATURE_READ_UNSIGNED;
 
     static std::string generateMatchKeyword(const char *keyword);
 

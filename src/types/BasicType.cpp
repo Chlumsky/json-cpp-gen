@@ -4,19 +4,6 @@
 #include "../ParserGenerator.h"
 #include "../SerializerGenerator.h"
 
-static const BasicType UNSIGNED_CHAR_OBJ(BasicType::UNSIGNED_CHAR);
-static const BasicType UNSIGNED_SHORT_OBJ(BasicType::UNSIGNED_SHORT);
-static const BasicType UNSIGNED_INT_OBJ(BasicType::UNSIGNED_INT);
-static const BasicType UNSIGNED_LONG_OBJ(BasicType::UNSIGNED_LONG);
-static const BasicType LONG_LONG_OBJ(BasicType::LONG_LONG);
-static const BasicType UNSIGNED_LONG_LONG_OBJ(BasicType::UNSIGNED_LONG_LONG);
-static const BasicType UINT8_T_OBJ(BasicType::UINT8_T);
-static const BasicType UINT16_T_OBJ(BasicType::UINT16_T);
-static const BasicType UINT32_T_OBJ(BasicType::UINT32_T);
-static const BasicType UINT64_T_OBJ(BasicType::UINT64_T);
-static const BasicType PTRDIFF_T_OBJ(BasicType::PTRDIFF_T);
-static const BasicType SIZE_T_OBJ(BasicType::SIZE_T);
-
 const char * BasicType::getTypeName(Type type) {
     switch (type) {
         case VOID: return "void";
@@ -56,34 +43,6 @@ const char * BasicType::getTypeName(Type type) {
 }
 
 BasicType::BasicType(Type type) : DirectType(TypeName(getTypeName(type))), type(type) { }
-
-std::string BasicType::serializerInputArgDeclaration() const {
-    return name().body()+" value";
-}
-
-static std::string delegateParserFunctionBody(ParserGenerator *generator, BasicType::Type valueType, BasicType::Type intermediateType, bool isSigned, const std::string &indent) {
-    std::string body;
-    body += indent+BasicType::getTypeName(intermediateType)+" intermediate;\n";
-    if (generator->settings().noThrow) {
-        body += indent+"if (Error error = "+(isSigned ? "readSigned" : "readUnsigned")+"(intermediate))\n";
-        body += indent+INDENT "return error;\n";
-    } else
-        body += indent+(isSigned ? "readSigned" : "readUnsigned")+"(intermediate);\n";
-    body += indent+"value = static_cast<"+BasicType::getTypeName(valueType)+">(intermediate);\n";
-    return body;
-}
-
-static std::string delegateSerializerFunctionBody(SerializerGenerator *generator, const BasicType *targetType, const std::string &indent) {
-    return indent+"return "+generator->generateSerializerFunctionCall(targetType, "static_cast<"+targetType->name().fullName()+">(value)")+";\n";
-}
-
-static std::string generateSignedSerializerFunctionBody(SerializerGenerator *generator, const BasicType *unsignedType, const std::string &indent) {
-    return (
-        indent+"if (value < 0)\n"+
-        indent+INDENT "write('-'), value = -value;\n"+
-        delegateSerializerFunctionBody(generator, unsignedType, indent)
-    );
-}
 
 static std::string generateFloatSprintf(SerializerGenerator *generator, const char *pattern, const std::string &indent) {
     generator->addFeature(Generator::FEATURE_CSTDIO);
@@ -189,6 +148,11 @@ static std::string generateFloatSprintf(SerializerGenerator *generator, const ch
     return body;
 }
 
+static std::string generateSignedSerializerFunctionBody(SerializerGenerator *generator, BasicType::Type unsignedType, const std::string &indent) {
+    generator->addFeature(SerializerGenerator::FEATURE_WRITE_SIGNED);
+    return indent+"writeSigned<"+BasicType::getTypeName(unsignedType)+">(value);\n";
+}
+
 std::string BasicType::generateParserFunctionBody(ParserGenerator *generator, const std::string &indent) const {
     switch (type) {
         case VOID:
@@ -211,6 +175,7 @@ std::string BasicType::generateParserFunctionBody(ParserGenerator *generator, co
         case LONG:
         case LONG_LONG:
         case PTRDIFF_T:
+        case INTPTR_T:
         case INT8_T:
         case INT16_T:
         case INT32_T:
@@ -228,6 +193,7 @@ std::string BasicType::generateParserFunctionBody(ParserGenerator *generator, co
         case UNSIGNED_LONG:
         case UNSIGNED_LONG_LONG:
         case SIZE_T:
+        case UINTPTR_T:
         case CHAR8_T:
         case CHAR16_T:
         case CHAR32_T:
@@ -268,11 +234,6 @@ std::string BasicType::generateParserFunctionBody(ParserGenerator *generator, co
                 indent+INDENT+generator->generateErrorStatement(ParserGenerator::Error::TYPE_MISMATCH)+";\n"+
                 indent+"cur = end;\n"
             );
-        // Special cases
-        case INTPTR_T:
-            return delegateParserFunctionBody(generator, INTPTR_T, PTRDIFF_T, true, indent);
-        case UINTPTR_T:
-            return delegateParserFunctionBody(generator, UINTPTR_T, SIZE_T, false, indent);
     }
     return std::string();
 }
@@ -285,27 +246,29 @@ std::string BasicType::generateSerializerFunctionBody(SerializerGenerator *gener
             return indent+"write(value ? \"true\" : \"false\");\n";
         // Signed integer types
         case CHAR:
-            return generateSignedSerializerFunctionBody(generator, &UNSIGNED_CHAR_OBJ, indent);
+            return generateSignedSerializerFunctionBody(generator, UNSIGNED_CHAR, indent);
         case SIGNED_CHAR:
-            return generateSignedSerializerFunctionBody(generator, &UNSIGNED_CHAR_OBJ, indent);
+            return generateSignedSerializerFunctionBody(generator, UNSIGNED_CHAR, indent);
         case SHORT:
-            return generateSignedSerializerFunctionBody(generator, &UNSIGNED_SHORT_OBJ, indent);
+            return generateSignedSerializerFunctionBody(generator, UNSIGNED_SHORT, indent);
         case INT:
-            return generateSignedSerializerFunctionBody(generator, &UNSIGNED_INT_OBJ, indent);
+            return generateSignedSerializerFunctionBody(generator, UNSIGNED_INT, indent);
         case LONG:
-            return generateSignedSerializerFunctionBody(generator, &UNSIGNED_LONG_OBJ, indent);
+            return generateSignedSerializerFunctionBody(generator, UNSIGNED_LONG, indent);
         case LONG_LONG:
-            return generateSignedSerializerFunctionBody(generator, &UNSIGNED_LONG_LONG_OBJ, indent);
+            return generateSignedSerializerFunctionBody(generator, UNSIGNED_LONG_LONG, indent);
         case PTRDIFF_T:
-            return generateSignedSerializerFunctionBody(generator, &SIZE_T_OBJ, indent);
+            return generateSignedSerializerFunctionBody(generator, SIZE_T, indent);
+        case INTPTR_T:
+            return generateSignedSerializerFunctionBody(generator, INTPTR_T, indent);
         case INT8_T:
-            return generateSignedSerializerFunctionBody(generator, &UINT8_T_OBJ, indent);
+            return generateSignedSerializerFunctionBody(generator, UINT8_T, indent);
         case INT16_T:
-            return generateSignedSerializerFunctionBody(generator, &UINT16_T_OBJ, indent);
+            return generateSignedSerializerFunctionBody(generator, UINT16_T, indent);
         case INT32_T:
-            return generateSignedSerializerFunctionBody(generator, &UINT32_T_OBJ, indent);
+            return generateSignedSerializerFunctionBody(generator, UINT32_T, indent);
         case INT64_T:
-            return generateSignedSerializerFunctionBody(generator, &UINT64_T_OBJ, indent);
+            return generateSignedSerializerFunctionBody(generator, UINT64_T, indent);
         // Unsigned integer types
         case UNSIGNED_CHAR:
         case UNSIGNED_SHORT:
@@ -313,6 +276,7 @@ std::string BasicType::generateSerializerFunctionBody(SerializerGenerator *gener
         case UNSIGNED_LONG:
         case UNSIGNED_LONG_LONG:
         case SIZE_T:
+        case UINTPTR_T:
         case CHAR8_T:
         case CHAR16_T:
         case CHAR32_T:
@@ -320,11 +284,8 @@ std::string BasicType::generateSerializerFunctionBody(SerializerGenerator *gener
         case UINT16_T:
         case UINT32_T:
         case UINT64_T:
-            return (
-                indent+"char buffer[48], *cur = &(buffer[47] = '\\0');\n"+
-                indent+"do *--cur = '0'+value%10; while (value /= 10);\n"+
-                indent+"write(cur);\n"
-            );
+            generator->addFeature(SerializerGenerator::FEATURE_WRITE_UNSIGNED);
+            return indent+"writeUnsigned(value);\n";
         // Floating point types
         case FLOAT: case DOUBLE: case LONG_DOUBLE: { // exact floating-point type
             const char *pattern = nullptr;
@@ -343,14 +304,14 @@ std::string BasicType::generateSerializerFunctionBody(SerializerGenerator *gener
             }
             return generateFloatSprintf(generator, pattern, indent);
         }
-        // Special cases
+        // Special case
         case WCHAR_T:
             // May or may not be signed depending on implementation and size is not certain -> convert to a signed type that is definitely larger because of possible (x == -x) for minimum value
-            return delegateSerializerFunctionBody(generator, &LONG_LONG_OBJ, indent);
-        case INTPTR_T:
-            return delegateSerializerFunctionBody(generator, &PTRDIFF_T_OBJ, indent);
-        case UINTPTR_T:
-            return delegateSerializerFunctionBody(generator, &SIZE_T_OBJ, indent);
+            generator->addFeature(SerializerGenerator::FEATURE_WRITE_SIGNED);
+            return (
+                indent+"long long safeValue = static_cast<long long>(value);\n"+
+                indent+"writeSigned<unsigned long long>(safeValue);\n"
+            );
     }
     return std::string();
 }
