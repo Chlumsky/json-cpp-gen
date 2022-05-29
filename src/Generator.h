@@ -27,8 +27,6 @@ public:
     inline const StringType * stringType() const { return mStringType; }
     inline const Settings & settings() const { return mSettings; }
 
-    std::string generateErrorStatement(const char *errorName) const; // throw / return depending on config
-
 protected:
     struct Function {
         const Type *type;

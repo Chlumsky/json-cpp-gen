@@ -11,7 +11,7 @@
 class ConfigurationParser {
 
 public:
-    enum Error {
+    enum ErrorType {
         OK,
         JSON_SYNTAX_ERROR,
         UNEXPECTED_END_OF_FILE,
@@ -22,6 +22,16 @@ public:
         VALUE_OUT_OF_RANGE,
         STRING_EXPECTED,
         UTF16_ENCODING_ERROR,
+    };
+
+    struct Error {
+        ErrorType type;
+        int position;
+
+        inline Error(ErrorType type = ErrorType::OK, int position = -1) : type(type), position(position) { }
+        operator ErrorType() const;
+        operator bool() const;
+        const char *typeString() const;
     };
 
     static Error parse(Configuration &output, const char *jsonString);

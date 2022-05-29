@@ -8,20 +8,25 @@
 #include "TypeSet.h"
 #include "Generator.h"
 
+#define FOR_PARSER_ERRORS(M) \
+    M(JSON_SYNTAX_ERROR) \
+    M(UNEXPECTED_END_OF_FILE) \
+    M(TYPE_MISMATCH) \
+    M(ARRAY_SIZE_MISMATCH) \
+    M(UNKNOWN_KEY) \
+    M(UNKNOWN_ENUM_VALUE) \
+    M(VALUE_OUT_OF_RANGE) \
+    M(STRING_EXPECTED) \
+    M(UTF16_ENCODING_ERROR) \
+
 /// Generates the code for the JSON parser of a structure
 class ParserGenerator : public Generator {
 
 public:
     struct Error {
-        static const char * const JSON_SYNTAX_ERROR;
-        static const char * const UNEXPECTED_END_OF_FILE;
-        static const char * const TYPE_MISMATCH;
-        static const char * const ARRAY_SIZE_MISMATCH;
-        static const char * const UNKNOWN_KEY;
-        static const char * const UNKNOWN_ENUM_VALUE;
-        static const char * const VALUE_OUT_OF_RANGE;
-        static const char * const STRING_EXPECTED;
-        static const char * const UTF16_ENCODING_ERROR;
+        #define PARSER_GENERATOR_ERROR_STR_DECL(e) static const char * const e;
+        FOR_PARSER_ERRORS(PARSER_GENERATOR_ERROR_STR_DECL)
+        #undef PARSER_GENERATOR_ERROR_STR_DECL
     };
 
     static const unsigned FEATURE_READ_SIGNED;
@@ -33,6 +38,7 @@ public:
     void generateParserFunction(const Type *type);
     std::string generateParserFunctionCall(const Type *type, const std::string &outputArg);
     std::string generateValueParse(const Type *type, const std::string &outputArg, const std::string &indent);
+    std::string generateErrorStatement(const char *errorName) const; // throw / return depending on config
 
     std::string generateHeader();
     std::string generateSource();

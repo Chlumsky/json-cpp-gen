@@ -52,10 +52,6 @@ std::string Generator::generateFunctionName(const char *prefix, const Type *type
     return functionName;
 }
 
-std::string Generator::generateErrorStatement(const char *errorName) const {
-    return std::string(settings().noThrow ? "return" : "throw")+" Error::"+errorName;
-}
-
 std::string Generator::beginNamespace() const {
     std::string code;
     for (const std::string &namespaceName : classNamespaces)
