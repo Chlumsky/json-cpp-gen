@@ -12,7 +12,6 @@
 
 #include <cstdio>
 #include <string>
-#include <algorithm>
 #include "AbsPath.h"
 #include "TypeSet.h"
 #include "types/StringType.h"
@@ -48,28 +47,31 @@ static const StringType * findStringType(const TypeSet &typeSet, const std::stri
     return dynamic_cast<const StringType *>(typeSet.find(name));
 }
 
-static std::string visualizeErrorPosition(const std::string &str, int position) {
+static std::string visualizeErrorPosition(const std::string &str, int position, const std::string &indent) {
     int strLen = int(str.size());
     if (position >= strLen)
         return std::string();
     std::string output;
-    int caretPos = 7;
+    int caretPos = 0;
     if (position <= 32) {
-        output = "       "+str.substr(0, std::min(64, strLen));
         if (strLen > 64)
-            output += "...";
-        caretPos += position;
+            output = indent+str.substr(0, 64)+"...";
+        else
+            output = indent+str.substr(0, strLen);
+        caretPos = position;
     } else {
-        output = "       ..."+str.substr(position-32, std::min(64, strLen-(position-32)));
         if (strLen-(position-32) > 64)
-            output += "...";
-        caretPos += 35;
+            output = indent+"..."+str.substr(position-32, 64)+"...";
+        else
+            output = indent+"..."+str.substr(position-32, strLen-(position-32));
+        caretPos = 35;
     }
     for (char &c : output) {
         if (c == '\r' || c == '\n')
             c = ' ';
     }
     output.push_back('\n');
+    output += indent;
     for (int i = 0; i < caretPos; ++i)
         output.push_back(' ');
     output.push_back('^');
@@ -96,7 +98,7 @@ int main(int argc, const char * const *argv) {
 
     Configuration config;
     if (ConfigurationParser::Error error = ConfigurationParser::parse(config, configString.c_str())) {
-        fprintf(stderr, "Error: Malformed configuration file '%s'\n       %s at position %d\n%s", argv[1], error.typeString(), error.position, visualizeErrorPosition(configString, error.position).c_str());
+        fprintf(stderr, "Error: Malformed configuration file '%s'\n       %s at position %d\n%s", argv[1], error.typeString(), error.position, visualizeErrorPosition(configString, error.position, "       ").c_str());
         return -1;
     }
 

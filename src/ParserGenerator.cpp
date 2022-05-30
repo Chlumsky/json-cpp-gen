@@ -443,10 +443,11 @@ std::string ParserGenerator::generateSource(const std::string &relativeHeaderAdd
         if (it != functionNames.end()) {
             code += "\n";
             code += className+"::Error "+className+"::parse("+type->name().refArgDeclaration("output")+", const char *jsonString) {\n";
-            if (settings().noThrow)
-                code += INDENT "return "+className+"(jsonString)."+it->second+"(output);\n";
-            else {
-                code += INDENT+className+" parser(jsonString);\n";
+            code += INDENT+className+" parser(jsonString);\n";
+            if (settings().noThrow) {
+                code += INDENT "ErrorType error = parser."+it->second+"(output);\n";
+                code += INDENT "return Error(error, static_cast<int>(parser.cur-jsonString));\n";
+            } else {
                 code += INDENT "try {\n";
                 code += INDENT INDENT "parser."+it->second+"(output);\n";
                 code += INDENT "} catch (ErrorType error) {\n";
