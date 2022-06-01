@@ -26,6 +26,7 @@ public:
 
     HeaderParser(TypeSet *outputTypeSet, const char *headerStart, size_t headerLength);
     Error parse();
+    const Type * parseType();
 
 private:
     TypeSet *typeSet;
@@ -51,7 +52,6 @@ private:
     void parseNamespace();
     const Type * parseStruct();
     const Type * parseEnum();
-    const Type * parseType();
     int parseArrayLength();
     std::string readNamespacedIdentifier();
     std::string readIdentifier();
@@ -72,6 +72,7 @@ private:
 };
 
 HeaderParser::Error parseHeader(TypeSet &outputTypeSet, const std::string &headerString);
+const Type * parseType(TypeSet &typeSet, const std::string &typeString);
 
 template <typename... T>
 ContainerTemplate<T...> * HeaderParser::findContainerTemplate(const std::string &name) {

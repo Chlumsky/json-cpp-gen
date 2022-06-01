@@ -262,6 +262,7 @@ const Type * HeaderParser::parseEnum() {
 
 const Type * HeaderParser::parseType() {
     const char *orig = cur;
+    skipWhitespaceAndComments(MULTI_LINE);
     if (cur < end && ((isNonSymbol(*cur) && !isdigit(*cur)) || *cur == ':')) {
         std::string typeName = readNamespacedIdentifier();
         if (typeName.empty())
@@ -301,7 +302,6 @@ const Type * HeaderParser::parseType() {
                         throw Error::UNEXPECTED_EOF;
                     if (index && !matchSymbol(','))
                         throw Error::INVALID_TYPENAME_SYNTAX;
-                    skipWhitespaceAndComments(MULTI_LINE);
                     if (index == elementTypeIndex) {
                         if (!(elementType = parseType()))
                             throw Error::INVALID_TYPENAME_SYNTAX;
@@ -324,7 +324,6 @@ const Type * HeaderParser::parseType() {
                         throw Error::UNEXPECTED_EOF;
                     if (index && !matchSymbol(','))
                         throw Error::INVALID_TYPENAME_SYNTAX;
-                    skipWhitespaceAndComments(MULTI_LINE);
                     if (index == elementTypeIndex) {
                         if (!(elementType = parseType()))
                             throw Error::INVALID_TYPENAME_SYNTAX;
@@ -349,7 +348,6 @@ const Type * HeaderParser::parseType() {
                         throw Error::UNEXPECTED_EOF;
                     if (index && !matchSymbol(','))
                         throw Error::INVALID_TYPENAME_SYNTAX;
-                    skipWhitespaceAndComments(MULTI_LINE);
                     if (index == keyTypeIndex) {
                         if (!(keyType = parseType()))
                             throw Error::UNSUPPORTED_TYPE;
@@ -619,4 +617,8 @@ bool HeaderParser::isNonSymbol(char c) {
 
 HeaderParser::Error parseHeader(TypeSet &outputTypeSet, const std::string &headerString) {
     return HeaderParser(&outputTypeSet, headerString.c_str(), headerString.size()).parse();
+}
+
+const Type * parseType(TypeSet &typeSet, const std::string &typeString) {
+    return HeaderParser(&typeSet, typeString.c_str(), typeString.size()).parseType();
 }

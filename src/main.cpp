@@ -186,7 +186,7 @@ int main(int argc, const char * const *argv) {
         }
         // TODO baseClass
         for (const std::string &typeName : parserDef.types) {
-            const Type *type = typeSet.find(typeName);
+            const Type *type = parseType(typeSet, typeName);
             if (!type) {
                 fprintf(stderr, "Error: Type '%s' not found, will not be parsed by '%s'\n", typeName.c_str(), parserDef.name.c_str());
                 continue;
@@ -221,7 +221,7 @@ int main(int argc, const char * const *argv) {
         }
         // TODO baseClass
         for (const std::string &typeName : serializerDef.types) {
-            const Type *type = typeSet.find(typeName);
+            const Type *type = parseType(typeSet, typeName);
             if (!type) {
                 fprintf(stderr, "Error: Type '%s' not found, will not be serialized by '%s'\n", typeName.c_str(), serializerDef.name.c_str());
                 continue;
