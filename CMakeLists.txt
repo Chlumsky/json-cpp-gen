@@ -13,3 +13,6 @@ target_compile_features(json-cpp-gen PUBLIC cxx_std_11)
 if (MSVC)
     target_compile_definitions(json-cpp-gen PUBLIC _CRT_SECURE_NO_WARNINGS)
 endif()
+
+source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${JSON_CPP_GEN_HEADERS} ${JSON_CPP_GEN_SOURCES})
+set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT json-cpp-gen)

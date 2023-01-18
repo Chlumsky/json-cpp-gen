@@ -47,7 +47,6 @@ void ConfigurationParser::skipWhitespace() {
 }
 
 void ConfigurationParser::skipValue() {
-    int openBrackets = 1;
     skipWhitespace();
     switch (*cur) {
         case '\0':
@@ -60,13 +59,14 @@ void ConfigurationParser::skipValue() {
             ++cur;
             return;
         case '[': case '{':
-            while (openBrackets) {
-                switch (*++cur) {
+            ++cur;
+            for (int openBrackets = 1; openBrackets;) {
+                switch (*cur) {
                     case '\0':
                         throw ErrorType::UNEXPECTED_END_OF_FILE;
                     case '"':
                         skipValue();
-                        break;
+                        continue;
                     case '[': case '{':
                         ++openBrackets;
                         break;
@@ -74,8 +74,8 @@ void ConfigurationParser::skipValue() {
                         --openBrackets;
                         break;
                 }
+                ++cur;
             }
-            ++cur;
             return;
         default:
             if (isAlphanumeric(*cur) || *cur == '-' || *cur == '.') {

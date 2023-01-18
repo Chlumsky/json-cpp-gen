@@ -16,7 +16,6 @@ void $::skipWhitespace() {
 }
 
 $::ErrorType $::skipValue() {
-    int openBrackets = 1;
     skipWhitespace();
     switch (*cur) {
         case '\0':
@@ -29,14 +28,15 @@ $::ErrorType $::skipValue() {
             ++cur;
             return ErrorType::OK;
         case '[': case '{':
-            while (openBrackets) {
-                switch (*++cur) {
+            ++cur;
+            for (int openBrackets = 1; openBrackets;) {
+                switch (*cur) {
                     case '\0':
                         return ErrorType::UNEXPECTED_END_OF_FILE;
                     case '"':
                         if (ErrorType error = skipValue())
                             return error;
-                        break;
+                        continue;
                     case '[': case '{':
                         ++openBrackets;
                         break;
@@ -44,8 +44,8 @@ $::ErrorType $::skipValue() {
                         --openBrackets;
                         break;
                 }
+                ++cur;
             }
-            ++cur;
             return ErrorType::OK;
         default:
             if (isAlphanumeric(*cur) || *cur == '-' || *cur == '.') {
@@ -129,7 +129,6 @@ void $::skipWhitespace() {
 }
 
 void $::skipValue() {
-    int openBrackets = 1;
     skipWhitespace();
     switch (*cur) {
         case '\0':
@@ -142,13 +141,14 @@ void $::skipValue() {
             ++cur;
             return;
         case '[': case '{':
-            while (openBrackets) {
-                switch (*++cur) {
+            ++cur;
+            for (int openBrackets = 1; openBrackets;) {
+                switch (*cur) {
                     case '\0':
                         throw ErrorType::UNEXPECTED_END_OF_FILE;
                     case '"':
                         skipValue();
-                        break;
+                        continue;
                     case '[': case '{':
                         ++openBrackets;
                         break;
@@ -156,8 +156,8 @@ void $::skipValue() {
                         --openBrackets;
                         break;
                 }
+                ++cur;
             }
-            ++cur;
             return;
         default:
             if (isAlphanumeric(*cur) || *cur == '-' || *cur == '.') {
