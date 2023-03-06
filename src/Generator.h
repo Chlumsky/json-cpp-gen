@@ -17,7 +17,6 @@ class Generator {
 
 public:
     static const unsigned FEATURE_CSTDLIB;
-    static const unsigned FEATURE_CSTDIO;
 
     Generator(const std::string &className, const StringType *stringType, const Settings &settings);
     void addTypeInclude(const std::string &includeAddress);

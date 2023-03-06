@@ -359,8 +359,6 @@ std::string ParserGenerator::generateSource(const std::string &relativeHeaderAdd
     code += "\n";
     if (featureBits&FEATURE_CSTDLIB)
         code += "#include <cstdlib>\n";
-    if (featureBits&FEATURE_CSTDIO)
-        code += "#include <cstdio>\n";
     code += "#include \""+relativeHeaderAddress+"\"\n\n";
     code += signature;
     code += beginNamespace();

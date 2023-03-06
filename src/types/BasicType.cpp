@@ -44,11 +44,27 @@ const char * BasicType::getTypeName(Type type) {
 
 BasicType::BasicType(Type type) : DirectType(TypeName(getTypeName(type))), type(type) { }
 
-static std::string generateFloatSprintf(SerializerGenerator *generator, const char *pattern, const std::string &indent) {
-    generator->addFeature(Generator::FEATURE_CSTDIO);
+static std::string generateFloatSerialization(SerializerGenerator *generator, BasicType::Type type, const std::string &indent) {
+    const char *macroSuffix = nullptr;
+    switch (type) {
+        case BasicType::FLOAT:
+            macroSuffix = "FLOAT";
+            generator->addFeature(SerializerGenerator::FEATURE_SERIALIZE_FLOAT);
+            break;
+        case BasicType::DOUBLE:
+            macroSuffix = "DOUBLE";
+            generator->addFeature(SerializerGenerator::FEATURE_SERIALIZE_DOUBLE);
+            break;
+        case BasicType::LONG_DOUBLE:
+            macroSuffix = "LONG_DOUBLE";
+            generator->addFeature(SerializerGenerator::FEATURE_SERIALIZE_LONG_DOUBLE);
+            break;
+        default:
+            return std::string();
+    }
     std::string body;
     body += indent+"char buffer[64];\n";
-    body += indent+"sprintf(buffer, \""+pattern+"\", value);\n";
+    body += indent+"JSON_CPP_SERIALIZE_"+macroSuffix+"(buffer, value);\n";
     body += indent+"switch (buffer[1]) {\n";
     body += indent+INDENT "case 'i':\n"; // -inf
     switch (generator->settings().infPolicy) {
@@ -288,23 +304,8 @@ std::string BasicType::generateSerializerFunctionBody(SerializerGenerator *gener
             generator->addFeature(SerializerGenerator::FEATURE_WRITE_UNSIGNED);
             return indent+"writeUnsigned(value);\n";
         // Floating point types
-        case FLOAT: case DOUBLE: case LONG_DOUBLE: { // exact floating-point type
-            const char *pattern = nullptr;
-            switch (type) {
-                case FLOAT:
-                    pattern = "%.9g";
-                    break;
-                case DOUBLE:
-                    pattern = "%.17lg";
-                    break;
-                case LONG_DOUBLE:
-                    pattern = "%.33Lg";
-                    break;
-                default:
-                    return std::string(); // unreachable
-            }
-            return generateFloatSprintf(generator, pattern, indent);
-        }
+        case FLOAT: case DOUBLE: case LONG_DOUBLE:
+            return generateFloatSerialization(generator, type, indent);
         // Special case
         case WCHAR_T:
             // May or may not be signed depending on implementation and size is not certain -> convert to a signed type that is definitely larger because of possible (x == -x) for minimum value

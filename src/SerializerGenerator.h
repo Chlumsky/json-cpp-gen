@@ -19,6 +19,9 @@ public:
 
     static const unsigned FEATURE_WRITE_SIGNED;
     static const unsigned FEATURE_WRITE_UNSIGNED;
+    static const unsigned FEATURE_SERIALIZE_FLOAT;
+    static const unsigned FEATURE_SERIALIZE_DOUBLE;
+    static const unsigned FEATURE_SERIALIZE_LONG_DOUBLE;
 
     explicit SerializerGenerator(const std::string &className, const StringType *stringType = &StringType::STD_STRING, const Settings &settings = Settings());
     void generateSerializerFunction(const Type *type);

@@ -6,6 +6,9 @@ FOR_SERIALIZER_ERRORS(SERIALIZER_GENERATOR_ERROR_STR_INSTANTIATE)
 
 const unsigned SerializerGenerator::FEATURE_WRITE_SIGNED = 0x0100;
 const unsigned SerializerGenerator::FEATURE_WRITE_UNSIGNED = 0x0200;
+const unsigned SerializerGenerator::FEATURE_SERIALIZE_FLOAT = 0x1000;
+const unsigned SerializerGenerator::FEATURE_SERIALIZE_DOUBLE = 0x2000;
+const unsigned SerializerGenerator::FEATURE_SERIALIZE_LONG_DOUBLE = 0x4000;
 
 SerializerGenerator::SerializerGenerator(const std::string &className, const StringType *stringType, const Settings &settings) : Generator(className, stringType, settings) { }
 
@@ -110,10 +113,28 @@ std::string SerializerGenerator::generateSource() {
 std::string SerializerGenerator::generateSource(const std::string &relativeHeaderAddress) {
     std::string code;
     code += "\n";
-    if (featureBits&FEATURE_CSTDIO)
-        code += "#include <cstdio>\n";
     code += "#include \""+relativeHeaderAddress+"\"\n\n";
     code += signature;
+
+    if (featureBits&FEATURE_SERIALIZE_FLOAT) {
+        code += "#ifndef JSON_CPP_SERIALIZE_FLOAT\n";
+        code += "#include <cstdio>\n";
+        code += "#define JSON_CPP_SERIALIZE_FLOAT(outBuffer, x) sprintf(outBuffer, \"%.9g\", x)\n";
+        code += "#endif\n\n";
+    }
+    if (featureBits&FEATURE_SERIALIZE_DOUBLE) {
+        code += "#ifndef JSON_CPP_SERIALIZE_DOUBLE\n";
+        code += "#include <cstdio>\n";
+        code += "#define JSON_CPP_SERIALIZE_DOUBLE(outBuffer, x) sprintf(outBuffer, \"%.17lg\", x)\n";
+        code += "#endif\n\n";
+    }
+    if (featureBits&FEATURE_SERIALIZE_LONG_DOUBLE) {
+        code += "#ifndef JSON_CPP_SERIALIZE_LONG_DOUBLE\n";
+        code += "#include <cstdio>\n";
+        code += "#define JSON_CPP_SERIALIZE_LONG_DOUBLE(outBuffer, x) sprintf(outBuffer, \"%.33Lg\", x)\n";
+        code += "#endif\n\n";
+    }
+
     code += beginNamespace();
 
     // Error member functions

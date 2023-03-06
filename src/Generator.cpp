@@ -6,7 +6,6 @@ const char * const Generator::signature =
     "// https://github.com/Chlumsky/json-cpp-gen\n\n";
 
 const unsigned Generator::FEATURE_CSTDLIB = 0x01;
-const unsigned Generator::FEATURE_CSTDIO = 0x02;
 
 Generator::Generator(const std::string &className, const StringType *stringType, const Settings &settings) : mStringType(stringType), mSettings(settings), featureBits(0) {
     std::string namePart;
