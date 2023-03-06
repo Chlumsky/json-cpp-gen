@@ -19,4 +19,6 @@ private:
     bool enumClass;
     std::vector<std::string> values;
 
+    std::string valuePrefix() const;
+
 };
