@@ -201,7 +201,7 @@ std::string BasicType::generateParserFunctionBody(ParserGenerator *generator, co
             generator->addFeature(ParserGenerator::FEATURE_READ_SIGNED);
             return (
                 indent+"skipWhitespace();\n"+
-                indent+"return readSigned(value);\n"
+                indent+"return readSigned(value);" // no newline = returned
             );
         // Unsigned integer types
         case UNSIGNED_CHAR:
@@ -221,7 +221,7 @@ std::string BasicType::generateParserFunctionBody(ParserGenerator *generator, co
             generator->addFeature(ParserGenerator::FEATURE_READ_UNSIGNED);
             return (
                 indent+"skipWhitespace();\n"+
-                indent+"return readUnsigned(value);\n"
+                indent+"return readUnsigned(value);" // no newline = returned
             );
         // Floating point types
         case FLOAT:

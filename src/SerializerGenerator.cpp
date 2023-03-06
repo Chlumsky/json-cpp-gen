@@ -42,33 +42,32 @@ std::string SerializerGenerator::generateValueSerialization(const Type *type, co
 }
 
 std::string SerializerGenerator::generateErrorStatement(const char *errorName) const {
-    return std::string(settings().noThrow ? "return" : "throw")+" Error(ErrorType::"+errorName+", &value)";
+    return std::string(settings().noThrow ? "return" : "throw")+" Error(Error::"+errorName+", &value)";
 }
 
 std::string SerializerGenerator::generateHeader() {
     std::string code;
-    code += "\n#pragma once\n\n";
+    code += "\n";
+    code += signature;
+    code += "#pragma once\n\n";
     for (const std::string &typeInclude : typeIncludes)
         code += "#include "+typeInclude+"\n";
     if (!typeIncludes.empty())
         code += "\n";
     code += beginNamespace();
-    code += signature;
     code += "class "+className+" {\n";
 
     code += "\npublic:\n";
-    code += INDENT "enum ErrorType {\n";
-    code += INDENT INDENT "OK,\n";
-    #define SERIALIZER_GENERATOR_APPEND_ERROR_NAME(e) code += std::string(INDENT INDENT)+Error::e+",\n";
-    FOR_SERIALIZER_ERRORS(SERIALIZER_GENERATOR_APPEND_ERROR_NAME)
-    code += INDENT "};\n\n";
-
     code += INDENT "struct Error {\n";
-    code += INDENT INDENT "ErrorType type;\n";
+    code += INDENT INDENT "enum Type {\n";
+    code += INDENT INDENT INDENT "OK";
+    #define SERIALIZER_GENERATOR_APPEND_ERROR_NAME(e) code += std::string(",\n" INDENT INDENT INDENT)+Error::e;
+    FOR_SERIALIZER_ERRORS(SERIALIZER_GENERATOR_APPEND_ERROR_NAME)
+    code += "\n" INDENT INDENT "} type;\n";
     code += INDENT INDENT "const void *datapoint;\n\n";
-    code += INDENT INDENT "inline Error(ErrorType type = ErrorType::OK) : type(type), datapoint() { }\n";
-    code += INDENT INDENT "inline Error(ErrorType type, const void *datapoint) : type(type), datapoint(datapoint) { }\n";
-    code += INDENT INDENT "operator ErrorType() const;\n";
+    code += INDENT INDENT "inline Error(Type type = Error::OK) : type(type), datapoint() { }\n";
+    code += INDENT INDENT "inline Error(Type type, const void *datapoint) : type(type), datapoint(datapoint) { }\n";
+    code += INDENT INDENT "operator Type() const;\n";
     code += INDENT INDENT "operator bool() const;\n";
     code += INDENT INDENT "const char *typeString() const;\n";
     code += INDENT "};\n\n";
@@ -113,8 +112,8 @@ std::string SerializerGenerator::generateSource() {
 std::string SerializerGenerator::generateSource(const std::string &relativeHeaderAddress) {
     std::string code;
     code += "\n";
-    code += "#include \""+relativeHeaderAddress+"\"\n\n";
     code += signature;
+    code += "#include \""+relativeHeaderAddress+"\"\n\n";
 
     if (featureBits&FEATURE_SERIALIZE_FLOAT) {
         code += "#ifndef JSON_CPP_SERIALIZE_FLOAT\n";
@@ -125,7 +124,7 @@ std::string SerializerGenerator::generateSource(const std::string &relativeHeade
     if (featureBits&FEATURE_SERIALIZE_DOUBLE) {
         code += "#ifndef JSON_CPP_SERIALIZE_DOUBLE\n";
         code += "#include <cstdio>\n";
-        code += "#define JSON_CPP_SERIALIZE_DOUBLE(outBuffer, x) sprintf(outBuffer, \"%.17lg\", x)\n";
+        code += "#define JSON_CPP_SERIALIZE_DOUBLE(outBuffer, x) sprintf(outBuffer, \"%.17g\", x)\n";
         code += "#endif\n\n";
     }
     if (featureBits&FEATURE_SERIALIZE_LONG_DOUBLE) {
@@ -138,11 +137,11 @@ std::string SerializerGenerator::generateSource(const std::string &relativeHeade
     code += beginNamespace();
 
     // Error member functions
-    code += className+"::Error::operator "+className+"::ErrorType() const {\n" INDENT "return type;\n}\n\n";
-    code += className+"::Error::operator bool() const {\n" INDENT "return type != ErrorType::OK;\n}\n\n";
+    code += className+"::Error::operator "+className+"::Error::Type() const {\n" INDENT "return type;\n}\n\n";
+    code += className+"::Error::operator bool() const {\n" INDENT "return type != Error::OK;\n}\n\n";
     code += "const char *"+className+"::Error::typeString() const {\n";
     code += INDENT "switch (type) {\n";
-    #define SERIALIZER_GENERATOR_ERROR_TYPE_STRING_CASE(e) code += INDENT INDENT "case ErrorType::" #e ":\n" INDENT INDENT INDENT "return \"" #e "\";\n";
+    #define SERIALIZER_GENERATOR_ERROR_TYPE_STRING_CASE(e) code += INDENT INDENT "case Error::" #e ":\n" INDENT INDENT INDENT "return \"" #e "\";\n";
     SERIALIZER_GENERATOR_ERROR_TYPE_STRING_CASE(OK)
     FOR_SERIALIZER_ERRORS(SERIALIZER_GENERATOR_ERROR_TYPE_STRING_CASE)
     code += INDENT "}\n";
@@ -226,7 +225,7 @@ std::string SerializerGenerator::generateSource(const std::string &relativeHeade
                 code += INDENT "} catch (const Error &error) {\n";
                 code += INDENT INDENT "return error;\n";
                 code += INDENT "}\n";
-                code += INDENT "return ErrorType::OK;\n";
+                code += INDENT "return Error::OK;\n";
             }
             code += "}\n";
         }
@@ -241,8 +240,11 @@ std::string SerializerGenerator::generateSource(const std::string &relativeHeade
             code += "void ";
         code += className+"::"+serializeFunction.name+"("+serializeFunction.type->name().constRefArgDeclaration("value")+") {\n";
         code += serializeFunction.body;
-        if (settings().noThrow)
-            code += INDENT "return ErrorType::OK;\n";
+        // Missing newline in function body signifies that it has already returned
+        if (code.back() != '\n')
+            code += "\n";
+        else if (settings().noThrow)
+            code += INDENT "return Error::OK;\n";
         code += "}\n";
     }
     code += endNamespace();

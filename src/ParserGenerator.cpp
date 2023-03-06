@@ -15,26 +15,26 @@ void $::skipWhitespace() {
         ++cur;
 }
 
-$::ErrorType $::skipValue() {
+$::Error::Type $::skipValue() {
     skipWhitespace();
     switch (*cur) {
         case '\0':
-            return ErrorType::UNEXPECTED_END_OF_FILE;
+            return Error::UNEXPECTED_END_OF_FILE;
         case '"':
             while (*++cur != '"') {
                 if (!*(cur += *cur == '\\'))
-                    return ErrorType::UNEXPECTED_END_OF_FILE;
+                    return Error::UNEXPECTED_END_OF_FILE;
             }
             ++cur;
-            return ErrorType::OK;
+            return Error::OK;
         case '[': case '{':
             ++cur;
             for (int openBrackets = 1; openBrackets;) {
                 switch (*cur) {
                     case '\0':
-                        return ErrorType::UNEXPECTED_END_OF_FILE;
+                        return Error::UNEXPECTED_END_OF_FILE;
                     case '"':
-                        if (ErrorType error = skipValue())
+                        if (Error::Type error = skipValue())
                             return error;
                         continue;
                     case '[': case '{':
@@ -46,14 +46,14 @@ $::ErrorType $::skipValue() {
                 }
                 ++cur;
             }
-            return ErrorType::OK;
+            return Error::OK;
         default:
             if (isAlphanumeric(*cur) || *cur == '-' || *cur == '.') {
                 while (isAlphanumeric(*++cur) || *cur == '+' || *cur == '-' || *cur == '.');
-                return ErrorType::OK;
+                return Error::OK;
             }
     }
-    return ErrorType::JSON_SYNTAX_ERROR;
+    return Error::JSON_SYNTAX_ERROR;
 }
 
 bool $::matchSymbol(char s) {
@@ -76,11 +76,11 @@ bool $::readHexQuad(int &value) {
     );
 }
 
-$::ErrorType $::unescape(char *codepoints) {
+$::Error::Type $::unescape(char *codepoints) {
     switch (++cur, *cur++) {
         case '\0':
             --cur;
-            return ErrorType::UNEXPECTED_END_OF_FILE;
+            return Error::UNEXPECTED_END_OF_FILE;
         case 'B': case 'b': codepoints[0] = '\b'; break;
         case 'F': case 'f': codepoints[0] = '\f'; break;
         case 'N': case 'n': codepoints[0] = '\n'; break;
@@ -90,16 +90,16 @@ $::ErrorType $::unescape(char *codepoints) {
             unsigned long cp;
             int wc;
             if (!readHexQuad(wc))
-                return ErrorType::JSON_SYNTAX_ERROR;
+                return Error::JSON_SYNTAX_ERROR;
             if ((wc&0xfc00) == 0xd800) {
                 if (!(cur[0] == '\\' && (cur[1] == 'u' || cur[1] == 'U')))
-                    return ErrorType::UTF16_ENCODING_ERROR;
+                    return Error::UTF16_ENCODING_ERROR;
                 cp = (unsigned long) ((wc&0x03ff)<<10);
                 cur += 2;
                 if (!readHexQuad(wc))
-                    return ErrorType::JSON_SYNTAX_ERROR;
+                    return Error::JSON_SYNTAX_ERROR;
                 if ((wc&0xfc00) != 0xdc00)
-                    return ErrorType::UTF16_ENCODING_ERROR;
+                    return Error::UTF16_ENCODING_ERROR;
                 cp = 0x010000+(cp|(unsigned long) (wc&0x03ff));
             } else
                 cp = (unsigned long) wc;
@@ -117,7 +117,7 @@ $::ErrorType $::unescape(char *codepoints) {
             codepoints[0] = cur[-1];
     }
     codepoints[1] = '\0';
-    return ErrorType::OK;
+    return Error::OK;
 }
 )";
 
@@ -133,11 +133,11 @@ void $::skipValue() {
     skipWhitespace();
     switch (*cur) {
         case '\0':
-            throw ErrorType::UNEXPECTED_END_OF_FILE;
+            throw Error::UNEXPECTED_END_OF_FILE;
         case '"':
             while (*++cur != '"') {
                 if (!*(cur += *cur == '\\'))
-                    throw ErrorType::UNEXPECTED_END_OF_FILE;
+                    throw Error::UNEXPECTED_END_OF_FILE;
             }
             ++cur;
             return;
@@ -146,7 +146,7 @@ void $::skipValue() {
             for (int openBrackets = 1; openBrackets;) {
                 switch (*cur) {
                     case '\0':
-                        throw ErrorType::UNEXPECTED_END_OF_FILE;
+                        throw Error::UNEXPECTED_END_OF_FILE;
                     case '"':
                         skipValue();
                         continue;
@@ -166,13 +166,13 @@ void $::skipValue() {
                 return;
             }
     }
-    throw ErrorType::JSON_SYNTAX_ERROR;
+    throw Error::JSON_SYNTAX_ERROR;
 }
 
 void $::requireSymbol(char s) {
     skipWhitespace();
     if (*cur++ != s)
-        throw ErrorType::JSON_SYNTAX_ERROR;
+        throw Error::JSON_SYNTAX_ERROR;
 }
 
 bool $::matchSymbol(char s) {
@@ -192,7 +192,7 @@ void $::readHexQuad(int &value) {
         (value += 0x0100*decodeHexDigit(cur[1])) >= 0 &&
         (value += 0x1000*decodeHexDigit(cur[0])) >= 0
     ))
-        throw ErrorType::JSON_SYNTAX_ERROR;
+        throw Error::JSON_SYNTAX_ERROR;
     cur += 4;
 }
 
@@ -200,7 +200,7 @@ void $::unescape(char *codepoints) {
     switch (++cur, *cur++) {
         case '\0':
             --cur;
-            throw ErrorType::UNEXPECTED_END_OF_FILE;
+            throw Error::UNEXPECTED_END_OF_FILE;
         case 'B': case 'b': codepoints[0] = '\b'; break;
         case 'F': case 'f': codepoints[0] = '\f'; break;
         case 'N': case 'n': codepoints[0] = '\n'; break;
@@ -212,12 +212,12 @@ void $::unescape(char *codepoints) {
             readHexQuad(wc);
             if ((wc&0xfc00) == 0xd800) {
                 if (!(cur[0] == '\\' && (cur[1] == 'u' || cur[1] == 'U')))
-                    throw ErrorType::UTF16_ENCODING_ERROR;
+                    throw Error::UTF16_ENCODING_ERROR;
                 cp = (unsigned long) ((wc&0x03ff)<<10);
                 cur += 2;
                 readHexQuad(wc);
                 if ((wc&0xfc00) != 0xdc00)
-                    throw ErrorType::UTF16_ENCODING_ERROR;
+                    throw Error::UTF16_ENCODING_ERROR;
                 cp = 0x010000+(cp|(unsigned long) (wc&0x03ff));
             } else
                 cp = (unsigned long) wc;
@@ -274,39 +274,38 @@ std::string ParserGenerator::generateParserFunctionCall(const Type *type, const 
 
 std::string ParserGenerator::generateValueParse(const Type *type, const std::string &outputArg, const std::string &indent) {
     if (settings().noThrow) {
-        return indent+"if (ErrorType error = "+generateParserFunctionCall(type, outputArg)+")\n"+
+        return indent+"if (Error::Type error = "+generateParserFunctionCall(type, outputArg)+")\n"+
             indent+INDENT "return error;\n";
     } else
         return indent+generateParserFunctionCall(type, outputArg)+";\n";
 }
 
 std::string ParserGenerator::generateErrorStatement(const char *errorName) const {
-    return std::string(settings().noThrow ? "return" : "throw")+" ErrorType::"+errorName;
+    return std::string(settings().noThrow ? "return" : "throw")+" Error::"+errorName;
 }
 
 std::string ParserGenerator::generateHeader() {
     std::string code;
-    code += "\n#pragma once\n\n";
+    code += "\n";
+    code += signature;
+    code += "#pragma once\n\n";
     for (const std::string &typeInclude : typeIncludes)
         code += "#include "+typeInclude+"\n";
     if (!typeIncludes.empty())
         code += "\n";
     code += beginNamespace();
-    code += signature;
     code += "class "+className+" {\n";
 
     code += "\npublic:\n";
-    code += INDENT "enum ErrorType {\n";
-    code += INDENT INDENT "OK,\n";
-    #define PARSER_GENERATOR_APPEND_ERROR_NAME(e) code += std::string(INDENT INDENT)+Error::e+",\n";
-    FOR_PARSER_ERRORS(PARSER_GENERATOR_APPEND_ERROR_NAME)
-    code += INDENT "};\n\n";
-
     code += INDENT "struct Error {\n";
-    code += INDENT INDENT "ErrorType type;\n";
+    code += INDENT INDENT "enum Type {\n";
+    code += INDENT INDENT INDENT "OK";
+    #define PARSER_GENERATOR_APPEND_ERROR_NAME(e) code += std::string(",\n" INDENT INDENT INDENT)+Error::e;
+    FOR_PARSER_ERRORS(PARSER_GENERATOR_APPEND_ERROR_NAME)
+    code += "\n" INDENT INDENT "} type;\n";
     code += INDENT INDENT "int position;\n\n";
-    code += INDENT INDENT "inline Error(ErrorType type = ErrorType::OK, int position = -1) : type(type), position(position) { }\n";
-    code += INDENT INDENT "operator ErrorType() const;\n";
+    code += INDENT INDENT "inline Error(Type type = Error::OK, int position = -1) : type(type), position(position) { }\n";
+    code += INDENT INDENT "operator Type() const;\n";
     code += INDENT INDENT "operator bool() const;\n";
     code += INDENT INDENT "const char *typeString() const;\n";
     code += INDENT "};\n\n";
@@ -321,28 +320,28 @@ std::string ParserGenerator::generateHeader() {
     code += INDENT "const char *cur;\n\n";
     code += INDENT "explicit "+className+"(const char *str);\n";
     code += INDENT "void skipWhitespace();\n";
-    code += std::string(INDENT)+(settings().noThrow ? "ErrorType" : "void")+" skipValue();\n";
+    code += std::string(INDENT)+(settings().noThrow ? "Error::Type" : "void")+" skipValue();\n";
     if (!settings().noThrow)
         code += INDENT "void requireSymbol(char s);\n";
     code += INDENT "bool matchSymbol(char s);\n";
     code += std::string(INDENT)+(settings().noThrow ? "bool" : "void")+" readHexQuad(int &value);\n";
-    code += std::string(INDENT)+(settings().noThrow ? "ErrorType" : "void")+" unescape(char *codepoints);\n";
+    code += std::string(INDENT)+(settings().noThrow ? "Error::Type" : "void")+" unescape(char *codepoints);\n";
     code += INDENT "static bool isAlphanumeric(char c);\n";
     code += INDENT "static int decodeHexDigit(char digit);\n";
     code += "\n";
 
     for (const Function &parseFunction : functions)
-        code += std::string(INDENT)+(settings().noThrow ? "ErrorType " : "void ")+parseFunction.name+"("+parseFunction.type->name().refArgDeclaration("value")+");\n";
+        code += std::string(INDENT)+(settings().noThrow ? "Error::Type " : "void ")+parseFunction.name+"("+parseFunction.type->name().refArgDeclaration("value")+");\n";
 
     if (featureBits&(FEATURE_READ_SIGNED|FEATURE_READ_UNSIGNED)) {
         code += "\nprivate:\n";
         if (featureBits&FEATURE_READ_SIGNED) {
             code += INDENT "template <typename T>\n";
-            code += std::string(INDENT)+(settings().noThrow ? "ErrorType" : "void")+" readSigned(T &value);\n";
+            code += std::string(INDENT)+(settings().noThrow ? "Error::Type" : "void")+" readSigned(T &value);\n";
         }
         if (featureBits&FEATURE_READ_UNSIGNED) {
             code += INDENT "template <typename T>\n";
-            code += std::string(INDENT)+(settings().noThrow ? "ErrorType" : "void")+" readUnsigned(T &value);\n";
+            code += std::string(INDENT)+(settings().noThrow ? "Error::Type" : "void")+" readUnsigned(T &value);\n";
         }
     }
     code += "\n};\n";
@@ -357,18 +356,18 @@ std::string ParserGenerator::generateSource() {
 std::string ParserGenerator::generateSource(const std::string &relativeHeaderAddress) {
     std::string code;
     code += "\n";
+    code += signature;
     if (featureBits&FEATURE_CSTDLIB)
         code += "#include <cstdlib>\n";
     code += "#include \""+relativeHeaderAddress+"\"\n\n";
-    code += signature;
     code += beginNamespace();
 
     // Error member functions
-    code += className+"::Error::operator "+className+"::ErrorType() const {\n" INDENT "return type;\n}\n\n";
-    code += className+"::Error::operator bool() const {\n" INDENT "return type != ErrorType::OK;\n}\n\n";
+    code += className+"::Error::operator "+className+"::Error::Type() const {\n" INDENT "return type;\n}\n\n";
+    code += className+"::Error::operator bool() const {\n" INDENT "return type != Error::OK;\n}\n\n";
     code += "const char *"+className+"::Error::typeString() const {\n";
     code += INDENT "switch (type) {\n";
-    #define PARSER_GENERATOR_ERROR_TYPE_STRING_CASE(e) code += INDENT INDENT "case ErrorType::" #e ":\n" INDENT INDENT INDENT "return \"" #e "\";\n";
+    #define PARSER_GENERATOR_ERROR_TYPE_STRING_CASE(e) code += INDENT INDENT "case Error::" #e ":\n" INDENT INDENT INDENT "return \"" #e "\";\n";
     PARSER_GENERATOR_ERROR_TYPE_STRING_CASE(OK)
     FOR_PARSER_ERRORS(PARSER_GENERATOR_ERROR_TYPE_STRING_CASE)
     code += INDENT "}\n";
@@ -432,22 +431,22 @@ std::string ParserGenerator::generateSource(const std::string &relativeHeaderAdd
     if (featureBits&FEATURE_READ_SIGNED) {
         code += "\n";
         code += "template <typename T>\n";
-        code += (settings().noThrow ? className+"::ErrorType " : "void ")+className+"::readSigned(T &value) {\n";
+        code += (settings().noThrow ? className+"::Error::Type " : "void ")+className+"::readSigned(T &value) {\n";
         code += INDENT "bool negative = *cur == '-' && (++cur, true);\n";
         code += readUnsignedBody;
         code += INDENT "if (negative)\n";
         code += INDENT INDENT "value = -value;\n";
         if (settings().noThrow)
-            code += INDENT "return ErrorType::OK;\n";
+            code += INDENT "return Error::OK;\n";
         code += "}\n";
     }
     if (featureBits&FEATURE_READ_UNSIGNED) {
         code += "\n";
         code += "template <typename T>\n";
-        code += (settings().noThrow ? className+"::ErrorType " : "void ")+className+"::readUnsigned(T &value) {\n";
+        code += (settings().noThrow ? className+"::Error::Type " : "void ")+className+"::readUnsigned(T &value) {\n";
         code += readUnsignedBody;
         if (settings().noThrow)
-            code += INDENT "return ErrorType::OK;\n";
+            code += INDENT "return Error::OK;\n";
         code += "}\n";
     }
 
@@ -459,15 +458,15 @@ std::string ParserGenerator::generateSource(const std::string &relativeHeaderAdd
             code += className+"::Error "+className+"::parse("+type->name().refArgDeclaration("output")+", const char *jsonString) {\n";
             code += INDENT+className+" parser(jsonString);\n";
             if (settings().noThrow) {
-                code += INDENT "ErrorType error = parser."+it->second+"(output);\n";
+                code += INDENT "Error::Type error = parser."+it->second+"(output);\n";
                 code += INDENT "return Error(error, static_cast<int>(parser.cur-jsonString));\n";
             } else {
                 code += INDENT "try {\n";
                 code += INDENT INDENT "parser."+it->second+"(output);\n";
-                code += INDENT "} catch (ErrorType error) {\n";
+                code += INDENT "} catch (Error::Type error) {\n";
                 code += INDENT INDENT "return Error(error, static_cast<int>(parser.cur-jsonString));\n";
                 code += INDENT "}\n";
-                code += INDENT "return Error(ErrorType::OK, static_cast<int>(parser.cur-jsonString));\n";
+                code += INDENT "return Error(Error::OK, static_cast<int>(parser.cur-jsonString));\n";
             }
             code += "}\n";
         }
@@ -477,13 +476,16 @@ std::string ParserGenerator::generateSource(const std::string &relativeHeaderAdd
     for (const Function &parseFunction : functions) {
         code += "\n";
         if (settings().noThrow)
-            code += className+"::ErrorType ";
+            code += className+"::Error::Type ";
         else
             code += "void ";
         code += className+"::"+parseFunction.name+"("+parseFunction.type->name().refArgDeclaration("value")+") {\n";
         code += parseFunction.body;
-        if (settings().noThrow)
-            code += INDENT "return ErrorType::OK;\n";
+        // Missing newline in function body signifies that it has already returned
+        if (code.back() != '\n')
+            code += "\n";
+        else if (settings().noThrow)
+            code += INDENT "return Error::OK;\n";
         code += "}\n";
     }
     code += endNamespace();
