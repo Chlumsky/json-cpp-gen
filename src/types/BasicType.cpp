@@ -47,7 +47,7 @@ BasicType::BasicType(Type type) : DirectType(TypeName(getTypeName(type))), type(
 static std::string generateFloatSprintf(SerializerGenerator *generator, const char *pattern, const std::string &indent) {
     generator->addFeature(Generator::FEATURE_CSTDIO);
     std::string body;
-    body += indent+"char buffer[32];\n";
+    body += indent+"char buffer[64];\n";
     body += indent+"sprintf(buffer, \""+pattern+"\", value);\n";
     body += indent+"switch (buffer[1]) {\n";
     body += indent+INDENT "case 'i':\n"; // -inf
@@ -120,6 +120,7 @@ static std::string generateFloatSprintf(SerializerGenerator *generator, const ch
     }
     body += indent+INDENT INDENT INDENT "break;\n";
     body += indent+INDENT INDENT "}\n";
+    body += indent+INDENT INDENT "// fallthrough\n";
     body += indent+INDENT "case 'a':\n"; // nan
     switch (generator->settings().nanPolicy) {
         case Settings::NanPolicy::SERIALIZER_ERROR:

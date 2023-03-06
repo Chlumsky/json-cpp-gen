@@ -44,8 +44,10 @@ protected:
     void skipValue();
     void requireSymbol(char s);
     bool matchSymbol(char s);
+    void readHexQuad(int &value);
     void unescape(char *codepoints);
     static bool isAlphanumeric(char c);
+    static int decodeHexDigit(char digit);
 
     void parseStdString(std::string &value);
     void parseStdVectorStdString(std::vector<std::string> &value);

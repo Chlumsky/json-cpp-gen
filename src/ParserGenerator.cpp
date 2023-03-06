@@ -65,9 +65,21 @@ bool $::matchSymbol(char s) {
     return false;
 }
 
+bool $::readHexQuad(int &value) {
+    return (
+        cur[0] && cur[1] && cur[2] && cur[3] &&
+        (value = decodeHexDigit(cur[3])) >= 0 &&
+        (value += 0x0010*decodeHexDigit(cur[2])) >= 0 &&
+        (value += 0x0100*decodeHexDigit(cur[1])) >= 0 &&
+        (value += 0x1000*decodeHexDigit(cur[0])) >= 0 &&
+        (cur += 4)
+    );
+}
+
 $::ErrorType $::unescape(char *codepoints) {
-    switch (*++cur) {
+    switch (++cur, *cur++) {
         case '\0':
+            --cur;
             return ErrorType::UNEXPECTED_END_OF_FILE;
         case 'B': case 'b': codepoints[0] = '\b'; break;
         case 'F': case 'f': codepoints[0] = '\f'; break;
@@ -76,32 +88,21 @@ $::ErrorType $::unescape(char *codepoints) {
         case 'T': case 't': codepoints[0] = '\t'; break;
         case 'U': case 'u': {
             unsigned long cp;
-            unsigned short wc;
-            ++cur;
-            if (!(cur[0] && cur[1] && cur[2] && cur[3]))
-                return ErrorType::JSON_SYNTAX_ERROR;
-            codepoints[0] = cur[0], codepoints[1] = cur[1], codepoints[2] = cur[2], codepoints[3] = cur[3];
-            codepoints[4] = '\0';
-            cur += 3;
-            if (sscanf(codepoints, "%hx", &wc) != 1)
+            int wc;
+            if (!readHexQuad(wc))
                 return ErrorType::JSON_SYNTAX_ERROR;
             if ((wc&0xfc00) == 0xd800) {
-                if (!(cur[1] == '\\' && (cur[2] == 'u' || cur[2] == 'U')))
+                if (!(cur[0] == '\\' && (cur[1] == 'u' || cur[1] == 'U')))
                     return ErrorType::UTF16_ENCODING_ERROR;
-                cp = (unsigned long) (wc&0x03ff)<<10;
-                cur += 3;
-                if (!(cur[0] && cur[1] && cur[2] && cur[3]))
-                    return ErrorType::JSON_SYNTAX_ERROR;
-                codepoints[0] = cur[0], codepoints[1] = cur[1], codepoints[2] = cur[2], codepoints[3] = cur[3];
-                codepoints[4] = '\0';
-                cur += 3;
-                if (sscanf(codepoints, "%hx", &wc) != 1)
+                cp = (unsigned long) ((wc&0x03ff)<<10);
+                cur += 2;
+                if (!readHexQuad(wc))
                     return ErrorType::JSON_SYNTAX_ERROR;
                 if ((wc&0xfc00) != 0xdc00)
                     return ErrorType::UTF16_ENCODING_ERROR;
                 cp = 0x010000+(cp|(unsigned long) (wc&0x03ff));
             } else
-                cp = wc;
+                cp = (unsigned long) wc;
             if (cp&0xffffff80) {
                 int len;
                 for (len = 1; cp>>(5*len+1) && len < 6; ++len);
@@ -113,7 +114,7 @@ $::ErrorType $::unescape(char *codepoints) {
             break;
         }
         default:
-            codepoints[0] = *cur;
+            codepoints[0] = cur[-1];
     }
     codepoints[1] = '\0';
     return ErrorType::OK;
@@ -183,9 +184,22 @@ bool $::matchSymbol(char s) {
     return false;
 }
 
+void $::readHexQuad(int &value) {
+    if (!(
+        cur[0] && cur[1] && cur[2] && cur[3] &&
+        (value = decodeHexDigit(cur[3])) >= 0 &&
+        (value += 0x0010*decodeHexDigit(cur[2])) >= 0 &&
+        (value += 0x0100*decodeHexDigit(cur[1])) >= 0 &&
+        (value += 0x1000*decodeHexDigit(cur[0])) >= 0
+    ))
+        throw ErrorType::JSON_SYNTAX_ERROR;
+    cur += 4;
+}
+
 void $::unescape(char *codepoints) {
-    switch (*++cur) {
+    switch (++cur, *cur++) {
         case '\0':
+            --cur;
             throw ErrorType::UNEXPECTED_END_OF_FILE;
         case 'B': case 'b': codepoints[0] = '\b'; break;
         case 'F': case 'f': codepoints[0] = '\f'; break;
@@ -194,32 +208,19 @@ void $::unescape(char *codepoints) {
         case 'T': case 't': codepoints[0] = '\t'; break;
         case 'U': case 'u': {
             unsigned long cp;
-            unsigned short wc;
-            ++cur;
-            if (!(cur[0] && cur[1] && cur[2] && cur[3]))
-                throw ErrorType::JSON_SYNTAX_ERROR;
-            codepoints[0] = cur[0], codepoints[1] = cur[1], codepoints[2] = cur[2], codepoints[3] = cur[3];
-            codepoints[4] = '\0';
-            cur += 3;
-            if (sscanf(codepoints, "%hx", &wc) != 1)
-                throw ErrorType::JSON_SYNTAX_ERROR;
+            int wc;
+            readHexQuad(wc);
             if ((wc&0xfc00) == 0xd800) {
-                if (!(cur[1] == '\\' && (cur[2] == 'u' || cur[2] == 'U')))
+                if (!(cur[0] == '\\' && (cur[1] == 'u' || cur[1] == 'U')))
                     throw ErrorType::UTF16_ENCODING_ERROR;
-                cp = (unsigned long) (wc&0x03ff)<<10;
-                cur += 3;
-                if (!(cur[0] && cur[1] && cur[2] && cur[3]))
-                    throw ErrorType::JSON_SYNTAX_ERROR;
-                codepoints[0] = cur[0], codepoints[1] = cur[1], codepoints[2] = cur[2], codepoints[3] = cur[3];
-                codepoints[4] = '\0';
-                cur += 3;
-                if (sscanf(codepoints, "%hx", &wc) != 1)
-                    throw ErrorType::JSON_SYNTAX_ERROR;
+                cp = (unsigned long) ((wc&0x03ff)<<10);
+                cur += 2;
+                readHexQuad(wc);
                 if ((wc&0xfc00) != 0xdc00)
                     throw ErrorType::UTF16_ENCODING_ERROR;
                 cp = 0x010000+(cp|(unsigned long) (wc&0x03ff));
             } else
-                cp = wc;
+                cp = (unsigned long) wc;
             if (cp&0xffffff80) {
                 int len;
                 for (len = 1; cp>>(5*len+1) && len < 6; ++len);
@@ -231,7 +232,7 @@ void $::unescape(char *codepoints) {
             break;
         }
         default:
-            codepoints[0] = *cur;
+            codepoints[0] = cur[-1];
     }
     codepoints[1] = '\0';
 }
@@ -324,8 +325,10 @@ std::string ParserGenerator::generateHeader() {
     if (!settings().noThrow)
         code += INDENT "void requireSymbol(char s);\n";
     code += INDENT "bool matchSymbol(char s);\n";
+    code += std::string(INDENT)+(settings().noThrow ? "bool" : "void")+" readHexQuad(int &value);\n";
     code += std::string(INDENT)+(settings().noThrow ? "ErrorType" : "void")+" unescape(char *codepoints);\n";
     code += INDENT "static bool isAlphanumeric(char c);\n";
+    code += INDENT "static int decodeHexDigit(char digit);\n";
     code += "\n";
 
     for (const Function &parseFunction : functions)
@@ -356,7 +359,8 @@ std::string ParserGenerator::generateSource(const std::string &relativeHeaderAdd
     code += "\n";
     if (featureBits&FEATURE_CSTDLIB)
         code += "#include <cstdlib>\n";
-    code += "#include <cstdio>\n"; // Currently always required for unescape function
+    if (featureBits&FEATURE_CSTDIO)
+        code += "#include <cstdio>\n";
     code += "#include \""+relativeHeaderAddress+"\"\n\n";
     code += signature;
     code += beginNamespace();
@@ -396,6 +400,18 @@ std::string ParserGenerator::generateSource(const std::string &relativeHeaderAdd
     code += INDENT INDENT "default:\n";
     code += INDENT INDENT INDENT "return false;\n";
     code += INDENT "}\n";
+    code += "}\n";
+
+    // decodeHexDigit
+    code += "\n";
+    code += "int "+className+"::decodeHexDigit(char digit) {\n";
+    code += INDENT "switch (digit) {\n";
+    for (int i = 0; i < 10; ++i)
+        code += INDENT INDENT "case '"+std::to_string(i)+"': return 0x0"+std::to_string(i)+";\n";
+    for (int i = 0; i < 6; ++i)
+        code += std::string(INDENT INDENT "case '")+"ABCDEF"[i]+"': case '"+"abcdef"[i]+"': return 0x0"+"abcdef"[i]+";\n";
+    code += INDENT "}\n";
+    code += INDENT "return -1;\n";
     code += "}\n";
 
     // Integer read functions

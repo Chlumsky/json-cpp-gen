@@ -25,7 +25,8 @@ std::string StringType::generateParserFunctionBody(ParserGenerator *generator, c
     body += indent+"if (*cur != '\"')\n";
     body += indent+INDENT+generator->generateErrorStatement(ParserGenerator::Error::STRING_EXPECTED)+";\n";
     body += indent+generateClear("value")+";\n";
-    body += indent+"while (*++cur != '\"') {\n";
+    body += indent+"++cur;\n";
+    body += indent+"while (*cur != '\"') {\n";
     body += indent+INDENT "if (*cur == '\\\\') {\n";
     body += indent+INDENT INDENT "char buffer[8];\n";
     if (generator->settings().noThrow) {
@@ -39,6 +40,7 @@ std::string StringType::generateParserFunctionBody(ParserGenerator *generator, c
     body += indent+INDENT "if (!*cur)\n";
     body += indent+INDENT INDENT+generator->generateErrorStatement(ParserGenerator::Error::UNEXPECTED_END_OF_FILE)+";\n";
     body += indent+INDENT+generateAppendChar("value", "*cur")+";\n";
+    body += indent+INDENT+"++cur;\n";
     body += indent+"}\n";
     body += indent+"++cur;\n";
     return body;
