@@ -16,7 +16,7 @@ public:
     std::string generateClear(const char *subject) const;
     std::string generateAppendChar(const char *subject, const char *x) const;
     std::string generateAppendCStr(const char *subject, const char *x) const;
-    std::string generateIterateChars(const char *subject, const char *elementName, const char *body) const;
+    std::string generateIterateChars(const char *subject, const char *iteratorName, const char *endIteratorName, const char *elementName, const char *body) const;
 
 private:
     StringAPI api;

@@ -421,12 +421,12 @@ std::string ParserGenerator::generateSource(const std::string &relativeHeaderAdd
         readUnsignedBody += INDENT "while (*cur >= '0' && *cur <= '9')";
         if (settings().checkIntegerOverflow) {
             readUnsignedBody += " {\n";
-            readUnsignedBody += INDENT INDENT "if (10*value < value)\n";
+            readUnsignedBody += INDENT INDENT "if (static_cast<T>(10*value) < value)\n";
             readUnsignedBody += INDENT INDENT INDENT+generateErrorStatement(ParserGenerator::Error::VALUE_OUT_OF_RANGE)+";\n";
-            readUnsignedBody += INDENT INDENT "value = 10*value+(*cur++-'0');\n";
+            readUnsignedBody += INDENT INDENT "value = static_cast<T>(10*value+(*cur++-'0'));\n";
             readUnsignedBody += INDENT "}\n";
         } else
-            readUnsignedBody += "\n" INDENT INDENT "value = 10*value+(*cur++-'0');\n";
+            readUnsignedBody += "\n" INDENT INDENT "value = static_cast<T>(10*value+(*cur++-'0'));\n";
     }
     if (featureBits&FEATURE_READ_SIGNED) {
         code += "\n";

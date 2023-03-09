@@ -228,7 +228,7 @@ void ConfigurationParser::parseStdVectorStdString(std::vector<std::string> &valu
     while (!matchSymbol(']')) {
         if (!separatorCheck)
             throw Error::JSON_SYNTAX_ERROR;
-        parseStdString((value.emplace_back(), value.back()));
+        parseStdString((value.resize(value.size()+1), value.back()));
         separatorCheck = matchSymbol(',');
     }
     if (separatorCheck == 1)
@@ -402,7 +402,7 @@ void ConfigurationParser::parseStdVectorConfigurationGeneratorDef(std::vector<Co
     while (!matchSymbol(']')) {
         if (!separatorCheck)
             throw Error::JSON_SYNTAX_ERROR;
-        parseConfigurationGeneratorDef((value.emplace_back(), value.back()));
+        parseConfigurationGeneratorDef((value.resize(value.size()+1), value.back()));
         separatorCheck = matchSymbol(',');
     }
     if (separatorCheck == 1)
@@ -462,7 +462,7 @@ void ConfigurationParser::parseStdVectorConfigurationStringDef(std::vector<Confi
     while (!matchSymbol(']')) {
         if (!separatorCheck)
             throw Error::JSON_SYNTAX_ERROR;
-        parseConfigurationStringDef((value.emplace_back(), value.back()));
+        parseConfigurationStringDef((value.resize(value.size()+1), value.back()));
         separatorCheck = matchSymbol(',');
     }
     if (separatorCheck == 1)
@@ -522,7 +522,7 @@ void ConfigurationParser::parseStdVectorConfigurationConstStringDef(std::vector<
     while (!matchSymbol(']')) {
         if (!separatorCheck)
             throw Error::JSON_SYNTAX_ERROR;
-        parseConfigurationConstStringDef((value.emplace_back(), value.back()));
+        parseConfigurationConstStringDef((value.resize(value.size()+1), value.back()));
         separatorCheck = matchSymbol(',');
     }
     if (separatorCheck == 1)
@@ -580,7 +580,7 @@ void ConfigurationParser::parseStdVectorConfigurationArrayContainerDef(std::vect
     while (!matchSymbol(']')) {
         if (!separatorCheck)
             throw Error::JSON_SYNTAX_ERROR;
-        parseConfigurationArrayContainerDef((value.emplace_back(), value.back()));
+        parseConfigurationArrayContainerDef((value.resize(value.size()+1), value.back()));
         separatorCheck = matchSymbol(',');
     }
     if (separatorCheck == 1)
@@ -640,7 +640,7 @@ void ConfigurationParser::parseStdVectorConfigurationFixedArrayContainerDef(std:
     while (!matchSymbol(']')) {
         if (!separatorCheck)
             throw Error::JSON_SYNTAX_ERROR;
-        parseConfigurationFixedArrayContainerDef((value.emplace_back(), value.back()));
+        parseConfigurationFixedArrayContainerDef((value.resize(value.size()+1), value.back()));
         separatorCheck = matchSymbol(',');
     }
     if (separatorCheck == 1)
@@ -694,7 +694,7 @@ void ConfigurationParser::parseStdVectorConfigurationStaticArrayContainerDef(std
     while (!matchSymbol(']')) {
         if (!separatorCheck)
             throw Error::JSON_SYNTAX_ERROR;
-        parseConfigurationStaticArrayContainerDef((value.emplace_back(), value.back()));
+        parseConfigurationStaticArrayContainerDef((value.resize(value.size()+1), value.back()));
         separatorCheck = matchSymbol(',');
     }
     if (separatorCheck == 1)
@@ -754,7 +754,7 @@ void ConfigurationParser::parseStdVectorConfigurationObjectContainerDef(std::vec
     while (!matchSymbol(']')) {
         if (!separatorCheck)
             throw Error::JSON_SYNTAX_ERROR;
-        parseConfigurationObjectContainerDef((value.emplace_back(), value.back()));
+        parseConfigurationObjectContainerDef((value.resize(value.size()+1), value.back()));
         separatorCheck = matchSymbol(',');
     }
     if (separatorCheck == 1)
@@ -789,7 +789,7 @@ void ConfigurationParser::parseStdVectorConfigurationObjectMapContainerDef(std::
     while (!matchSymbol(']')) {
         if (!separatorCheck)
             throw Error::JSON_SYNTAX_ERROR;
-        parseConfigurationObjectMapContainerDef((value.emplace_back(), value.back()));
+        parseConfigurationObjectMapContainerDef((value.resize(value.size()+1), value.back()));
         separatorCheck = matchSymbol(',');
     }
     if (separatorCheck == 1)
@@ -849,7 +849,7 @@ void ConfigurationParser::parseStdVectorConfigurationOptionalContainerDef(std::v
     while (!matchSymbol(']')) {
         if (!separatorCheck)
             throw Error::JSON_SYNTAX_ERROR;
-        parseConfigurationOptionalContainerDef((value.emplace_back(), value.back()));
+        parseConfigurationOptionalContainerDef((value.resize(value.size()+1), value.back()));
         separatorCheck = matchSymbol(',');
     }
     if (separatorCheck == 1)

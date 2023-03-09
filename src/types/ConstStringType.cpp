@@ -19,7 +19,7 @@ std::string ConstStringType::generateParserFunctionBody(ParserGenerator *generat
 std::string ConstStringType::generateSerializerFunctionBody(SerializerGenerator *generator, const std::string &indent) const {
     std::string body;
     body += indent+"write('\"');\n";
-    body += indent+generateIterateChars("value", "c", "writeEscaped(c);")+"\n";
+    body += indent+generateIterateChars("value", "i", "end", "c", "writeEscaped(c);")+"\n";
     body += indent+"write('\"');\n";
     return body;
 }
@@ -40,9 +40,11 @@ std::string ConstStringType::generateMoveFromString(const char *subject, const c
     return fillPattern(api.moveFromString, r, ARRAY_LENGTH(r));
 }
 
-std::string ConstStringType::generateIterateChars(const char *subject, const char *elementName, const char *body) const {
+std::string ConstStringType::generateIterateChars(const char *subject, const char *iteratorName, const char *endIteratorName, const char *elementName, const char *body) const {
     Replacer r[] = {
         { 'S', subject },
+        { 'I', iteratorName },
+        { 'Z', endIteratorName },
         { 'E', elementName },
         { 'F', body }
     };

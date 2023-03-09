@@ -9,7 +9,7 @@ static StringAPI stdStringAPI() {
     api.clear = "$S.clear()";
     api.appendChar = "$S.push_back($X)";
     api.appendCStr = "$S += $X";
-    api.iterateChars = "for (char $E : $S) { $F }";
+    api.iterateChars = "for (std::string::const_iterator $I = $S.begin(), $Z = $S.end(); $I != $Z; ++$I) { char $E = *$I; $F }";
     return api;
 }
 
@@ -49,7 +49,7 @@ std::string StringType::generateParserFunctionBody(ParserGenerator *generator, c
 std::string StringType::generateSerializerFunctionBody(SerializerGenerator *generator, const std::string &indent) const {
     std::string body;
     body += indent+"write('\"');\n";
-    body += indent+generateIterateChars("value", "c", "writeEscaped(c);")+"\n";
+    body += indent+generateIterateChars("value", "i", "end", "c", "writeEscaped(c);")+"\n";
     body += indent+"write('\"');\n";
     return body;
 }
@@ -77,9 +77,11 @@ std::string StringType::generateAppendCStr(const char *subject, const char *x) c
     return fillPattern(api.appendCStr, r, ARRAY_LENGTH(r));
 }
 
-std::string StringType::generateIterateChars(const char *subject, const char *elementName, const char *body) const {
+std::string StringType::generateIterateChars(const char *subject, const char *iteratorName, const char *endIteratorName, const char *elementName, const char *body) const {
     Replacer r[] = {
         { 'S', subject },
+        { 'I', iteratorName },
+        { 'Z', endIteratorName },
         { 'E', elementName },
         { 'F', body }
     };

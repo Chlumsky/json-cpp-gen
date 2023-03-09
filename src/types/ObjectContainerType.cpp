@@ -74,7 +74,7 @@ std::string ObjectContainerType::generateSerializerFunctionBody(SerializerGenera
         iterBody += " }";
     } else
         iterBody += generator->generateValueSerialization(elementType(), "elem");
-    body += indent+generateIterateElements("value", "i", "key", "elem", iterBody.c_str())+"\n";
+    body += indent+generateIterateElements("value", "i", "end", "key", "elem", iterBody.c_str())+"\n";
     body += indent+"write('}');\n";
     return body;
 }
@@ -98,12 +98,13 @@ std::string ObjectContainerType::generateRefByKey(const char *subject, const cha
     return fillPattern(objectContainerTemplate()->api().refByKey, r, ARRAY_LENGTH(r));
 }
 
-std::string ObjectContainerType::generateIterateElements(const char *subject, const char *pairName, const char *keyName, const char *elementName, const char *body) const {
+std::string ObjectContainerType::generateIterateElements(const char *subject, const char *iteratorName, const char *endIteratorName, const char *keyName, const char *elementName, const char *body) const {
     Replacer r[] = {
         { 'U', keyType()->name().body().c_str() },
         { 'T', elementType()->name().body().c_str() },
         { 'S', subject },
-        { 'I', pairName },
+        { 'I', iteratorName },
+        { 'Z', endIteratorName },
         { 'K', keyName },
         { 'V', elementName },
         { 'F', body }

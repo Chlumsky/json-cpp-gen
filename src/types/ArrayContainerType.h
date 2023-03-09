@@ -14,6 +14,6 @@ public:
     virtual std::string generateSerializerFunctionBody(SerializerGenerator *generator, const std::string &indent) const override;
     std::string generateClear(const char *subject) const;
     std::string generateRefAppended(const char *subject) const;
-    std::string generateIterateElements(const char *subject, const char *elementName, const char *body) const;
+    std::string generateIterateElements(const char *subject, const char *iteratorName, const char *endIteratorName, const char *elementName, const char *body) const;
 
 };

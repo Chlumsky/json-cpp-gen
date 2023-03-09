@@ -29,7 +29,7 @@ std::string FixedArrayContainerType::generateSerializerFunctionBody(SerializerGe
     iterBody += "write(','); ";
     iterBody += "prev = true; ";
     iterBody += generator->generateValueSerialization(elementType(), "elem");
-    body += indent+generateIterateElements("value", "elem", iterBody.c_str())+"\n";
+    body += indent+generateIterateElements("value", "i", "end", "elem", iterBody.c_str())+"\n";
     body += indent+"write(']');\n";
     return body;
 }
@@ -52,10 +52,12 @@ std::string FixedArrayContainerType::generateMoveFromArrayContainer(const char *
     return fillPattern(fixedArrayContainerTemplate()->api().moveFromArrayContainer, r, ARRAY_LENGTH(r));
 }
 
-std::string FixedArrayContainerType::generateIterateElements(const char *subject, const char *elementName, const char *body) const {
+std::string FixedArrayContainerType::generateIterateElements(const char *subject, const char *iteratorName, const char *endIteratorName, const char *elementName, const char *body) const {
     Replacer r[] = {
         { 'T', elementType()->name().body().c_str() },
         { 'S', subject },
+        { 'I', iteratorName },
+        { 'Z', endIteratorName },
         { 'E', elementName },
         { 'F', body }
     };
