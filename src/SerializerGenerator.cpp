@@ -189,6 +189,7 @@ std::string SerializerGenerator::generateSource(const std::string &relativeHeade
     code += "}\n";
 
     // Integer write functions
+    // - this implementation requires that '0'+1 == '1', '0'+2 == '2', ... , '0'+9 == '9'
     if (featureBits&FEATURE_WRITE_SIGNED) {
         code += "\n";
         code += "template <typename U, typename T>\n";

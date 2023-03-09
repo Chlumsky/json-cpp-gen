@@ -44,4 +44,7 @@ public:
     std::string generateSource();
     std::string generateSource(const std::string &relativeHeaderAddress);
 
+private:
+    std::string generateReadIntegerBody(bool signedInt) const;
+
 };

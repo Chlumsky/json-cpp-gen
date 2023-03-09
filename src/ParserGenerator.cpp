@@ -284,6 +284,54 @@ std::string ParserGenerator::generateErrorStatement(const char *errorName) const
     return std::string(settings().noThrow ? "return" : "throw")+" Error::"+errorName;
 }
 
+std::string ParserGenerator::generateReadIntegerBody(bool signedInt) const {
+    // This implementation requires that '1'-'0' == 1, '2'-'0' == 2, ... , '9'-'0' == 9
+    std::string body;
+    if (signedInt)
+        body += INDENT "bool negative = *cur == '-' && (++cur, true);\n";
+    body += INDENT "if (*cur >= '0' && *cur <= '9')\n";
+    body += INDENT INDENT "value = *cur++-'0';\n";
+    body += INDENT "else\n";
+    body += INDENT INDENT+generateErrorStatement(ParserGenerator::Error::TYPE_MISMATCH)+";\n";
+    body += INDENT "while (*cur >= '0' && *cur <= '9')";
+    if (settings().checkIntegerOverflow) {
+        body += " {\n";
+        body += INDENT INDENT "if (";
+        if (signedInt) {
+            // value has already overflown to the lowest representable negative value (e.g. -128)
+            body += "value < 0 || (";
+            // Optional: Necessary overflow condition evaluated first to avoid evaluating multiple
+            body += "value >= JSON_CPP_MAX_INTEGER(T)/10 && (";
+            // Adding another digit in this case will definitely overflow
+            body += "value > JSON_CPP_MAX_INTEGER(T)/10 || (";
+            // Only the remaining cases can be found by checking that value becomes lower after overflow
+            body += "static_cast<T>(10*value+(*cur-'0')) < value && (";
+            // Special exception - but only if negative:
+            body += "!negative || ";
+            // value will overflow exactly to -(JSON_CPP_MAX_INTEGER(T)+1) which is OK
+            body += "*cur-'0' != (JSON_CPP_MAX_INTEGER(T)-9)%10)))))\n";
+        } else {
+            // Optional: Necessary overflow condition evaluated first to avoid evaluating multiple
+            body += "value >= JSON_CPP_MAX_INTEGER(T)/10 && (";
+            // Adding another digit in this case will definitely overflow
+            body += "value > JSON_CPP_MAX_INTEGER(T)/10 || ";
+            // Only the remaining cases can be found by checking that value becomes lower after overflow
+            body += "static_cast<T>(10*value+(*cur-'0')) < value))\n";
+        }
+        body += INDENT INDENT INDENT+generateErrorStatement(ParserGenerator::Error::VALUE_OUT_OF_RANGE)+";\n";
+        body += INDENT INDENT "value = static_cast<T>(10*value+(*cur++-'0'));\n";
+        body += INDENT "}\n";
+    } else
+        body += "\n" INDENT INDENT "value = static_cast<T>(10*value+(*cur++-'0'));\n";
+    if (signedInt) {
+        body += INDENT "if (negative)\n";
+        body += INDENT INDENT "value = -value;\n";
+    }
+    if (settings().noThrow)
+        body += INDENT "return Error::OK;\n";
+    return body;
+}
+
 std::string ParserGenerator::generateHeader() {
     std::string code;
     code += "\n";
@@ -360,6 +408,14 @@ std::string ParserGenerator::generateSource(const std::string &relativeHeaderAdd
     if (featureBits&FEATURE_CSTDLIB)
         code += "#include <cstdlib>\n";
     code += "#include \""+relativeHeaderAddress+"\"\n\n";
+
+    if ((featureBits&(FEATURE_READ_SIGNED|FEATURE_READ_UNSIGNED)) && settings().checkIntegerOverflow) {
+        code += "#ifndef JSON_CPP_MAX_INTEGER\n";
+        // This requires that integer type T is encoded as two's complement or unsigned with exactly 8*sizeof(T) binary digits
+        code += "#define JSON_CPP_MAX_INTEGER(T) ((T) ~(((T) ~(T) 0 <= (T) 0 ? -2 : 0)*((T) 1<<(8*sizeof(T)-2))))\n";
+        code += "#endif\n\n";
+    }
+
     code += beginNamespace();
 
     // Error member functions
@@ -412,41 +468,18 @@ std::string ParserGenerator::generateSource(const std::string &relativeHeaderAdd
     code += "}\n";
 
     // Integer read functions
-    std::string readUnsignedBody;
-    if (featureBits&(FEATURE_READ_SIGNED|FEATURE_READ_UNSIGNED)) {
-        readUnsignedBody += INDENT "if (*cur >= '0' && *cur <= '9')\n";
-        readUnsignedBody += INDENT INDENT "value = *cur++-'0';\n";
-        readUnsignedBody += INDENT "else\n";
-        readUnsignedBody += INDENT INDENT+generateErrorStatement(ParserGenerator::Error::TYPE_MISMATCH)+";\n";
-        readUnsignedBody += INDENT "while (*cur >= '0' && *cur <= '9')";
-        if (settings().checkIntegerOverflow) {
-            readUnsignedBody += " {\n";
-            readUnsignedBody += INDENT INDENT "if (static_cast<T>(10*value) < value)\n";
-            readUnsignedBody += INDENT INDENT INDENT+generateErrorStatement(ParserGenerator::Error::VALUE_OUT_OF_RANGE)+";\n";
-            readUnsignedBody += INDENT INDENT "value = static_cast<T>(10*value+(*cur++-'0'));\n";
-            readUnsignedBody += INDENT "}\n";
-        } else
-            readUnsignedBody += "\n" INDENT INDENT "value = static_cast<T>(10*value+(*cur++-'0'));\n";
-    }
     if (featureBits&FEATURE_READ_SIGNED) {
         code += "\n";
         code += "template <typename T>\n";
         code += (settings().noThrow ? className+"::Error::Type " : "void ")+className+"::readSigned(T &value) {\n";
-        code += INDENT "bool negative = *cur == '-' && (++cur, true);\n";
-        code += readUnsignedBody;
-        code += INDENT "if (negative)\n";
-        code += INDENT INDENT "value = -value;\n";
-        if (settings().noThrow)
-            code += INDENT "return Error::OK;\n";
+        code += generateReadIntegerBody(true);
         code += "}\n";
     }
     if (featureBits&FEATURE_READ_UNSIGNED) {
         code += "\n";
         code += "template <typename T>\n";
         code += (settings().noThrow ? className+"::Error::Type " : "void ")+className+"::readUnsigned(T &value) {\n";
-        code += readUnsignedBody;
-        if (settings().noThrow)
-            code += INDENT "return Error::OK;\n";
+        code += generateReadIntegerBody(false);
         code += "}\n";
     }
 
