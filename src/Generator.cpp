@@ -37,6 +37,29 @@ std::string Generator::getJsonEnumValueLiteral(const std::string &enumValue) con
     return "\""+enumValue+"\""; // TODO
 }
 
+std::string Generator::charLiteral(char c) {
+    switch (c) {
+        case '\0': return "'\\0'";
+        case '\b': return "'\\b'";
+        case '\f': return "'\\f'";
+        case '\n': return "'\\n'";
+        case '\r': return "'\\r'";
+        case '\t': return "'\\t'";
+        case '\'': return "'\\''";
+        case '\\': return "'\\\\'";
+    }
+    if (c >= 0x20 && c < 0x7f) {
+        char buffer[] = "'#'";
+        buffer[1] = c;
+        return buffer;
+    } {
+        char buffer[] = "'\\x##'";
+        buffer[3] = "0123456789abcdef"[c>>4&0x0f];
+        buffer[4] = "0123456789abcdef"[c&0x0f];
+        return buffer;
+    }
+}
+
 std::string Generator::generateFunctionName(const char *prefix, const Type *type) {
     std::string functionName = prefix+formatName(type->name().body(), NameFormat::CAMELCASE_CAPITAL);
     for (char c : type->name().suffix()) {

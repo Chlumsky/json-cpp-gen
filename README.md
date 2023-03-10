@@ -146,9 +146,12 @@ and would cause collisions.
     "name": "std::string",
     "api": {
         "clear": "$S.clear()",
+        "getLength": "$S.size()",
+        "getCharAt": "$S[$I]",
         "appendChar": "$S.push_back($X)",
         "appendCStr": "$S += $X",
-        "iterateChars": "for (char $E : $S) { $F }"
+        "iterateChars": "for (char $E : $S) { $F }",
+        "equalsStringLiteral": "$S == $X"
     }
 } ]
 ```

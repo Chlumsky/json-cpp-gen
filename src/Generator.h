@@ -26,6 +26,8 @@ public:
     inline const StringType * stringType() const { return mStringType; }
     inline const Settings & settings() const { return mSettings; }
 
+    static std::string charLiteral(char c);
+
 protected:
     struct Function {
         const Type *type;

@@ -60,20 +60,26 @@ struct Settings {
 struct StringAPI {
     // $S = subject string
     std::string clear;
+    // $S = subject string
+    std::string getLength;
+    // $S = subject string, $I = position of char
+    std::string getCharAt;
     // $S = subject string, $X = char to append
     std::string appendChar;
     // $S = subject string, $X = C string to append
     std::string appendCStr;
-    // $S = subject string, $E = name of element (char) variable, $F = loop body
+    // $S = subject string, $I = iterator variable name, $Z = end variable name, $E = name of element (char) variable, $F = loop body
     std::string iterateChars;
+    // $S = subject string, $X = string literal to compare
+    std::string equalsStringLiteral;
 };
 
 struct ConstStringAPI {
-    // $S = subject fixed string, $X = source string
+    // $S = subject const string, $X = source string
     std::string copyFromString;
-    // $S = subject fixed string, $X = source string
+    // $S = subject const string, $X = source string
     std::string moveFromString;
-    // $S = subject fixed string, $E = name of element (char) variable, $F = loop body
+    // $S = subject const string, $I = iterator variable name, $Z = end variable name, $E = name of element (char) variable, $F = loop body
     std::string iterateChars;
 };
 
@@ -82,7 +88,7 @@ struct ArrayContainerAPI {
     std::string clear;
     // $T = element type, $S = subject array
     std::string refAppended;
-    // $T = element type, $S = subject array, $E = name of element variable, $F = loop body
+    // $T = element type, $S = subject array, $I = iterator variable name, $Z = end variable name, $E = name of element variable, $F = loop body
     std::string iterateElements;
 };
 
@@ -91,7 +97,7 @@ struct FixedArrayContainerAPI {
     std::string copyFromArrayContainer;
     // $T = element type, $S = subject fixed array, $X = source array
     std::string moveFromArrayContainer;
-    // $T = element type, $S = subject fixed array, $E = name of element constref variable, $F = loop body
+    // $T = element type, $S = subject fixed array, $I = iterator variable name, $Z = end variable name, $E = name of element constref variable, $F = loop body
     std::string iterateElements;
 };
 
@@ -105,7 +111,7 @@ struct ObjectContainerAPI {
     std::string clear;
     // $U = key string type, $T = element type, $S = subject object, $K = key
     std::string refByKey;
-    // $U = key string type, $T = element type, $S = subject object, $I = iterator variable name, $K = key variable name, $V = element constref variable name, $F = loop body
+    // $U = key string type, $T = element type, $S = subject object, $I = iterator variable name, $Z = end variable name, $K = key variable name, $V = element constref variable name, $F = loop body
     std::string iterateElements;
 };
 

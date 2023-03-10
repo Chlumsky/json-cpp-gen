@@ -4,6 +4,28 @@
 #include "../ParserGenerator.h"
 #include "../SerializerGenerator.h"
 
+class EnumType::ParserSwitchTreeCaseGenerator : public ParserGenerator::SwitchTreeCaseGenerator {
+
+public:
+    inline explicit ParserSwitchTreeCaseGenerator(const EnumType *parent);
+    virtual std::string operator()(ParserGenerator *parserGenerator, const std::string &caseLabel, const StringType *valueType, const char *value, int knownMinLength, const std::string &indent) override;
+
+private:
+    std::string prefix;
+
+};
+
+EnumType::ParserSwitchTreeCaseGenerator::ParserSwitchTreeCaseGenerator(const EnumType *parent) : prefix(parent->valuePrefix()) { }
+
+std::string EnumType::ParserSwitchTreeCaseGenerator::operator()(ParserGenerator *parserGenerator, const std::string &caseLabel, const StringType *valueType, const char *value, int, const std::string &indent) {
+    std::string body;
+    body += indent+"if ("+valueType->generateEqualsStringLiteral(value, parserGenerator->getJsonMemberNameLiteral(caseLabel).c_str())+") {\n";
+    body += indent+INDENT "value = "+prefix+caseLabel+";\n";
+    body += indent+INDENT "return"+(parserGenerator->settings().noThrow ? " Error::OK" : "")+"; \n";
+    body += indent+"}\n";
+    return body;
+}
+
 EnumType::EnumType(const std::string &name, bool enumClass) : DirectType(TypeName(name)), enumClass(enumClass) { }
 
 EnumType::EnumType(std::string &&name, bool enumClass) : DirectType(TypeName((std::string &&) name)), enumClass(enumClass) { }
@@ -21,18 +43,12 @@ std::string EnumType::generateParserFunctionBody(ParserGenerator *generator, con
     std::string body;
     if (values.empty())
         return indent+generator->generateErrorStatement(ParserGenerator::Error::UNKNOWN_ENUM_VALUE)+";\n";
-    std::string prefix = valuePrefix();
     // TODO make str a class member to reduce the number of allocations
     body += indent+generator->stringType()->name().variableDeclaration("str")+";\n";
     body += generator->generateValueParse(generator->stringType(), "str", indent);
-    body += indent;
-    for (const std::string &enumValue : values) {
-        body += "if (str == "+generator->getJsonEnumValueLiteral(enumValue)+")\n";
-        body += indent+INDENT "value = "+prefix+enumValue+";\n";
-        body += indent+"else ";
-    }
-    body.back() = '\n';
-    body += indent+INDENT+generator->generateErrorStatement(ParserGenerator::Error::UNKNOWN_ENUM_VALUE)+";\n";
+    ParserSwitchTreeCaseGenerator switchTreeCaseGenerator(this);
+    body += generator->generateSwitchTree(&switchTreeCaseGenerator, StringSwitchTree::build(values.data(), values.size()).get(), generator->stringType(), "str", indent);
+    body += indent+generator->generateErrorStatement(ParserGenerator::Error::UNKNOWN_ENUM_VALUE)+";";
     return body;
 }
 

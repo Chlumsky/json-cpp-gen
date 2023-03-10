@@ -7,9 +7,12 @@
 static StringAPI stdStringAPI() {
     StringAPI api;
     api.clear = "$S.clear()";
+    api.getLength = "$S.size()";
+    api.getCharAt = "$S[$I]";
     api.appendChar = "$S.push_back($X)";
     api.appendCStr = "$S += $X";
     api.iterateChars = "for (std::string::const_iterator $I = $S.begin(), $Z = $S.end(); $I != $Z; ++$I) { char $E = *$I; $F }";
+    api.equalsStringLiteral = "$S == $X";
     return api;
 }
 
@@ -61,6 +64,21 @@ std::string StringType::generateClear(const char *subject) const {
     return fillPattern(api.clear, r, ARRAY_LENGTH(r));
 }
 
+std::string StringType::generateGetLength(const char *subject) const {
+    Replacer r[] = {
+        { 'S', subject }
+    };
+    return fillPattern(api.getLength, r, ARRAY_LENGTH(r));
+}
+
+std::string StringType::generateGetCharAt(const char *subject, const char *index) const {
+    Replacer r[] = {
+        { 'S', subject },
+        { 'I', index }
+    };
+    return fillPattern(api.getCharAt, r, ARRAY_LENGTH(r));
+}
+
 std::string StringType::generateAppendChar(const char *subject, const char *x) const {
     Replacer r[] = {
         { 'S', subject },
@@ -86,4 +104,12 @@ std::string StringType::generateIterateChars(const char *subject, const char *it
         { 'F', body }
     };
     return fillPattern(api.iterateChars, r, ARRAY_LENGTH(r));
+}
+
+std::string StringType::generateEqualsStringLiteral(const char *subject, const char *x) const {
+    Replacer r[] = {
+        { 'S', subject },
+        { 'X', x }
+    };
+    return fillPattern(api.equalsStringLiteral, r, ARRAY_LENGTH(r));
 }

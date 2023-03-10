@@ -5,6 +5,31 @@
 #include "../ParserGenerator.h"
 #include "../SerializerGenerator.h"
 
+class StructureType::ParserSwitchTreeCaseGenerator : public ParserGenerator::SwitchTreeCaseGenerator {
+
+public:
+    inline explicit ParserSwitchTreeCaseGenerator(const StructureType *parent) : parent(parent) { }
+    virtual std::string operator()(ParserGenerator *parserGenerator, const std::string &caseLabel, const StringType *valueType, const char *value, int knownMinLength, const std::string &indent) override;
+
+private:
+    const StructureType *parent;
+
+};
+
+std::string StructureType::ParserSwitchTreeCaseGenerator::operator()(ParserGenerator *parserGenerator, const std::string &caseLabel, const StringType *valueType, const char *value, int, const std::string &indent) {
+    std::string body;
+    body += indent+"if ("+valueType->generateEqualsStringLiteral(value, parserGenerator->getJsonMemberNameLiteral(caseLabel).c_str())+") {\n";
+    if (parserGenerator->settings().noThrow) {
+        body += indent+INDENT "if (Error error = "+parserGenerator->generateParserFunctionCall(parent->findMember(caseLabel), "value."+caseLabel)+")\n";
+        body += indent+INDENT INDENT "return error;\n";
+    } else {
+        body += indent+INDENT+parserGenerator->generateParserFunctionCall(parent->findMember(caseLabel), "value."+caseLabel)+";\n";
+    }
+    body += indent+INDENT "continue;\n";
+    body += indent+"}\n";
+    return body;
+}
+
 StructureType::StructureType(const std::string &name) : DirectType(TypeName(name)) { }
 
 StructureType::StructureType(std::string &&name) : DirectType(TypeName((std::string &&) name)) { }
@@ -25,7 +50,7 @@ std::string StructureType::generateParserFunctionBody(ParserGenerator *generator
         body += indent+"requireSymbol('{');\n";
     if (generator->settings().strictSyntaxCheck)
         body += indent+"int separatorCheck = -1;\n";
-    body += indent+"while (!matchSymbol('}')) {\n";
+    body += indent+"for (; !matchSymbol('}'); "+(generator->settings().strictSyntaxCheck ? "separatorCheck = " : "")+"matchSymbol(',')) {\n";
     if (generator->settings().strictSyntaxCheck) {
         body += indent+INDENT "if (!separatorCheck)\n";
         body += indent+INDENT INDENT+generator->generateErrorStatement(ParserGenerator::Error::JSON_SYNTAX_ERROR)+";\n";
@@ -36,41 +61,22 @@ std::string StructureType::generateParserFunctionBody(ParserGenerator *generator
         body += indent+INDENT INDENT+generator->generateErrorStatement(ParserGenerator::Error::JSON_SYNTAX_ERROR)+";\n";
     } else
         body += indent+INDENT "requireSymbol(':');\n";
-    std::string elseIndent = indent;
     if (!orderedMembers.empty()) {
-        bool first = true;
-        if (generator->settings().noThrow) {
-            for (const std::pair<std::string, const Type *> &member : orderedMembers) {
-                body += indent+INDENT+(first ? "if" : "} else if")+" (key == "+generator->getJsonMemberNameLiteral(member.first)+") {\n";
-                body += indent+INDENT INDENT+"if (Error error = "+generator->generateParserFunctionCall(member.second, "value."+member.first)+")\n";
-                body += indent+INDENT INDENT INDENT "return error;\n";
-                first = false;
-            }
-            body += indent+INDENT "} else {\n";
-        } else {
-            for (const std::pair<std::string, const Type *> &member : orderedMembers) {
-                body += indent+INDENT+(first ? "if" : "else if")+" (key == "+generator->getJsonMemberNameLiteral(member.first)+")\n";
-                body += indent+INDENT INDENT+generator->generateParserFunctionCall(member.second, "value."+member.first)+";\n";
-                first = false;
-            }
-            body += indent+INDENT "else\n";
-        }
-        elseIndent += INDENT;
+        std::vector<std::string> labels;
+        labels.reserve(orderedMembers.size());
+        for (const std::pair<std::string, const Type *> &member : orderedMembers)
+            labels.push_back(member.first);
+        ParserSwitchTreeCaseGenerator switchTreeCaseGenerator(this);
+        body += generator->generateSwitchTree(&switchTreeCaseGenerator, StringSwitchTree::build(labels.data(), labels.size()).get(), generator->stringType(), "key", indent+INDENT);
     }
     if (generator->settings().ignoreExtraKeys) {
         if (generator->settings().noThrow) {
-            body += elseIndent+INDENT "if (Error error = skipValue())\n";
-            body += elseIndent+INDENT INDENT "return error;\n";
+            body += indent+INDENT "if (Error error = skipValue())\n";
+            body += indent+INDENT INDENT "return error;\n";
         } else
-            body += elseIndent+INDENT "skipValue();\n";
+            body += indent+INDENT "skipValue();\n";
     } else
-        body += elseIndent+INDENT+generator->generateErrorStatement(ParserGenerator::Error::UNKNOWN_KEY)+";\n";
-    if (!orderedMembers.empty() && generator->settings().noThrow)
-        body += indent+INDENT "}\n";
-    if (generator->settings().strictSyntaxCheck)
-        body += indent+INDENT "separatorCheck = matchSymbol(',');\n";
-    else
-        body += indent+INDENT "matchSymbol(',');\n";
+        body += indent+INDENT+generator->generateErrorStatement(ParserGenerator::Error::UNKNOWN_KEY)+";\n";
     body += indent+"}\n";
     if (generator->settings().strictSyntaxCheck) {
         body += indent+"if (separatorCheck == 1)\n";

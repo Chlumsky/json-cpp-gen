@@ -16,6 +16,8 @@ public:
     const std::vector<std::string> & getValues() const;
 
 private:
+    class ParserSwitchTreeCaseGenerator;
+
     bool enumClass;
     std::vector<std::string> values;
 

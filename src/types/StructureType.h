@@ -22,6 +22,8 @@ public:
     bool isFinalized() const;
 
 private:
+    class ParserSwitchTreeCaseGenerator;
+
     std::map<std::string, const Type *> members;
     std::vector<std::pair<std::string, const Type *> > orderedMembers;
     bool finalized = false;

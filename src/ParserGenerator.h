@@ -6,6 +6,7 @@
 #include <set>
 #include <map>
 #include "TypeSet.h"
+#include "StringSwitchTree.h"
 #include "Generator.h"
 
 #define FOR_PARSER_ERRORS(M) \
@@ -29,6 +30,12 @@ public:
         #undef PARSER_GENERATOR_ERROR_STR_DECL
     };
 
+    class SwitchTreeCaseGenerator {
+    public:
+        virtual ~SwitchTreeCaseGenerator() = default;
+        virtual std::string operator()(ParserGenerator *parserGenerator, const std::string &caseLabel, const StringType *valueType, const char *value, int knownMinLength, const std::string &indent) = 0;
+    };
+
     static const unsigned FEATURE_READ_SIGNED;
     static const unsigned FEATURE_READ_UNSIGNED;
 
@@ -39,6 +46,7 @@ public:
     std::string generateParserFunctionCall(const Type *type, const std::string &outputArg);
     std::string generateValueParse(const Type *type, const std::string &outputArg, const std::string &indent);
     std::string generateErrorStatement(const char *errorName) const; // throw / return depending on config
+    std::string generateSwitchTree(SwitchTreeCaseGenerator *caseGenerator, const StringSwitchTree *switchTree, const StringType *valueType, const char *value, const std::string &indent, int knownMinLength = 0);
 
     std::string generateHeader();
     std::string generateSource();

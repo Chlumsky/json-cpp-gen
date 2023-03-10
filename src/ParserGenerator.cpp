@@ -284,6 +284,41 @@ std::string ParserGenerator::generateErrorStatement(const char *errorName) const
     return std::string(settings().noThrow ? "return" : "throw")+" Error::"+errorName;
 }
 
+std::string ParserGenerator::generateSwitchTree(SwitchTreeCaseGenerator *caseGenerator, const StringSwitchTree *switchTree, const StringType *valueType, const char *value, const std::string &indent, int knownMinLength) {
+    std::string body;
+    if (switchTree) {
+        if (switchTree->position == StringSwitchTree::LEAF_NODE_MARKER)
+            return (*caseGenerator)(this, switchTree->label, valueType, value, knownMinLength, indent);
+        if (switchTree->position == StringSwitchTree::LENGTH_SWITCH_MARKER) {
+            body += indent+"switch ("+valueType->generateGetLength(value)+") {\n";
+            for (const std::map<int, std::unique_ptr<StringSwitchTree> >::value_type &branch : switchTree->branches) {
+                body += indent+INDENT "case "+std::to_string(branch.first)+":\n";
+                body += generateSwitchTree(caseGenerator, branch.second.get(), valueType, value, indent+INDENT INDENT, branch.first > knownMinLength ? branch.first : knownMinLength);
+                body += indent+INDENT INDENT "break;\n";
+            }
+            body += indent+"}\n";
+        } else if (switchTree->position >= 0) {
+            std::string switchIndent = indent;
+            bool lengthCondition = switchTree->position >= knownMinLength;
+            if (lengthCondition) {
+                body += indent+"if ("+valueType->generateGetLength(value)+" > "+std::to_string(switchTree->position)+") {\n";
+                knownMinLength = switchTree->position+1;
+                switchIndent += INDENT;
+            }
+            body += switchIndent+"switch ("+valueType->generateGetCharAt(value, std::to_string(switchTree->position).c_str())+") {\n";
+            for (const std::map<int, std::unique_ptr<StringSwitchTree> >::value_type &branch : switchTree->branches) {
+                body += switchIndent+INDENT "case "+Generator::charLiteral(char(branch.first))+":\n";
+                body += generateSwitchTree(caseGenerator, branch.second.get(), valueType, value, switchIndent+INDENT INDENT, knownMinLength);
+                body += switchIndent+INDENT INDENT "break;\n";
+            }
+            body += switchIndent+"}\n";
+            if (lengthCondition)
+                body += indent+"}\n";
+        }
+    }
+    return body;
+}
+
 std::string ParserGenerator::generateReadIntegerBody(bool signedInt) const {
     // This implementation requires that '1'-'0' == 1, '2'-'0' == 2, ... , '9'-'0' == 9
     std::string body;

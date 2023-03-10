@@ -235,161 +235,56 @@ void ConfigurationParser::parseStdVectorStdString(std::vector<std::string> &valu
         throw Error::JSON_SYNTAX_ERROR;
 }
 
-void ConfigurationParser::parseSettingsJsonIO(Settings::JsonIO &value) {
-    std::string str;
-    parseStdString(str);
-    if (str == "NULL_TERMINATED_STRING")
-        value = Settings::JsonIO::NULL_TERMINATED_STRING;
-    else
-        throw Error::UNKNOWN_ENUM_VALUE;
-}
-
-void ConfigurationParser::parseNameFormat(NameFormat &value) {
-    std::string str;
-    parseStdString(str);
-    if (str == "ANY")
-        value = NameFormat::ANY;
-    else if (str == "UPPERCASE_UNDERSCORE")
-        value = NameFormat::UPPERCASE_UNDERSCORE;
-    else if (str == "LOWERCASE_UNDERSCORE")
-        value = NameFormat::LOWERCASE_UNDERSCORE;
-    else if (str == "UPERCASE_DASH")
-        value = NameFormat::UPERCASE_DASH;
-    else if (str == "LOWERCASE_DASH")
-        value = NameFormat::LOWERCASE_DASH;
-    else if (str == "CAMELCASE")
-        value = NameFormat::CAMELCASE;
-    else if (str == "CAMELCASE_CAPITAL")
-        value = NameFormat::CAMELCASE_CAPITAL;
-    else
-        throw Error::UNKNOWN_ENUM_VALUE;
-}
-
-void ConfigurationParser::parseBool(bool &value) {
-    skipWhitespace();
-    if (cur[0] == 'f' && cur[1] == 'a' && cur[2] == 'l' && cur[3] == 's' && cur[4] == 'e' && !isAlphanumeric(cur[5]) && cur[5] != '_' && ((cur += 5), true))
-        value = false;
-    else if (cur[0] == 't' && cur[1] == 'r' && cur[2] == 'u' && cur[3] == 'e' && !isAlphanumeric(cur[4]) && cur[4] != '_' && ((cur += 4), true))
-        value = true;
-    else
-        throw Error::TYPE_MISMATCH;
-}
-
-void ConfigurationParser::parseSettingsNanPolicy(Settings::NanPolicy &value) {
-    std::string str;
-    parseStdString(str);
-    if (str == "SERIALIZER_ERROR")
-        value = Settings::NanPolicy::SERIALIZER_ERROR;
-    else if (str == "ZERO_VALUE")
-        value = Settings::NanPolicy::ZERO_VALUE;
-    else if (str == "NULL_VALUE")
-        value = Settings::NanPolicy::NULL_VALUE;
-    else if (str == "UPPERCASE_NAN_STRING_VALUE")
-        value = Settings::NanPolicy::UPPERCASE_NAN_STRING_VALUE;
-    else if (str == "LOWERCASE_NAN_STRING_VALUE")
-        value = Settings::NanPolicy::LOWERCASE_NAN_STRING_VALUE;
-    else if (str == "MIXED_CASE_NAN_STRING_VALUE")
-        value = Settings::NanPolicy::MIXED_CASE_NAN_STRING_VALUE;
-    else
-        throw Error::UNKNOWN_ENUM_VALUE;
-}
-
-void ConfigurationParser::parseSettingsInfPolicy(Settings::InfPolicy &value) {
-    std::string str;
-    parseStdString(str);
-    if (str == "SERIALIZER_ERROR")
-        value = Settings::InfPolicy::SERIALIZER_ERROR;
-    else if (str == "EXPONENT_OVERFLOW")
-        value = Settings::InfPolicy::EXPONENT_OVERFLOW;
-    else if (str == "ZERO_VALUE")
-        value = Settings::InfPolicy::ZERO_VALUE;
-    else if (str == "NULL_VALUE")
-        value = Settings::InfPolicy::NULL_VALUE;
-    else if (str == "UPPERCASE_INF_STRING_VALUE")
-        value = Settings::InfPolicy::UPPERCASE_INF_STRING_VALUE;
-    else if (str == "LOWERCASE_INF_STRING_VALUE")
-        value = Settings::InfPolicy::LOWERCASE_INF_STRING_VALUE;
-    else if (str == "CAPITALIZED_INF_STRING_VALUE")
-        value = Settings::InfPolicy::CAPITALIZED_INF_STRING_VALUE;
-    else if (str == "UPPERCASE_INFINITY_STRING_VALUE")
-        value = Settings::InfPolicy::UPPERCASE_INFINITY_STRING_VALUE;
-    else if (str == "LOWERCASE_INFINITY_STRING_VALUE")
-        value = Settings::InfPolicy::LOWERCASE_INFINITY_STRING_VALUE;
-    else if (str == "CAPITALIZED_INFINITY_STRING_VALUE")
-        value = Settings::InfPolicy::CAPITALIZED_INFINITY_STRING_VALUE;
-    else
-        throw Error::UNKNOWN_ENUM_VALUE;
-}
-
-void ConfigurationParser::parseSettings(Settings &value) {
-    std::string key;
-    requireSymbol('{');
-    int separatorCheck = -1;
-    while (!matchSymbol('}')) {
-        if (!separatorCheck)
-            throw Error::JSON_SYNTAX_ERROR;
-        parseStdString(key);
-        requireSymbol(':');
-        if (key == "jsonIOMode")
-            parseSettingsJsonIO(value.jsonIOMode);
-        else if (key == "keyFormat")
-            parseNameFormat(value.keyFormat);
-        else if (key == "enumFormat")
-            parseNameFormat(value.enumFormat);
-        else if (key == "noThrow")
-            parseBool(value.noThrow);
-        else if (key == "verboseErrors")
-            parseBool(value.verboseErrors);
-        else if (key == "strictSyntaxCheck")
-            parseBool(value.strictSyntaxCheck);
-        else if (key == "checkMissingKeys")
-            parseBool(value.checkMissingKeys);
-        else if (key == "checkRepeatingKeys")
-            parseBool(value.checkRepeatingKeys);
-        else if (key == "ignoreExtraKeys")
-            parseBool(value.ignoreExtraKeys);
-        else if (key == "checkIntegerOverflow")
-            parseBool(value.checkIntegerOverflow);
-        else if (key == "escapeForwardSlash")
-            parseBool(value.escapeForwardSlash);
-        else if (key == "skipEmptyFields")
-            parseBool(value.skipEmptyFields);
-        else if (key == "nanPolicy")
-            parseSettingsNanPolicy(value.nanPolicy);
-        else if (key == "infPolicy")
-            parseSettingsInfPolicy(value.infPolicy);
-        else
-            skipValue();
-        separatorCheck = matchSymbol(',');
-    }
-    if (separatorCheck == 1)
-        throw Error::JSON_SYNTAX_ERROR;
-}
-
 void ConfigurationParser::parseConfigurationGeneratorDef(Configuration::GeneratorDef &value) {
     std::string key;
     requireSymbol('{');
     int separatorCheck = -1;
-    while (!matchSymbol('}')) {
+    for (; !matchSymbol('}'); separatorCheck = matchSymbol(',')) {
         if (!separatorCheck)
             throw Error::JSON_SYNTAX_ERROR;
         parseStdString(key);
         requireSymbol(':');
-        if (key == "name")
-            parseStdString(value.name);
-        else if (key == "baseClass")
-            parseStdString(value.baseClass);
-        else if (key == "types")
-            parseStdVectorStdString(value.types);
-        else if (key == "replacementIncludes")
-            parseStdVectorStdString(value.replacementIncludes);
-        else if (key == "headerOutput")
-            parseStdString(value.headerOutput);
-        else if (key == "sourceOutput")
-            parseStdString(value.sourceOutput);
-        else
-            skipValue();
-        separatorCheck = matchSymbol(',');
+        if (key.size() > 0) {
+            switch (key[0]) {
+                case 'b':
+                    if (key == "baseClass") {
+                        parseStdString(value.baseClass);
+                        continue;
+                    }
+                    break;
+                case 'h':
+                    if (key == "headerOutput") {
+                        parseStdString(value.headerOutput);
+                        continue;
+                    }
+                    break;
+                case 'n':
+                    if (key == "name") {
+                        parseStdString(value.name);
+                        continue;
+                    }
+                    break;
+                case 'r':
+                    if (key == "replacementIncludes") {
+                        parseStdVectorStdString(value.replacementIncludes);
+                        continue;
+                    }
+                    break;
+                case 's':
+                    if (key == "sourceOutput") {
+                        parseStdString(value.sourceOutput);
+                        continue;
+                    }
+                    break;
+                case 't':
+                    if (key == "types") {
+                        parseStdVectorStdString(value.types);
+                        continue;
+                    }
+                    break;
+            }
+        }
+        skipValue();
     }
     if (separatorCheck == 1)
         throw Error::JSON_SYNTAX_ERROR;
@@ -409,26 +304,379 @@ void ConfigurationParser::parseStdVectorConfigurationGeneratorDef(std::vector<Co
         throw Error::JSON_SYNTAX_ERROR;
 }
 
-void ConfigurationParser::parseStringAPI(StringAPI &value) {
+void ConfigurationParser::parseNameFormat(NameFormat &value) {
+    std::string str;
+    parseStdString(str);
+    switch (str.size()) {
+        case 3:
+            if (str == "ANY") {
+                value = NameFormat::ANY;
+                return; 
+            }
+            break;
+        case 9:
+            if (str == "CAMELCASE") {
+                value = NameFormat::CAMELCASE;
+                return; 
+            }
+            break;
+        case 13:
+            if (str == "UPERCASE_DASH") {
+                value = NameFormat::UPERCASE_DASH;
+                return; 
+            }
+            break;
+        case 14:
+            if (str == "LOWERCASE_DASH") {
+                value = NameFormat::LOWERCASE_DASH;
+                return; 
+            }
+            break;
+        case 17:
+            if (str == "CAMELCASE_CAPITAL") {
+                value = NameFormat::CAMELCASE_CAPITAL;
+                return; 
+            }
+            break;
+        case 20:
+            switch (str[0]) {
+                case 'L':
+                    if (str == "LOWERCASE_UNDERSCORE") {
+                        value = NameFormat::LOWERCASE_UNDERSCORE;
+                        return; 
+                    }
+                    break;
+                case 'U':
+                    if (str == "UPPERCASE_UNDERSCORE") {
+                        value = NameFormat::UPPERCASE_UNDERSCORE;
+                        return; 
+                    }
+                    break;
+            }
+            break;
+    }
+    throw Error::UNKNOWN_ENUM_VALUE;
+}
+
+void ConfigurationParser::parseSettingsInfPolicy(Settings::InfPolicy &value) {
+    std::string str;
+    parseStdString(str);
+    switch (str.size()) {
+        case 10:
+            switch (str[0]) {
+                case 'N':
+                    if (str == "NULL_VALUE") {
+                        value = Settings::InfPolicy::NULL_VALUE;
+                        return; 
+                    }
+                    break;
+                case 'Z':
+                    if (str == "ZERO_VALUE") {
+                        value = Settings::InfPolicy::ZERO_VALUE;
+                        return; 
+                    }
+                    break;
+            }
+            break;
+        case 16:
+            if (str == "SERIALIZER_ERROR") {
+                value = Settings::InfPolicy::SERIALIZER_ERROR;
+                return; 
+            }
+            break;
+        case 17:
+            if (str == "EXPONENT_OVERFLOW") {
+                value = Settings::InfPolicy::EXPONENT_OVERFLOW;
+                return; 
+            }
+            break;
+        case 26:
+            switch (str[0]) {
+                case 'L':
+                    if (str == "LOWERCASE_INF_STRING_VALUE") {
+                        value = Settings::InfPolicy::LOWERCASE_INF_STRING_VALUE;
+                        return; 
+                    }
+                    break;
+                case 'U':
+                    if (str == "UPPERCASE_INF_STRING_VALUE") {
+                        value = Settings::InfPolicy::UPPERCASE_INF_STRING_VALUE;
+                        return; 
+                    }
+                    break;
+            }
+            break;
+        case 28:
+            if (str == "CAPITALIZED_INF_STRING_VALUE") {
+                value = Settings::InfPolicy::CAPITALIZED_INF_STRING_VALUE;
+                return; 
+            }
+            break;
+        case 31:
+            switch (str[0]) {
+                case 'L':
+                    if (str == "LOWERCASE_INFINITY_STRING_VALUE") {
+                        value = Settings::InfPolicy::LOWERCASE_INFINITY_STRING_VALUE;
+                        return; 
+                    }
+                    break;
+                case 'U':
+                    if (str == "UPPERCASE_INFINITY_STRING_VALUE") {
+                        value = Settings::InfPolicy::UPPERCASE_INFINITY_STRING_VALUE;
+                        return; 
+                    }
+                    break;
+            }
+            break;
+        case 33:
+            if (str == "CAPITALIZED_INFINITY_STRING_VALUE") {
+                value = Settings::InfPolicy::CAPITALIZED_INFINITY_STRING_VALUE;
+                return; 
+            }
+            break;
+    }
+    throw Error::UNKNOWN_ENUM_VALUE;
+}
+
+void ConfigurationParser::parseSettingsNanPolicy(Settings::NanPolicy &value) {
+    std::string str;
+    parseStdString(str);
+    if (str.size() > 0) {
+        switch (str[0]) {
+            case 'L':
+                if (str == "LOWERCASE_NAN_STRING_VALUE") {
+                    value = Settings::NanPolicy::LOWERCASE_NAN_STRING_VALUE;
+                    return; 
+                }
+                break;
+            case 'M':
+                if (str == "MIXED_CASE_NAN_STRING_VALUE") {
+                    value = Settings::NanPolicy::MIXED_CASE_NAN_STRING_VALUE;
+                    return; 
+                }
+                break;
+            case 'N':
+                if (str == "NULL_VALUE") {
+                    value = Settings::NanPolicy::NULL_VALUE;
+                    return; 
+                }
+                break;
+            case 'S':
+                if (str == "SERIALIZER_ERROR") {
+                    value = Settings::NanPolicy::SERIALIZER_ERROR;
+                    return; 
+                }
+                break;
+            case 'U':
+                if (str == "UPPERCASE_NAN_STRING_VALUE") {
+                    value = Settings::NanPolicy::UPPERCASE_NAN_STRING_VALUE;
+                    return; 
+                }
+                break;
+            case 'Z':
+                if (str == "ZERO_VALUE") {
+                    value = Settings::NanPolicy::ZERO_VALUE;
+                    return; 
+                }
+                break;
+        }
+    }
+    throw Error::UNKNOWN_ENUM_VALUE;
+}
+
+void ConfigurationParser::parseBool(bool &value) {
+    skipWhitespace();
+    if (cur[0] == 'f' && cur[1] == 'a' && cur[2] == 'l' && cur[3] == 's' && cur[4] == 'e' && !isAlphanumeric(cur[5]) && cur[5] != '_' && ((cur += 5), true))
+        value = false;
+    else if (cur[0] == 't' && cur[1] == 'r' && cur[2] == 'u' && cur[3] == 'e' && !isAlphanumeric(cur[4]) && cur[4] != '_' && ((cur += 4), true))
+        value = true;
+    else
+        throw Error::TYPE_MISMATCH;
+}
+
+void ConfigurationParser::parseSettingsJsonIO(Settings::JsonIO &value) {
+    std::string str;
+    parseStdString(str);
+    if (str == "NULL_TERMINATED_STRING") {
+        value = Settings::JsonIO::NULL_TERMINATED_STRING;
+        return; 
+    }
+    throw Error::UNKNOWN_ENUM_VALUE;
+}
+
+void ConfigurationParser::parseSettings(Settings &value) {
     std::string key;
     requireSymbol('{');
     int separatorCheck = -1;
-    while (!matchSymbol('}')) {
+    for (; !matchSymbol('}'); separatorCheck = matchSymbol(',')) {
         if (!separatorCheck)
             throw Error::JSON_SYNTAX_ERROR;
         parseStdString(key);
         requireSymbol(':');
-        if (key == "clear")
-            parseStdString(value.clear);
-        else if (key == "appendChar")
-            parseStdString(value.appendChar);
-        else if (key == "appendCStr")
-            parseStdString(value.appendCStr);
-        else if (key == "iterateChars")
-            parseStdString(value.iterateChars);
-        else
-            skipValue();
-        separatorCheck = matchSymbol(',');
+        if (key.size() > 3) {
+            switch (key[3]) {
+                case 'F':
+                    if (key == "keyFormat") {
+                        parseNameFormat(value.keyFormat);
+                        continue;
+                    }
+                    break;
+                case 'P':
+                    switch (key[0]) {
+                        case 'i':
+                            if (key == "infPolicy") {
+                                parseSettingsInfPolicy(value.infPolicy);
+                                continue;
+                            }
+                            break;
+                        case 'n':
+                            if (key == "nanPolicy") {
+                                parseSettingsNanPolicy(value.nanPolicy);
+                                continue;
+                            }
+                            break;
+                    }
+                    break;
+                case 'a':
+                    if (key == "escapeForwardSlash") {
+                        parseBool(value.escapeForwardSlash);
+                        continue;
+                    }
+                    break;
+                case 'b':
+                    if (key == "verboseErrors") {
+                        parseBool(value.verboseErrors);
+                        continue;
+                    }
+                    break;
+                case 'c':
+                    switch (key.size()) {
+                        case 16:
+                            if (key == "checkMissingKeys") {
+                                parseBool(value.checkMissingKeys);
+                                continue;
+                            }
+                            break;
+                        case 18:
+                            if (key == "checkRepeatingKeys") {
+                                parseBool(value.checkRepeatingKeys);
+                                continue;
+                            }
+                            break;
+                        case 20:
+                            if (key == "checkIntegerOverflow") {
+                                parseBool(value.checkIntegerOverflow);
+                                continue;
+                            }
+                            break;
+                    }
+                    break;
+                case 'h':
+                    if (key == "noThrow") {
+                        parseBool(value.noThrow);
+                        continue;
+                    }
+                    break;
+                case 'i':
+                    if (key == "strictSyntaxCheck") {
+                        parseBool(value.strictSyntaxCheck);
+                        continue;
+                    }
+                    break;
+                case 'm':
+                    if (key == "enumFormat") {
+                        parseNameFormat(value.enumFormat);
+                        continue;
+                    }
+                    break;
+                case 'n':
+                    if (key == "jsonIOMode") {
+                        parseSettingsJsonIO(value.jsonIOMode);
+                        continue;
+                    }
+                    break;
+                case 'o':
+                    if (key == "ignoreExtraKeys") {
+                        parseBool(value.ignoreExtraKeys);
+                        continue;
+                    }
+                    break;
+                case 'p':
+                    if (key == "skipEmptyFields") {
+                        parseBool(value.skipEmptyFields);
+                        continue;
+                    }
+                    break;
+            }
+        }
+        skipValue();
+    }
+    if (separatorCheck == 1)
+        throw Error::JSON_SYNTAX_ERROR;
+}
+
+void ConfigurationParser::parseStringAPI(StringAPI &value) {
+    std::string key;
+    requireSymbol('{');
+    int separatorCheck = -1;
+    for (; !matchSymbol('}'); separatorCheck = matchSymbol(',')) {
+        if (!separatorCheck)
+            throw Error::JSON_SYNTAX_ERROR;
+        parseStdString(key);
+        requireSymbol(':');
+        if (key.size() > 4) {
+            switch (key[4]) {
+                case 'a':
+                    if (key == "iterateChars") {
+                        parseStdString(value.iterateChars);
+                        continue;
+                    }
+                    break;
+                case 'e':
+                    if (key == "getLength") {
+                        parseStdString(value.getLength);
+                        continue;
+                    }
+                    break;
+                case 'h':
+                    if (key == "getCharAt") {
+                        parseStdString(value.getCharAt);
+                        continue;
+                    }
+                    break;
+                case 'l':
+                    if (key == "equalsStringLiteral") {
+                        parseStdString(value.equalsStringLiteral);
+                        continue;
+                    }
+                    break;
+                case 'n':
+                    if (key.size() > 7) {
+                        switch (key[7]) {
+                            case 'S':
+                                if (key == "appendCStr") {
+                                    parseStdString(value.appendCStr);
+                                    continue;
+                                }
+                                break;
+                            case 'h':
+                                if (key == "appendChar") {
+                                    parseStdString(value.appendChar);
+                                    continue;
+                                }
+                                break;
+                        }
+                    }
+                    break;
+                case 'r':
+                    if (key == "clear") {
+                        parseStdString(value.clear);
+                        continue;
+                    }
+                    break;
+            }
+        }
+        skipValue();
     }
     if (separatorCheck == 1)
         throw Error::JSON_SYNTAX_ERROR;
@@ -438,18 +686,26 @@ void ConfigurationParser::parseConfigurationStringDef(Configuration::StringDef &
     std::string key;
     requireSymbol('{');
     int separatorCheck = -1;
-    while (!matchSymbol('}')) {
+    for (; !matchSymbol('}'); separatorCheck = matchSymbol(',')) {
         if (!separatorCheck)
             throw Error::JSON_SYNTAX_ERROR;
         parseStdString(key);
         requireSymbol(':');
-        if (key == "name")
-            parseStdString(value.name);
-        else if (key == "api")
-            parseStringAPI(value.api);
-        else
-            skipValue();
-        separatorCheck = matchSymbol(',');
+        switch (key.size()) {
+            case 3:
+                if (key == "api") {
+                    parseStringAPI(value.api);
+                    continue;
+                }
+                break;
+            case 4:
+                if (key == "name") {
+                    parseStdString(value.name);
+                    continue;
+                }
+                break;
+        }
+        skipValue();
     }
     if (separatorCheck == 1)
         throw Error::JSON_SYNTAX_ERROR;
@@ -473,20 +729,34 @@ void ConfigurationParser::parseConstStringAPI(ConstStringAPI &value) {
     std::string key;
     requireSymbol('{');
     int separatorCheck = -1;
-    while (!matchSymbol('}')) {
+    for (; !matchSymbol('}'); separatorCheck = matchSymbol(',')) {
         if (!separatorCheck)
             throw Error::JSON_SYNTAX_ERROR;
         parseStdString(key);
         requireSymbol(':');
-        if (key == "copyFromString")
-            parseStdString(value.copyFromString);
-        else if (key == "moveFromString")
-            parseStdString(value.moveFromString);
-        else if (key == "iterateChars")
-            parseStdString(value.iterateChars);
-        else
-            skipValue();
-        separatorCheck = matchSymbol(',');
+        if (key.size() > 0) {
+            switch (key[0]) {
+                case 'c':
+                    if (key == "copyFromString") {
+                        parseStdString(value.copyFromString);
+                        continue;
+                    }
+                    break;
+                case 'i':
+                    if (key == "iterateChars") {
+                        parseStdString(value.iterateChars);
+                        continue;
+                    }
+                    break;
+                case 'm':
+                    if (key == "moveFromString") {
+                        parseStdString(value.moveFromString);
+                        continue;
+                    }
+                    break;
+            }
+        }
+        skipValue();
     }
     if (separatorCheck == 1)
         throw Error::JSON_SYNTAX_ERROR;
@@ -496,20 +766,32 @@ void ConfigurationParser::parseConfigurationConstStringDef(Configuration::ConstS
     std::string key;
     requireSymbol('{');
     int separatorCheck = -1;
-    while (!matchSymbol('}')) {
+    for (; !matchSymbol('}'); separatorCheck = matchSymbol(',')) {
         if (!separatorCheck)
             throw Error::JSON_SYNTAX_ERROR;
         parseStdString(key);
         requireSymbol(':');
-        if (key == "name")
-            parseStdString(value.name);
-        else if (key == "stringType")
-            parseStdString(value.stringType);
-        else if (key == "api")
-            parseConstStringAPI(value.api);
-        else
-            skipValue();
-        separatorCheck = matchSymbol(',');
+        switch (key.size()) {
+            case 3:
+                if (key == "api") {
+                    parseConstStringAPI(value.api);
+                    continue;
+                }
+                break;
+            case 4:
+                if (key == "name") {
+                    parseStdString(value.name);
+                    continue;
+                }
+                break;
+            case 10:
+                if (key == "stringType") {
+                    parseStdString(value.stringType);
+                    continue;
+                }
+                break;
+        }
+        skipValue();
     }
     if (separatorCheck == 1)
         throw Error::JSON_SYNTAX_ERROR;
@@ -533,20 +815,32 @@ void ConfigurationParser::parseArrayContainerAPI(ArrayContainerAPI &value) {
     std::string key;
     requireSymbol('{');
     int separatorCheck = -1;
-    while (!matchSymbol('}')) {
+    for (; !matchSymbol('}'); separatorCheck = matchSymbol(',')) {
         if (!separatorCheck)
             throw Error::JSON_SYNTAX_ERROR;
         parseStdString(key);
         requireSymbol(':');
-        if (key == "clear")
-            parseStdString(value.clear);
-        else if (key == "refAppended")
-            parseStdString(value.refAppended);
-        else if (key == "iterateElements")
-            parseStdString(value.iterateElements);
-        else
-            skipValue();
-        separatorCheck = matchSymbol(',');
+        switch (key.size()) {
+            case 5:
+                if (key == "clear") {
+                    parseStdString(value.clear);
+                    continue;
+                }
+                break;
+            case 11:
+                if (key == "refAppended") {
+                    parseStdString(value.refAppended);
+                    continue;
+                }
+                break;
+            case 15:
+                if (key == "iterateElements") {
+                    parseStdString(value.iterateElements);
+                    continue;
+                }
+                break;
+        }
+        skipValue();
     }
     if (separatorCheck == 1)
         throw Error::JSON_SYNTAX_ERROR;
@@ -556,18 +850,26 @@ void ConfigurationParser::parseConfigurationArrayContainerDef(Configuration::Arr
     std::string key;
     requireSymbol('{');
     int separatorCheck = -1;
-    while (!matchSymbol('}')) {
+    for (; !matchSymbol('}'); separatorCheck = matchSymbol(',')) {
         if (!separatorCheck)
             throw Error::JSON_SYNTAX_ERROR;
         parseStdString(key);
         requireSymbol(':');
-        if (key == "name")
-            parseStdString(value.name);
-        else if (key == "api")
-            parseArrayContainerAPI(value.api);
-        else
-            skipValue();
-        separatorCheck = matchSymbol(',');
+        switch (key.size()) {
+            case 3:
+                if (key == "api") {
+                    parseArrayContainerAPI(value.api);
+                    continue;
+                }
+                break;
+            case 4:
+                if (key == "name") {
+                    parseStdString(value.name);
+                    continue;
+                }
+                break;
+        }
+        skipValue();
     }
     if (separatorCheck == 1)
         throw Error::JSON_SYNTAX_ERROR;
@@ -587,24 +889,251 @@ void ConfigurationParser::parseStdVectorConfigurationArrayContainerDef(std::vect
         throw Error::JSON_SYNTAX_ERROR;
 }
 
-void ConfigurationParser::parseFixedArrayContainerAPI(FixedArrayContainerAPI &value) {
+void ConfigurationParser::parseObjectContainerAPI(ObjectContainerAPI &value) {
     std::string key;
     requireSymbol('{');
     int separatorCheck = -1;
-    while (!matchSymbol('}')) {
+    for (; !matchSymbol('}'); separatorCheck = matchSymbol(',')) {
         if (!separatorCheck)
             throw Error::JSON_SYNTAX_ERROR;
         parseStdString(key);
         requireSymbol(':');
-        if (key == "copyFromArrayContainer")
-            parseStdString(value.copyFromArrayContainer);
-        else if (key == "moveFromArrayContainer")
-            parseStdString(value.moveFromArrayContainer);
-        else if (key == "iterateElements")
-            parseStdString(value.iterateElements);
-        else
-            skipValue();
+        switch (key.size()) {
+            case 5:
+                if (key == "clear") {
+                    parseStdString(value.clear);
+                    continue;
+                }
+                break;
+            case 8:
+                if (key == "refByKey") {
+                    parseStdString(value.refByKey);
+                    continue;
+                }
+                break;
+            case 15:
+                if (key == "iterateElements") {
+                    parseStdString(value.iterateElements);
+                    continue;
+                }
+                break;
+        }
+        skipValue();
+    }
+    if (separatorCheck == 1)
+        throw Error::JSON_SYNTAX_ERROR;
+}
+
+void ConfigurationParser::parseConfigurationObjectContainerDef(Configuration::ObjectContainerDef &value) {
+    std::string key;
+    requireSymbol('{');
+    int separatorCheck = -1;
+    for (; !matchSymbol('}'); separatorCheck = matchSymbol(',')) {
+        if (!separatorCheck)
+            throw Error::JSON_SYNTAX_ERROR;
+        parseStdString(key);
+        requireSymbol(':');
+        switch (key.size()) {
+            case 3:
+                if (key == "api") {
+                    parseObjectContainerAPI(value.api);
+                    continue;
+                }
+                break;
+            case 4:
+                if (key == "name") {
+                    parseStdString(value.name);
+                    continue;
+                }
+                break;
+            case 7:
+                if (key == "keyType") {
+                    parseStdString(value.keyType);
+                    continue;
+                }
+                break;
+        }
+        skipValue();
+    }
+    if (separatorCheck == 1)
+        throw Error::JSON_SYNTAX_ERROR;
+}
+
+void ConfigurationParser::parseStdVectorConfigurationObjectContainerDef(std::vector<Configuration::ObjectContainerDef> &value) {
+    requireSymbol('[');
+    value.clear();
+    int separatorCheck = -1;
+    while (!matchSymbol(']')) {
+        if (!separatorCheck)
+            throw Error::JSON_SYNTAX_ERROR;
+        parseConfigurationObjectContainerDef((value.resize(value.size()+1), value.back()));
         separatorCheck = matchSymbol(',');
+    }
+    if (separatorCheck == 1)
+        throw Error::JSON_SYNTAX_ERROR;
+}
+
+void ConfigurationParser::parseOptionalContainerAPI(OptionalContainerAPI &value) {
+    std::string key;
+    requireSymbol('{');
+    int separatorCheck = -1;
+    for (; !matchSymbol('}'); separatorCheck = matchSymbol(',')) {
+        if (!separatorCheck)
+            throw Error::JSON_SYNTAX_ERROR;
+        parseStdString(key);
+        requireSymbol(':');
+        if (key.size() > 0) {
+            switch (key[0]) {
+                case 'c':
+                    if (key == "clear") {
+                        parseStdString(value.clear);
+                        continue;
+                    }
+                    break;
+                case 'g':
+                    if (key == "getValue") {
+                        parseStdString(value.getValue);
+                        continue;
+                    }
+                    break;
+                case 'h':
+                    if (key == "hasValue") {
+                        parseStdString(value.hasValue);
+                        continue;
+                    }
+                    break;
+                case 'r':
+                    if (key == "refInitialized") {
+                        parseStdString(value.refInitialized);
+                        continue;
+                    }
+                    break;
+            }
+        }
+        skipValue();
+    }
+    if (separatorCheck == 1)
+        throw Error::JSON_SYNTAX_ERROR;
+}
+
+void ConfigurationParser::parseConfigurationOptionalContainerDef(Configuration::OptionalContainerDef &value) {
+    std::string key;
+    requireSymbol('{');
+    int separatorCheck = -1;
+    for (; !matchSymbol('}'); separatorCheck = matchSymbol(',')) {
+        if (!separatorCheck)
+            throw Error::JSON_SYNTAX_ERROR;
+        parseStdString(key);
+        requireSymbol(':');
+        switch (key.size()) {
+            case 3:
+                if (key == "api") {
+                    parseOptionalContainerAPI(value.api);
+                    continue;
+                }
+                break;
+            case 4:
+                if (key == "name") {
+                    parseStdString(value.name);
+                    continue;
+                }
+                break;
+        }
+        skipValue();
+    }
+    if (separatorCheck == 1)
+        throw Error::JSON_SYNTAX_ERROR;
+}
+
+void ConfigurationParser::parseStdVectorConfigurationOptionalContainerDef(std::vector<Configuration::OptionalContainerDef> &value) {
+    requireSymbol('[');
+    value.clear();
+    int separatorCheck = -1;
+    while (!matchSymbol(']')) {
+        if (!separatorCheck)
+            throw Error::JSON_SYNTAX_ERROR;
+        parseConfigurationOptionalContainerDef((value.resize(value.size()+1), value.back()));
+        separatorCheck = matchSymbol(',');
+    }
+    if (separatorCheck == 1)
+        throw Error::JSON_SYNTAX_ERROR;
+}
+
+void ConfigurationParser::parseConfigurationObjectMapContainerDef(Configuration::ObjectMapContainerDef &value) {
+    std::string key;
+    requireSymbol('{');
+    int separatorCheck = -1;
+    for (; !matchSymbol('}'); separatorCheck = matchSymbol(',')) {
+        if (!separatorCheck)
+            throw Error::JSON_SYNTAX_ERROR;
+        parseStdString(key);
+        requireSymbol(':');
+        switch (key.size()) {
+            case 3:
+                if (key == "api") {
+                    parseObjectContainerAPI(value.api);
+                    continue;
+                }
+                break;
+            case 4:
+                if (key == "name") {
+                    parseStdString(value.name);
+                    continue;
+                }
+                break;
+        }
+        skipValue();
+    }
+    if (separatorCheck == 1)
+        throw Error::JSON_SYNTAX_ERROR;
+}
+
+void ConfigurationParser::parseStdVectorConfigurationObjectMapContainerDef(std::vector<Configuration::ObjectMapContainerDef> &value) {
+    requireSymbol('[');
+    value.clear();
+    int separatorCheck = -1;
+    while (!matchSymbol(']')) {
+        if (!separatorCheck)
+            throw Error::JSON_SYNTAX_ERROR;
+        parseConfigurationObjectMapContainerDef((value.resize(value.size()+1), value.back()));
+        separatorCheck = matchSymbol(',');
+    }
+    if (separatorCheck == 1)
+        throw Error::JSON_SYNTAX_ERROR;
+}
+
+void ConfigurationParser::parseFixedArrayContainerAPI(FixedArrayContainerAPI &value) {
+    std::string key;
+    requireSymbol('{');
+    int separatorCheck = -1;
+    for (; !matchSymbol('}'); separatorCheck = matchSymbol(',')) {
+        if (!separatorCheck)
+            throw Error::JSON_SYNTAX_ERROR;
+        parseStdString(key);
+        requireSymbol(':');
+        if (key.size() > 0) {
+            switch (key[0]) {
+                case 'c':
+                    if (key == "copyFromArrayContainer") {
+                        parseStdString(value.copyFromArrayContainer);
+                        continue;
+                    }
+                    break;
+                case 'i':
+                    if (key == "iterateElements") {
+                        parseStdString(value.iterateElements);
+                        continue;
+                    }
+                    break;
+                case 'm':
+                    if (key == "moveFromArrayContainer") {
+                        parseStdString(value.moveFromArrayContainer);
+                        continue;
+                    }
+                    break;
+            }
+        }
+        skipValue();
     }
     if (separatorCheck == 1)
         throw Error::JSON_SYNTAX_ERROR;
@@ -614,20 +1143,32 @@ void ConfigurationParser::parseConfigurationFixedArrayContainerDef(Configuration
     std::string key;
     requireSymbol('{');
     int separatorCheck = -1;
-    while (!matchSymbol('}')) {
+    for (; !matchSymbol('}'); separatorCheck = matchSymbol(',')) {
         if (!separatorCheck)
             throw Error::JSON_SYNTAX_ERROR;
         parseStdString(key);
         requireSymbol(':');
-        if (key == "name")
-            parseStdString(value.name);
-        else if (key == "arrayContainerType")
-            parseStdString(value.arrayContainerType);
-        else if (key == "api")
-            parseFixedArrayContainerAPI(value.api);
-        else
-            skipValue();
-        separatorCheck = matchSymbol(',');
+        switch (key.size()) {
+            case 3:
+                if (key == "api") {
+                    parseFixedArrayContainerAPI(value.api);
+                    continue;
+                }
+                break;
+            case 4:
+                if (key == "name") {
+                    parseStdString(value.name);
+                    continue;
+                }
+                break;
+            case 18:
+                if (key == "arrayContainerType") {
+                    parseStdString(value.arrayContainerType);
+                    continue;
+                }
+                break;
+        }
+        skipValue();
     }
     if (separatorCheck == 1)
         throw Error::JSON_SYNTAX_ERROR;
@@ -651,16 +1192,16 @@ void ConfigurationParser::parseStaticArrayContainerAPI(StaticArrayContainerAPI &
     std::string key;
     requireSymbol('{');
     int separatorCheck = -1;
-    while (!matchSymbol('}')) {
+    for (; !matchSymbol('}'); separatorCheck = matchSymbol(',')) {
         if (!separatorCheck)
             throw Error::JSON_SYNTAX_ERROR;
         parseStdString(key);
         requireSymbol(':');
-        if (key == "refByIndex")
+        if (key == "refByIndex") {
             parseStdString(value.refByIndex);
-        else
-            skipValue();
-        separatorCheck = matchSymbol(',');
+            continue;
+        }
+        skipValue();
     }
     if (separatorCheck == 1)
         throw Error::JSON_SYNTAX_ERROR;
@@ -670,18 +1211,26 @@ void ConfigurationParser::parseConfigurationStaticArrayContainerDef(Configuratio
     std::string key;
     requireSymbol('{');
     int separatorCheck = -1;
-    while (!matchSymbol('}')) {
+    for (; !matchSymbol('}'); separatorCheck = matchSymbol(',')) {
         if (!separatorCheck)
             throw Error::JSON_SYNTAX_ERROR;
         parseStdString(key);
         requireSymbol(':');
-        if (key == "name")
-            parseStdString(value.name);
-        else if (key == "api")
-            parseStaticArrayContainerAPI(value.api);
-        else
-            skipValue();
-        separatorCheck = matchSymbol(',');
+        switch (key.size()) {
+            case 3:
+                if (key == "api") {
+                    parseStaticArrayContainerAPI(value.api);
+                    continue;
+                }
+                break;
+            case 4:
+                if (key == "name") {
+                    parseStdString(value.name);
+                    continue;
+                }
+                break;
+        }
+        skipValue();
     }
     if (separatorCheck == 1)
         throw Error::JSON_SYNTAX_ERROR;
@@ -701,201 +1250,110 @@ void ConfigurationParser::parseStdVectorConfigurationStaticArrayContainerDef(std
         throw Error::JSON_SYNTAX_ERROR;
 }
 
-void ConfigurationParser::parseObjectContainerAPI(ObjectContainerAPI &value) {
-    std::string key;
-    requireSymbol('{');
-    int separatorCheck = -1;
-    while (!matchSymbol('}')) {
-        if (!separatorCheck)
-            throw Error::JSON_SYNTAX_ERROR;
-        parseStdString(key);
-        requireSymbol(':');
-        if (key == "clear")
-            parseStdString(value.clear);
-        else if (key == "refByKey")
-            parseStdString(value.refByKey);
-        else if (key == "iterateElements")
-            parseStdString(value.iterateElements);
-        else
-            skipValue();
-        separatorCheck = matchSymbol(',');
-    }
-    if (separatorCheck == 1)
-        throw Error::JSON_SYNTAX_ERROR;
-}
-
-void ConfigurationParser::parseConfigurationObjectContainerDef(Configuration::ObjectContainerDef &value) {
-    std::string key;
-    requireSymbol('{');
-    int separatorCheck = -1;
-    while (!matchSymbol('}')) {
-        if (!separatorCheck)
-            throw Error::JSON_SYNTAX_ERROR;
-        parseStdString(key);
-        requireSymbol(':');
-        if (key == "name")
-            parseStdString(value.name);
-        else if (key == "keyType")
-            parseStdString(value.keyType);
-        else if (key == "api")
-            parseObjectContainerAPI(value.api);
-        else
-            skipValue();
-        separatorCheck = matchSymbol(',');
-    }
-    if (separatorCheck == 1)
-        throw Error::JSON_SYNTAX_ERROR;
-}
-
-void ConfigurationParser::parseStdVectorConfigurationObjectContainerDef(std::vector<Configuration::ObjectContainerDef> &value) {
-    requireSymbol('[');
-    value.clear();
-    int separatorCheck = -1;
-    while (!matchSymbol(']')) {
-        if (!separatorCheck)
-            throw Error::JSON_SYNTAX_ERROR;
-        parseConfigurationObjectContainerDef((value.resize(value.size()+1), value.back()));
-        separatorCheck = matchSymbol(',');
-    }
-    if (separatorCheck == 1)
-        throw Error::JSON_SYNTAX_ERROR;
-}
-
-void ConfigurationParser::parseConfigurationObjectMapContainerDef(Configuration::ObjectMapContainerDef &value) {
-    std::string key;
-    requireSymbol('{');
-    int separatorCheck = -1;
-    while (!matchSymbol('}')) {
-        if (!separatorCheck)
-            throw Error::JSON_SYNTAX_ERROR;
-        parseStdString(key);
-        requireSymbol(':');
-        if (key == "name")
-            parseStdString(value.name);
-        else if (key == "api")
-            parseObjectContainerAPI(value.api);
-        else
-            skipValue();
-        separatorCheck = matchSymbol(',');
-    }
-    if (separatorCheck == 1)
-        throw Error::JSON_SYNTAX_ERROR;
-}
-
-void ConfigurationParser::parseStdVectorConfigurationObjectMapContainerDef(std::vector<Configuration::ObjectMapContainerDef> &value) {
-    requireSymbol('[');
-    value.clear();
-    int separatorCheck = -1;
-    while (!matchSymbol(']')) {
-        if (!separatorCheck)
-            throw Error::JSON_SYNTAX_ERROR;
-        parseConfigurationObjectMapContainerDef((value.resize(value.size()+1), value.back()));
-        separatorCheck = matchSymbol(',');
-    }
-    if (separatorCheck == 1)
-        throw Error::JSON_SYNTAX_ERROR;
-}
-
-void ConfigurationParser::parseOptionalContainerAPI(OptionalContainerAPI &value) {
-    std::string key;
-    requireSymbol('{');
-    int separatorCheck = -1;
-    while (!matchSymbol('}')) {
-        if (!separatorCheck)
-            throw Error::JSON_SYNTAX_ERROR;
-        parseStdString(key);
-        requireSymbol(':');
-        if (key == "clear")
-            parseStdString(value.clear);
-        else if (key == "refInitialized")
-            parseStdString(value.refInitialized);
-        else if (key == "hasValue")
-            parseStdString(value.hasValue);
-        else if (key == "getValue")
-            parseStdString(value.getValue);
-        else
-            skipValue();
-        separatorCheck = matchSymbol(',');
-    }
-    if (separatorCheck == 1)
-        throw Error::JSON_SYNTAX_ERROR;
-}
-
-void ConfigurationParser::parseConfigurationOptionalContainerDef(Configuration::OptionalContainerDef &value) {
-    std::string key;
-    requireSymbol('{');
-    int separatorCheck = -1;
-    while (!matchSymbol('}')) {
-        if (!separatorCheck)
-            throw Error::JSON_SYNTAX_ERROR;
-        parseStdString(key);
-        requireSymbol(':');
-        if (key == "name")
-            parseStdString(value.name);
-        else if (key == "api")
-            parseOptionalContainerAPI(value.api);
-        else
-            skipValue();
-        separatorCheck = matchSymbol(',');
-    }
-    if (separatorCheck == 1)
-        throw Error::JSON_SYNTAX_ERROR;
-}
-
-void ConfigurationParser::parseStdVectorConfigurationOptionalContainerDef(std::vector<Configuration::OptionalContainerDef> &value) {
-    requireSymbol('[');
-    value.clear();
-    int separatorCheck = -1;
-    while (!matchSymbol(']')) {
-        if (!separatorCheck)
-            throw Error::JSON_SYNTAX_ERROR;
-        parseConfigurationOptionalContainerDef((value.resize(value.size()+1), value.back()));
-        separatorCheck = matchSymbol(',');
-    }
-    if (separatorCheck == 1)
-        throw Error::JSON_SYNTAX_ERROR;
-}
-
 void ConfigurationParser::parseConfiguration(Configuration &value) {
     std::string key;
     requireSymbol('{');
     int separatorCheck = -1;
-    while (!matchSymbol('}')) {
+    for (; !matchSymbol('}'); separatorCheck = matchSymbol(',')) {
         if (!separatorCheck)
             throw Error::JSON_SYNTAX_ERROR;
         parseStdString(key);
         requireSymbol(':');
-        if (key == "inputs")
-            parseStdVectorStdString(value.inputs);
-        else if (key == "includes")
-            parseStdVectorStdString(value.includes);
-        else if (key == "settings")
-            parseSettings(value.settings);
-        else if (key == "parsers")
-            parseStdVectorConfigurationGeneratorDef(value.parsers);
-        else if (key == "serializers")
-            parseStdVectorConfigurationGeneratorDef(value.serializers);
-        else if (key == "stringType")
-            parseStdString(value.stringType);
-        else if (key == "stringTypes")
-            parseStdVectorConfigurationStringDef(value.stringTypes);
-        else if (key == "constStringTypes")
-            parseStdVectorConfigurationConstStringDef(value.constStringTypes);
-        else if (key == "arrayContainerTypes")
-            parseStdVectorConfigurationArrayContainerDef(value.arrayContainerTypes);
-        else if (key == "fixedArrayContainerTypes")
-            parseStdVectorConfigurationFixedArrayContainerDef(value.fixedArrayContainerTypes);
-        else if (key == "staticArrayContainerTypes")
-            parseStdVectorConfigurationStaticArrayContainerDef(value.staticArrayContainerTypes);
-        else if (key == "objectContainerTypes")
-            parseStdVectorConfigurationObjectContainerDef(value.objectContainerTypes);
-        else if (key == "objectMapContainerTypes")
-            parseStdVectorConfigurationObjectMapContainerDef(value.objectMapContainerTypes);
-        else if (key == "optionalContainerTypes")
-            parseStdVectorConfigurationOptionalContainerDef(value.optionalContainerTypes);
-        else
-            skipValue();
-        separatorCheck = matchSymbol(',');
+        switch (key.size()) {
+            case 6:
+                if (key == "inputs") {
+                    parseStdVectorStdString(value.inputs);
+                    continue;
+                }
+                break;
+            case 7:
+                if (key == "parsers") {
+                    parseStdVectorConfigurationGeneratorDef(value.parsers);
+                    continue;
+                }
+                break;
+            case 8:
+                switch (key[0]) {
+                    case 'i':
+                        if (key == "includes") {
+                            parseStdVectorStdString(value.includes);
+                            continue;
+                        }
+                        break;
+                    case 's':
+                        if (key == "settings") {
+                            parseSettings(value.settings);
+                            continue;
+                        }
+                        break;
+                }
+                break;
+            case 10:
+                if (key == "stringType") {
+                    parseStdString(value.stringType);
+                    continue;
+                }
+                break;
+            case 11:
+                switch (key[1]) {
+                    case 'e':
+                        if (key == "serializers") {
+                            parseStdVectorConfigurationGeneratorDef(value.serializers);
+                            continue;
+                        }
+                        break;
+                    case 't':
+                        if (key == "stringTypes") {
+                            parseStdVectorConfigurationStringDef(value.stringTypes);
+                            continue;
+                        }
+                        break;
+                }
+                break;
+            case 16:
+                if (key == "constStringTypes") {
+                    parseStdVectorConfigurationConstStringDef(value.constStringTypes);
+                    continue;
+                }
+                break;
+            case 19:
+                if (key == "arrayContainerTypes") {
+                    parseStdVectorConfigurationArrayContainerDef(value.arrayContainerTypes);
+                    continue;
+                }
+                break;
+            case 20:
+                if (key == "objectContainerTypes") {
+                    parseStdVectorConfigurationObjectContainerDef(value.objectContainerTypes);
+                    continue;
+                }
+                break;
+            case 22:
+                if (key == "optionalContainerTypes") {
+                    parseStdVectorConfigurationOptionalContainerDef(value.optionalContainerTypes);
+                    continue;
+                }
+                break;
+            case 23:
+                if (key == "objectMapContainerTypes") {
+                    parseStdVectorConfigurationObjectMapContainerDef(value.objectMapContainerTypes);
+                    continue;
+                }
+                break;
+            case 24:
+                if (key == "fixedArrayContainerTypes") {
+                    parseStdVectorConfigurationFixedArrayContainerDef(value.fixedArrayContainerTypes);
+                    continue;
+                }
+                break;
+            case 25:
+                if (key == "staticArrayContainerTypes") {
+                    parseStdVectorConfigurationStaticArrayContainerDef(value.staticArrayContainerTypes);
+                    continue;
+                }
+                break;
+        }
+        skipValue();
     }
     if (separatorCheck == 1)
         throw Error::JSON_SYNTAX_ERROR;
