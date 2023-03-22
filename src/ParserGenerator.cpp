@@ -72,7 +72,7 @@ bool $::readHexQuad(int &value) {
         (value += 0x0010*decodeHexDigit(cur[2])) >= 0 &&
         (value += 0x0100*decodeHexDigit(cur[1])) >= 0 &&
         (value += 0x1000*decodeHexDigit(cur[0])) >= 0 &&
-        (cur += 4)
+        (cur += 4, true)
     );
 }
 
@@ -169,12 +169,6 @@ void $::skipValue() {
     throw Error::JSON_SYNTAX_ERROR;
 }
 
-void $::requireSymbol(char s) {
-    skipWhitespace();
-    if (*cur++ != s)
-        throw Error::JSON_SYNTAX_ERROR;
-}
-
 bool $::matchSymbol(char s) {
     skipWhitespace();
     if (*cur == s) {
@@ -244,7 +238,7 @@ std::string ParserGenerator::generateMatchKeyword(const char *keyword) {
     for (i = 0; *keyword; ++i, ++keyword)
         expr += "cur["+std::to_string(i)+"] == '"+*keyword+"' && ";
     std::string iStr = std::to_string(i);
-    expr += "!isAlphanumeric(cur["+iStr+"]) && cur["+iStr+"] != '_' && ((cur += "+iStr+"), true)";
+    expr += "!isAlphanumeric(cur["+iStr+"]) && cur["+iStr+"] != '_' && (cur += "+iStr+", true)";
     return expr;
 }
 
@@ -404,8 +398,6 @@ std::string ParserGenerator::generateHeader() {
     code += INDENT "explicit "+className+"(const char *str);\n";
     code += INDENT "void skipWhitespace();\n";
     code += std::string(INDENT)+(settings().noThrow ? "Error::Type" : "void")+" skipValue();\n";
-    if (!settings().noThrow)
-        code += INDENT "void requireSymbol(char s);\n";
     code += INDENT "bool matchSymbol(char s);\n";
     code += std::string(INDENT)+(settings().noThrow ? "bool" : "void")+" readHexQuad(int &value);\n";
     code += std::string(INDENT)+(settings().noThrow ? "Error::Type" : "void")+" unescape(char *codepoints);\n";

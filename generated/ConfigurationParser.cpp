@@ -85,12 +85,6 @@ void ConfigurationParser::skipValue() {
     throw Error::JSON_SYNTAX_ERROR;
 }
 
-void ConfigurationParser::requireSymbol(char s) {
-    skipWhitespace();
-    if (*cur++ != s)
-        throw Error::JSON_SYNTAX_ERROR;
-}
-
 bool ConfigurationParser::matchSymbol(char s) {
     skipWhitespace();
     if (*cur == s) {
@@ -201,11 +195,9 @@ ConfigurationParser::Error ConfigurationParser::parse(Configuration &output, con
 }
 
 void ConfigurationParser::parseStdString(std::string &value) {
-    skipWhitespace();
-    if (*cur != '"')
+    if (!matchSymbol('"'))
         throw Error::STRING_EXPECTED;
     value.clear();
-    ++cur;
     while (*cur != '"') {
         if (*cur == '\\') {
             char buffer[8];
@@ -222,7 +214,8 @@ void ConfigurationParser::parseStdString(std::string &value) {
 }
 
 void ConfigurationParser::parseStdVectorStdString(std::vector<std::string> &value) {
-    requireSymbol('[');
+    if (!matchSymbol('['))
+        throw Error::TYPE_MISMATCH;
     value.clear();
     int separatorCheck = -1;
     while (!matchSymbol(']')) {
@@ -237,13 +230,15 @@ void ConfigurationParser::parseStdVectorStdString(std::vector<std::string> &valu
 
 void ConfigurationParser::parseConfigurationGeneratorDef(Configuration::GeneratorDef &value) {
     std::string key;
-    requireSymbol('{');
+    if (!matchSymbol('{'))
+        throw Error::TYPE_MISMATCH;
     int separatorCheck = -1;
     for (; !matchSymbol('}'); separatorCheck = matchSymbol(',')) {
         if (!separatorCheck)
             throw Error::JSON_SYNTAX_ERROR;
         parseStdString(key);
-        requireSymbol(':');
+        if (!matchSymbol(':'))
+            throw Error::JSON_SYNTAX_ERROR;
         if (key.size() > 0) {
             switch (key[0]) {
                 case 'b':
@@ -291,7 +286,8 @@ void ConfigurationParser::parseConfigurationGeneratorDef(Configuration::Generato
 }
 
 void ConfigurationParser::parseStdVectorConfigurationGeneratorDef(std::vector<Configuration::GeneratorDef> &value) {
-    requireSymbol('[');
+    if (!matchSymbol('['))
+        throw Error::TYPE_MISMATCH;
     value.clear();
     int separatorCheck = -1;
     while (!matchSymbol(']')) {
@@ -486,9 +482,9 @@ void ConfigurationParser::parseSettingsNanPolicy(Settings::NanPolicy &value) {
 
 void ConfigurationParser::parseBool(bool &value) {
     skipWhitespace();
-    if (cur[0] == 'f' && cur[1] == 'a' && cur[2] == 'l' && cur[3] == 's' && cur[4] == 'e' && !isAlphanumeric(cur[5]) && cur[5] != '_' && ((cur += 5), true))
+    if (cur[0] == 'f' && cur[1] == 'a' && cur[2] == 'l' && cur[3] == 's' && cur[4] == 'e' && !isAlphanumeric(cur[5]) && cur[5] != '_' && (cur += 5, true))
         value = false;
-    else if (cur[0] == 't' && cur[1] == 'r' && cur[2] == 'u' && cur[3] == 'e' && !isAlphanumeric(cur[4]) && cur[4] != '_' && ((cur += 4), true))
+    else if (cur[0] == 't' && cur[1] == 'r' && cur[2] == 'u' && cur[3] == 'e' && !isAlphanumeric(cur[4]) && cur[4] != '_' && (cur += 4, true))
         value = true;
     else
         throw Error::TYPE_MISMATCH;
@@ -506,13 +502,15 @@ void ConfigurationParser::parseSettingsJsonIO(Settings::JsonIO &value) {
 
 void ConfigurationParser::parseSettings(Settings &value) {
     std::string key;
-    requireSymbol('{');
+    if (!matchSymbol('{'))
+        throw Error::TYPE_MISMATCH;
     int separatorCheck = -1;
     for (; !matchSymbol('}'); separatorCheck = matchSymbol(',')) {
         if (!separatorCheck)
             throw Error::JSON_SYNTAX_ERROR;
         parseStdString(key);
-        requireSymbol(':');
+        if (!matchSymbol(':'))
+            throw Error::JSON_SYNTAX_ERROR;
         if (key.size() > 3) {
             switch (key[3]) {
                 case 'F':
@@ -617,13 +615,15 @@ void ConfigurationParser::parseSettings(Settings &value) {
 
 void ConfigurationParser::parseStringAPI(StringAPI &value) {
     std::string key;
-    requireSymbol('{');
+    if (!matchSymbol('{'))
+        throw Error::TYPE_MISMATCH;
     int separatorCheck = -1;
     for (; !matchSymbol('}'); separatorCheck = matchSymbol(',')) {
         if (!separatorCheck)
             throw Error::JSON_SYNTAX_ERROR;
         parseStdString(key);
-        requireSymbol(':');
+        if (!matchSymbol(':'))
+            throw Error::JSON_SYNTAX_ERROR;
         if (key.size() > 4) {
             switch (key[4]) {
                 case 'a':
@@ -684,13 +684,15 @@ void ConfigurationParser::parseStringAPI(StringAPI &value) {
 
 void ConfigurationParser::parseConfigurationStringDef(Configuration::StringDef &value) {
     std::string key;
-    requireSymbol('{');
+    if (!matchSymbol('{'))
+        throw Error::TYPE_MISMATCH;
     int separatorCheck = -1;
     for (; !matchSymbol('}'); separatorCheck = matchSymbol(',')) {
         if (!separatorCheck)
             throw Error::JSON_SYNTAX_ERROR;
         parseStdString(key);
-        requireSymbol(':');
+        if (!matchSymbol(':'))
+            throw Error::JSON_SYNTAX_ERROR;
         switch (key.size()) {
             case 3:
                 if (key == "api") {
@@ -712,7 +714,8 @@ void ConfigurationParser::parseConfigurationStringDef(Configuration::StringDef &
 }
 
 void ConfigurationParser::parseStdVectorConfigurationStringDef(std::vector<Configuration::StringDef> &value) {
-    requireSymbol('[');
+    if (!matchSymbol('['))
+        throw Error::TYPE_MISMATCH;
     value.clear();
     int separatorCheck = -1;
     while (!matchSymbol(']')) {
@@ -727,13 +730,15 @@ void ConfigurationParser::parseStdVectorConfigurationStringDef(std::vector<Confi
 
 void ConfigurationParser::parseConstStringAPI(ConstStringAPI &value) {
     std::string key;
-    requireSymbol('{');
+    if (!matchSymbol('{'))
+        throw Error::TYPE_MISMATCH;
     int separatorCheck = -1;
     for (; !matchSymbol('}'); separatorCheck = matchSymbol(',')) {
         if (!separatorCheck)
             throw Error::JSON_SYNTAX_ERROR;
         parseStdString(key);
-        requireSymbol(':');
+        if (!matchSymbol(':'))
+            throw Error::JSON_SYNTAX_ERROR;
         if (key.size() > 0) {
             switch (key[0]) {
                 case 'c':
@@ -764,13 +769,15 @@ void ConfigurationParser::parseConstStringAPI(ConstStringAPI &value) {
 
 void ConfigurationParser::parseConfigurationConstStringDef(Configuration::ConstStringDef &value) {
     std::string key;
-    requireSymbol('{');
+    if (!matchSymbol('{'))
+        throw Error::TYPE_MISMATCH;
     int separatorCheck = -1;
     for (; !matchSymbol('}'); separatorCheck = matchSymbol(',')) {
         if (!separatorCheck)
             throw Error::JSON_SYNTAX_ERROR;
         parseStdString(key);
-        requireSymbol(':');
+        if (!matchSymbol(':'))
+            throw Error::JSON_SYNTAX_ERROR;
         switch (key.size()) {
             case 3:
                 if (key == "api") {
@@ -798,7 +805,8 @@ void ConfigurationParser::parseConfigurationConstStringDef(Configuration::ConstS
 }
 
 void ConfigurationParser::parseStdVectorConfigurationConstStringDef(std::vector<Configuration::ConstStringDef> &value) {
-    requireSymbol('[');
+    if (!matchSymbol('['))
+        throw Error::TYPE_MISMATCH;
     value.clear();
     int separatorCheck = -1;
     while (!matchSymbol(']')) {
@@ -813,13 +821,15 @@ void ConfigurationParser::parseStdVectorConfigurationConstStringDef(std::vector<
 
 void ConfigurationParser::parseArrayContainerAPI(ArrayContainerAPI &value) {
     std::string key;
-    requireSymbol('{');
+    if (!matchSymbol('{'))
+        throw Error::TYPE_MISMATCH;
     int separatorCheck = -1;
     for (; !matchSymbol('}'); separatorCheck = matchSymbol(',')) {
         if (!separatorCheck)
             throw Error::JSON_SYNTAX_ERROR;
         parseStdString(key);
-        requireSymbol(':');
+        if (!matchSymbol(':'))
+            throw Error::JSON_SYNTAX_ERROR;
         switch (key.size()) {
             case 5:
                 if (key == "clear") {
@@ -848,13 +858,15 @@ void ConfigurationParser::parseArrayContainerAPI(ArrayContainerAPI &value) {
 
 void ConfigurationParser::parseConfigurationArrayContainerDef(Configuration::ArrayContainerDef &value) {
     std::string key;
-    requireSymbol('{');
+    if (!matchSymbol('{'))
+        throw Error::TYPE_MISMATCH;
     int separatorCheck = -1;
     for (; !matchSymbol('}'); separatorCheck = matchSymbol(',')) {
         if (!separatorCheck)
             throw Error::JSON_SYNTAX_ERROR;
         parseStdString(key);
-        requireSymbol(':');
+        if (!matchSymbol(':'))
+            throw Error::JSON_SYNTAX_ERROR;
         switch (key.size()) {
             case 3:
                 if (key == "api") {
@@ -876,7 +888,8 @@ void ConfigurationParser::parseConfigurationArrayContainerDef(Configuration::Arr
 }
 
 void ConfigurationParser::parseStdVectorConfigurationArrayContainerDef(std::vector<Configuration::ArrayContainerDef> &value) {
-    requireSymbol('[');
+    if (!matchSymbol('['))
+        throw Error::TYPE_MISMATCH;
     value.clear();
     int separatorCheck = -1;
     while (!matchSymbol(']')) {
@@ -891,13 +904,15 @@ void ConfigurationParser::parseStdVectorConfigurationArrayContainerDef(std::vect
 
 void ConfigurationParser::parseObjectContainerAPI(ObjectContainerAPI &value) {
     std::string key;
-    requireSymbol('{');
+    if (!matchSymbol('{'))
+        throw Error::TYPE_MISMATCH;
     int separatorCheck = -1;
     for (; !matchSymbol('}'); separatorCheck = matchSymbol(',')) {
         if (!separatorCheck)
             throw Error::JSON_SYNTAX_ERROR;
         parseStdString(key);
-        requireSymbol(':');
+        if (!matchSymbol(':'))
+            throw Error::JSON_SYNTAX_ERROR;
         switch (key.size()) {
             case 5:
                 if (key == "clear") {
@@ -926,13 +941,15 @@ void ConfigurationParser::parseObjectContainerAPI(ObjectContainerAPI &value) {
 
 void ConfigurationParser::parseConfigurationObjectContainerDef(Configuration::ObjectContainerDef &value) {
     std::string key;
-    requireSymbol('{');
+    if (!matchSymbol('{'))
+        throw Error::TYPE_MISMATCH;
     int separatorCheck = -1;
     for (; !matchSymbol('}'); separatorCheck = matchSymbol(',')) {
         if (!separatorCheck)
             throw Error::JSON_SYNTAX_ERROR;
         parseStdString(key);
-        requireSymbol(':');
+        if (!matchSymbol(':'))
+            throw Error::JSON_SYNTAX_ERROR;
         switch (key.size()) {
             case 3:
                 if (key == "api") {
@@ -960,7 +977,8 @@ void ConfigurationParser::parseConfigurationObjectContainerDef(Configuration::Ob
 }
 
 void ConfigurationParser::parseStdVectorConfigurationObjectContainerDef(std::vector<Configuration::ObjectContainerDef> &value) {
-    requireSymbol('[');
+    if (!matchSymbol('['))
+        throw Error::TYPE_MISMATCH;
     value.clear();
     int separatorCheck = -1;
     while (!matchSymbol(']')) {
@@ -975,13 +993,15 @@ void ConfigurationParser::parseStdVectorConfigurationObjectContainerDef(std::vec
 
 void ConfigurationParser::parseOptionalContainerAPI(OptionalContainerAPI &value) {
     std::string key;
-    requireSymbol('{');
+    if (!matchSymbol('{'))
+        throw Error::TYPE_MISMATCH;
     int separatorCheck = -1;
     for (; !matchSymbol('}'); separatorCheck = matchSymbol(',')) {
         if (!separatorCheck)
             throw Error::JSON_SYNTAX_ERROR;
         parseStdString(key);
-        requireSymbol(':');
+        if (!matchSymbol(':'))
+            throw Error::JSON_SYNTAX_ERROR;
         if (key.size() > 0) {
             switch (key[0]) {
                 case 'c':
@@ -1018,13 +1038,15 @@ void ConfigurationParser::parseOptionalContainerAPI(OptionalContainerAPI &value)
 
 void ConfigurationParser::parseConfigurationOptionalContainerDef(Configuration::OptionalContainerDef &value) {
     std::string key;
-    requireSymbol('{');
+    if (!matchSymbol('{'))
+        throw Error::TYPE_MISMATCH;
     int separatorCheck = -1;
     for (; !matchSymbol('}'); separatorCheck = matchSymbol(',')) {
         if (!separatorCheck)
             throw Error::JSON_SYNTAX_ERROR;
         parseStdString(key);
-        requireSymbol(':');
+        if (!matchSymbol(':'))
+            throw Error::JSON_SYNTAX_ERROR;
         switch (key.size()) {
             case 3:
                 if (key == "api") {
@@ -1046,7 +1068,8 @@ void ConfigurationParser::parseConfigurationOptionalContainerDef(Configuration::
 }
 
 void ConfigurationParser::parseStdVectorConfigurationOptionalContainerDef(std::vector<Configuration::OptionalContainerDef> &value) {
-    requireSymbol('[');
+    if (!matchSymbol('['))
+        throw Error::TYPE_MISMATCH;
     value.clear();
     int separatorCheck = -1;
     while (!matchSymbol(']')) {
@@ -1061,13 +1084,15 @@ void ConfigurationParser::parseStdVectorConfigurationOptionalContainerDef(std::v
 
 void ConfigurationParser::parseConfigurationObjectMapContainerDef(Configuration::ObjectMapContainerDef &value) {
     std::string key;
-    requireSymbol('{');
+    if (!matchSymbol('{'))
+        throw Error::TYPE_MISMATCH;
     int separatorCheck = -1;
     for (; !matchSymbol('}'); separatorCheck = matchSymbol(',')) {
         if (!separatorCheck)
             throw Error::JSON_SYNTAX_ERROR;
         parseStdString(key);
-        requireSymbol(':');
+        if (!matchSymbol(':'))
+            throw Error::JSON_SYNTAX_ERROR;
         switch (key.size()) {
             case 3:
                 if (key == "api") {
@@ -1089,7 +1114,8 @@ void ConfigurationParser::parseConfigurationObjectMapContainerDef(Configuration:
 }
 
 void ConfigurationParser::parseStdVectorConfigurationObjectMapContainerDef(std::vector<Configuration::ObjectMapContainerDef> &value) {
-    requireSymbol('[');
+    if (!matchSymbol('['))
+        throw Error::TYPE_MISMATCH;
     value.clear();
     int separatorCheck = -1;
     while (!matchSymbol(']')) {
@@ -1104,13 +1130,15 @@ void ConfigurationParser::parseStdVectorConfigurationObjectMapContainerDef(std::
 
 void ConfigurationParser::parseFixedArrayContainerAPI(FixedArrayContainerAPI &value) {
     std::string key;
-    requireSymbol('{');
+    if (!matchSymbol('{'))
+        throw Error::TYPE_MISMATCH;
     int separatorCheck = -1;
     for (; !matchSymbol('}'); separatorCheck = matchSymbol(',')) {
         if (!separatorCheck)
             throw Error::JSON_SYNTAX_ERROR;
         parseStdString(key);
-        requireSymbol(':');
+        if (!matchSymbol(':'))
+            throw Error::JSON_SYNTAX_ERROR;
         if (key.size() > 0) {
             switch (key[0]) {
                 case 'c':
@@ -1141,13 +1169,15 @@ void ConfigurationParser::parseFixedArrayContainerAPI(FixedArrayContainerAPI &va
 
 void ConfigurationParser::parseConfigurationFixedArrayContainerDef(Configuration::FixedArrayContainerDef &value) {
     std::string key;
-    requireSymbol('{');
+    if (!matchSymbol('{'))
+        throw Error::TYPE_MISMATCH;
     int separatorCheck = -1;
     for (; !matchSymbol('}'); separatorCheck = matchSymbol(',')) {
         if (!separatorCheck)
             throw Error::JSON_SYNTAX_ERROR;
         parseStdString(key);
-        requireSymbol(':');
+        if (!matchSymbol(':'))
+            throw Error::JSON_SYNTAX_ERROR;
         switch (key.size()) {
             case 3:
                 if (key == "api") {
@@ -1175,7 +1205,8 @@ void ConfigurationParser::parseConfigurationFixedArrayContainerDef(Configuration
 }
 
 void ConfigurationParser::parseStdVectorConfigurationFixedArrayContainerDef(std::vector<Configuration::FixedArrayContainerDef> &value) {
-    requireSymbol('[');
+    if (!matchSymbol('['))
+        throw Error::TYPE_MISMATCH;
     value.clear();
     int separatorCheck = -1;
     while (!matchSymbol(']')) {
@@ -1190,13 +1221,15 @@ void ConfigurationParser::parseStdVectorConfigurationFixedArrayContainerDef(std:
 
 void ConfigurationParser::parseStaticArrayContainerAPI(StaticArrayContainerAPI &value) {
     std::string key;
-    requireSymbol('{');
+    if (!matchSymbol('{'))
+        throw Error::TYPE_MISMATCH;
     int separatorCheck = -1;
     for (; !matchSymbol('}'); separatorCheck = matchSymbol(',')) {
         if (!separatorCheck)
             throw Error::JSON_SYNTAX_ERROR;
         parseStdString(key);
-        requireSymbol(':');
+        if (!matchSymbol(':'))
+            throw Error::JSON_SYNTAX_ERROR;
         if (key == "refByIndex") {
             parseStdString(value.refByIndex);
             continue;
@@ -1209,13 +1242,15 @@ void ConfigurationParser::parseStaticArrayContainerAPI(StaticArrayContainerAPI &
 
 void ConfigurationParser::parseConfigurationStaticArrayContainerDef(Configuration::StaticArrayContainerDef &value) {
     std::string key;
-    requireSymbol('{');
+    if (!matchSymbol('{'))
+        throw Error::TYPE_MISMATCH;
     int separatorCheck = -1;
     for (; !matchSymbol('}'); separatorCheck = matchSymbol(',')) {
         if (!separatorCheck)
             throw Error::JSON_SYNTAX_ERROR;
         parseStdString(key);
-        requireSymbol(':');
+        if (!matchSymbol(':'))
+            throw Error::JSON_SYNTAX_ERROR;
         switch (key.size()) {
             case 3:
                 if (key == "api") {
@@ -1237,7 +1272,8 @@ void ConfigurationParser::parseConfigurationStaticArrayContainerDef(Configuratio
 }
 
 void ConfigurationParser::parseStdVectorConfigurationStaticArrayContainerDef(std::vector<Configuration::StaticArrayContainerDef> &value) {
-    requireSymbol('[');
+    if (!matchSymbol('['))
+        throw Error::TYPE_MISMATCH;
     value.clear();
     int separatorCheck = -1;
     while (!matchSymbol(']')) {
@@ -1252,13 +1288,15 @@ void ConfigurationParser::parseStdVectorConfigurationStaticArrayContainerDef(std
 
 void ConfigurationParser::parseConfiguration(Configuration &value) {
     std::string key;
-    requireSymbol('{');
+    if (!matchSymbol('{'))
+        throw Error::TYPE_MISMATCH;
     int separatorCheck = -1;
     for (; !matchSymbol('}'); separatorCheck = matchSymbol(',')) {
         if (!separatorCheck)
             throw Error::JSON_SYNTAX_ERROR;
         parseStdString(key);
-        requireSymbol(':');
+        if (!matchSymbol(':'))
+            throw Error::JSON_SYNTAX_ERROR;
         switch (key.size()) {
             case 6:
                 if (key == "inputs") {

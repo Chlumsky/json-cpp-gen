@@ -24,11 +24,9 @@ StringType::StringType(std::string &&name, const StringAPI &api) : Type(TypeName
 
 std::string StringType::generateParserFunctionBody(ParserGenerator *generator, const std::string &indent) const {
     std::string body;
-    body += indent+"skipWhitespace();\n";
-    body += indent+"if (*cur != '\"')\n";
+    body += indent+"if (!matchSymbol('\"'))\n";
     body += indent+INDENT+generator->generateErrorStatement(ParserGenerator::Error::STRING_EXPECTED)+";\n";
     body += indent+generateClear("value")+";\n";
-    body += indent+"++cur;\n";
     body += indent+"while (*cur != '\"') {\n";
     body += indent+INDENT "if (*cur == '\\\\') {\n";
     body += indent+INDENT INDENT "char buffer[8];\n";

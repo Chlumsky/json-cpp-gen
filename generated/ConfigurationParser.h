@@ -40,7 +40,6 @@ protected:
     explicit ConfigurationParser(const char *str);
     void skipWhitespace();
     void skipValue();
-    void requireSymbol(char s);
     bool matchSymbol(char s);
     void readHexQuad(int &value);
     void unescape(char *codepoints);

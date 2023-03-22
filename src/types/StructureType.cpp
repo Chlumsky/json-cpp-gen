@@ -43,11 +43,8 @@ std::string StructureType::generateParserFunctionBody(ParserGenerator *generator
     std::string body;
     // TODO make key a class member to reduce the number of allocations
     body += indent+generator->stringType()->name().variableDeclaration("key")+";\n";
-    if (generator->settings().noThrow) {
-        body += indent+"if (!matchSymbol('{'))\n";
-        body += indent+INDENT+generator->generateErrorStatement(ParserGenerator::Error::TYPE_MISMATCH)+";\n";
-    } else
-        body += indent+"requireSymbol('{');\n";
+    body += indent+"if (!matchSymbol('{'))\n";
+    body += indent+INDENT+generator->generateErrorStatement(ParserGenerator::Error::TYPE_MISMATCH)+";\n";
     if (generator->settings().strictSyntaxCheck)
         body += indent+"int separatorCheck = -1;\n";
     body += indent+"for (; !matchSymbol('}'); "+(generator->settings().strictSyntaxCheck ? "separatorCheck = " : "")+"matchSymbol(',')) {\n";
@@ -56,11 +53,8 @@ std::string StructureType::generateParserFunctionBody(ParserGenerator *generator
         body += indent+INDENT INDENT+generator->generateErrorStatement(ParserGenerator::Error::JSON_SYNTAX_ERROR)+";\n";
     }
     body += generator->generateValueParse(generator->stringType(), "key", indent+INDENT);
-    if (generator->settings().noThrow) {
-        body += indent+INDENT "if (!matchSymbol(':'))\n";
-        body += indent+INDENT INDENT+generator->generateErrorStatement(ParserGenerator::Error::JSON_SYNTAX_ERROR)+";\n";
-    } else
-        body += indent+INDENT "requireSymbol(':');\n";
+    body += indent+INDENT "if (!matchSymbol(':'))\n";
+    body += indent+INDENT INDENT+generator->generateErrorStatement(ParserGenerator::Error::JSON_SYNTAX_ERROR)+";\n";
     if (!orderedMembers.empty()) {
         std::vector<std::string> labels;
         labels.reserve(orderedMembers.size());

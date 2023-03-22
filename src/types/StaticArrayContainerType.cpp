@@ -18,11 +18,8 @@ int StaticArrayContainerType::length() const {
 
 std::string StaticArrayContainerType::generateParserFunctionBody(ParserGenerator *generator, const std::string &indent) const {
     std::string body;
-    if (generator->settings().noThrow) {
-        body += indent+"if (!matchSymbol('['))\n";
-        body += indent+INDENT+generator->generateErrorStatement(ParserGenerator::Error::TYPE_MISMATCH)+";\n";
-    } else
-        body += indent+"requireSymbol('[');\n";
+    body += indent+"if (!matchSymbol('['))\n";
+    body += indent+INDENT+generator->generateErrorStatement(ParserGenerator::Error::TYPE_MISMATCH)+";\n";
     if (generator->settings().strictSyntaxCheck)
         body += indent+"int separatorCheck = -1;\n";
     body += indent+"int i = 0;\n";
