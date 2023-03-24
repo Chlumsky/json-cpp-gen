@@ -53,13 +53,11 @@ std::string StructureType::ParserSwitchTreeCaseGenerator::operator()(ParserGener
     return body;
 }
 
+StructureType::StructureType() : DirectType(TypeName()) { }
+
 StructureType::StructureType(const std::string &name) : DirectType(TypeName(name)) { }
 
 StructureType::StructureType(std::string &&name) : DirectType(TypeName((std::string &&) name)) { }
-
-void StructureType::inheritFrom(StructureType *baseType) {
-    baseTypes.push_back(baseType);
-}
 
 std::string StructureType::generateParserFunctionBody(ParserGenerator *generator, const std::string &indent) const {
     std::string body;
@@ -166,6 +164,20 @@ std::string StructureType::generateSerializerFunctionBody(SerializerGenerator *g
     return body;
 }
 
+void StructureType::inheritFrom(StructureType *baseType) {
+    baseTypes.push_back(baseType);
+}
+
+bool StructureType::absorb(const StructureType *other) {
+    if (other) {
+        for (const std::pair<std::string, const Type *> &member : other->orderedMembers) {
+            if (!addMember(member.first, member.second))
+                return false;
+        }
+    }
+    return true;
+}
+
 bool StructureType::addMember(const std::string &name, const Type *type) {
     std::map<std::string, const Type *>::iterator it = members.find(name);
     if (it != members.end())
@@ -203,8 +215,17 @@ bool StructureType::finalizeInheritance() {
         if (baseType) {
             if (!baseType->finalizeInheritance())
                 return false;
-            members.insert(baseType->members.begin(), baseType->members.end());
-            fullOrderedMembers.insert(fullOrderedMembers.end(), baseType->orderedMembers.begin(), baseType->orderedMembers.end());
+            for (const std::pair<std::string, const Type *> &baseMember : baseType->orderedMembers) {
+                std::map<std::string, const Type *>::iterator it = members.find(baseMember.first);
+                if (it == members.end()) {
+                    members.insert(it, baseMember);
+                    fullOrderedMembers.push_back(baseMember);
+                } else { // member shadowing
+                    std::string qualifiedName = baseType->name().body()+"::"+baseMember.first;
+                    members.insert(std::make_pair(qualifiedName, baseMember.second));
+                    fullOrderedMembers.emplace_back(std::move(qualifiedName), baseMember.second);
+                }
+            }
         }
     }
     fullOrderedMembers.insert(fullOrderedMembers.end(), orderedMembers.begin(), orderedMembers.end());

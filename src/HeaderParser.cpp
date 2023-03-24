@@ -58,15 +58,14 @@ Type *HeaderParser::findType(const std::string &name) {
 
 void HeaderParser::parseSection() {
     if (cur < end && *cur == '#') // directive
-        skipDirective();
-    else if (matchKeyword("struct")) // TODO this can actually be "struct some_c_struct variable_name;"
+        return skipDirective();
+    if (matchKeyword("namespace"))
+        return parseNamespace();
+    if (matchKeyword("struct"))
         parseStruct();
     else if (matchKeyword("enum"))
         parseEnum();
-    else if (matchKeyword("namespace"))
-        parseNamespace();
-    else
-        skipSection();
+    skipSection();
 }
 
 void HeaderParser::parseNamespace() {
@@ -91,34 +90,48 @@ void HeaderParser::parseNamespace() {
 const Type *HeaderParser::parseStruct() {
     skipWhitespaceAndComments(MULTI_LINE);
     std::string structName = readNamespacedIdentifier();
-    if (structName.empty())
-        throw Error::STRUCT_NAME_EXPECTED;
-    std::string fullStructName;
-    if (structName.size() >= 2 && structName[0] == ':' && structName[1] == ':')
-        fullStructName = structName.substr(2);
-    else {
-        for (std::vector<std::string>::const_iterator it = curNamespace.begin(); it != curNamespace.end(); ++it)
-            fullStructName += *it+"::";
-        fullStructName += structName;
-    }
     skipWhitespaceAndComments(MULTI_LINE);
-    bool forwardDeclaration = matchSymbol(';');
+    const char *possibleDeclarationEnd = cur;
+    if (matchKeyword("final"))
+        skipWhitespaceAndComments(MULTI_LINE);
+    if (!(cur < end && (*cur == ';' || *cur == ':' || *cur == '{'))) {
+        // Actually not a structure declaration/definition but a variable
+        // Rewind cur because "final" is actually variable name
+        cur = possibleDeclarationEnd;
+        return findType(structName);
+    }
 
     StructureType *structType = nullptr;
-    if (Type *type = typeSet->find(fullStructName)) {
-        if (!(structType = dynamic_cast<StructureType *>(type)))
-            throw Error::TYPE_REDEFINITION;
-        if (forwardDeclaration)
-            return type;
-        if (structType->membersFinalized())
-            throw Error::TYPE_REDEFINITION;
-    } else {
-        std::unique_ptr<StructureType> newType(new StructureType(fullStructName));
-        structType = newType.get();
-        typeSet->add(fullStructName, std::move(newType));
+    bool forwardDeclaration = cur < end && *cur == ';';
+    if (!structName.empty()) {
+        std::string fullStructName;
+        if (structName.size() >= 2 && structName[0] == ':' && structName[1] == ':')
+            fullStructName = structName.substr(2);
+        else {
+            for (std::vector<std::string>::const_iterator it = curNamespace.begin(); it != curNamespace.end(); ++it)
+                fullStructName += *it+"::";
+            fullStructName += structName;
+        }
+        if (Type *type = typeSet->find(fullStructName)) {
+            if (!(structType = dynamic_cast<StructureType *>(type)))
+                throw Error::TYPE_REDEFINITION;
+            if (forwardDeclaration)
+                return type;
+            if (structType->membersFinalized())
+                throw Error::TYPE_REDEFINITION;
+        } else {
+            std::unique_ptr<StructureType> newType(new StructureType(fullStructName));
+            structType = newType.get();
+            typeSet->add(fullStructName, std::move(newType));
+        }
     }
     if (forwardDeclaration)
         return structType;
+    if (structName.empty() && !parseNamesOnly) {
+        std::unique_ptr<StructureType> newType(new StructureType());
+        structType = newType.get();
+        typeSet->addAnonymous(std::move(newType));
+    }
 
     if (matchSymbol(':')) {
         skipWhitespaceAndComments(MULTI_LINE);
@@ -154,10 +167,11 @@ const Type *HeaderParser::parseStruct() {
             skipWhitespaceAndComments(MULTI_LINE);
         } while (matchSymbol(','));
     }
-    if (!matchSymbol('{'))
-        throw Error::INVALID_STRUCTURE_SYNTAX; // TODO this can actually be "struct some_c_struct variable_name;"
 
-    curNamespace.push_back(structName);
+    if (!matchSymbol('{'))
+        throw Error::INVALID_STRUCTURE_SYNTAX;
+    if (!structName.empty())
+        curNamespace.push_back(structName);
     for (skipWhitespaceAndComments(MULTI_LINE); !matchSymbol('}'); skipWhitespaceAndComments(MULTI_LINE)) {
         if (cur >= end)
             throw Error::UNEXPECTED_EOF;
@@ -170,26 +184,38 @@ const Type *HeaderParser::parseStruct() {
         if (
             matchKeyword("void") || matchKeyword("union") || matchKeyword("class") ||
             matchKeyword("const") || matchKeyword("constexpr") || 
-            matchKeyword("static") || matchKeyword("virtual") || matchKeyword("inline") || matchKeyword("extern") || matchKeyword("explicit") ||
+            matchKeyword("virtual") || matchKeyword("inline") || matchKeyword("extern") || matchKeyword("explicit") ||
             matchKeyword("typedef") || matchKeyword("operator") || matchKeyword("template") || matchKeyword("friend")
         ) {
             skipSection();
             continue;
         }
-        matchKeyword("mutable"); // ignore
+        if (matchKeyword("mutable")) // ignore
+            skipWhitespaceAndComments(MULTI_LINE);
+        bool staticMember = matchKeyword("static");
+        if (staticMember)
+            skipWhitespaceAndComments(MULTI_LINE);
+        if (matchKeyword("mutable"))
+            skipWhitespaceAndComments(MULTI_LINE);
         const Type *memberBaseType = nullptr;
-        if (matchKeyword("struct")) { // TODO this can actually be "struct some_c_struct variable_name;"
+        if (matchKeyword("struct")) {
             memberBaseType = parseStruct();
             skipWhitespaceAndComments(MULTI_LINE);
-            if (matchSymbol(';'))
+            if (matchSymbol(';')) {
+                if (!parseNamesOnly && !staticMember && memberBaseType && memberBaseType->name().body().empty()) {
+                    // Special case - non-variable anonymous structure is considered part of parent structure
+                    if (!structType->absorb(dynamic_cast<const StructureType *>(memberBaseType)))
+                        throw Error::DUPLICATE_STRUCT_MEMBER;
+                }
                 continue;
+            }
         } else if (matchKeyword("enum")) {
             memberBaseType = parseEnum();
             skipWhitespaceAndComments(MULTI_LINE);
             if (matchSymbol(';'))
                 continue;
         }
-        if (parseNamesOnly) {
+        if (parseNamesOnly || staticMember) {
             skipSection();
             continue;
         }
@@ -225,7 +251,7 @@ const Type *HeaderParser::parseStruct() {
                         skipExpression();
                         skipWhitespaceAndComments(MULTI_LINE);
                     }
-                    if (cur < end && (*cur == ';' || *cur == ',')) {
+                    if (cur < end && (*cur == ';' || *cur == ',') && !memberType->name().body().empty()) { // TODO anonymous structures / enums
                         if (!structType->addMember(memberName, memberType))
                             throw Error::DUPLICATE_STRUCT_MEMBER;
                     }
@@ -236,7 +262,8 @@ const Type *HeaderParser::parseStruct() {
         }
         skipSection();
     }
-    curNamespace.pop_back();
+    if (!structName.empty())
+        curNamespace.pop_back();
     if (!parseNamesOnly)
         structType->finalizeMembers();
     return structType;
@@ -245,59 +272,76 @@ const Type *HeaderParser::parseStruct() {
 const Type *HeaderParser::parseEnum() {
     bool enumClass = false;
     skipWhitespaceAndComments(MULTI_LINE);
-    if (matchKeyword("class")) {
+    if (matchKeyword("class") || matchKeyword("struct")) {
         enumClass = true;
         skipWhitespaceAndComments(MULTI_LINE);
     }
     std::string enumName = readNamespacedIdentifier();
-    if (enumName.empty())
-        throw Error::ENUM_NAME_EXPECTED;
-    std::string fullEnumName;
-    if (enumName.size() >= 2 && enumName[0] == ':' && enumName[1] == ':')
-        fullEnumName = enumName.substr(2);
-    else {
-        for (std::vector<std::string>::const_iterator it = curNamespace.begin(); it != curNamespace.end(); ++it)
-            fullEnumName += *it+"::";
-        fullEnumName += enumName;
-    }
     skipWhitespaceAndComments(MULTI_LINE);
-    bool forwardDeclaration = matchSymbol(';');
+    if (!(cur < end && (*cur == ';' || *cur == ':' || *cur == '{'))) {
+        // Actually not an enum declaration/definition but a variable
+        return findType(enumName);
+    }
 
     EnumType *enumType = nullptr;
-    if (Type *type = typeSet->find(fullEnumName)) {
-        if (!((enumType = dynamic_cast<EnumType *>(type)) && enumType->isEnumClass() == enumClass))
-            throw Error::TYPE_REDEFINITION;
-        if (forwardDeclaration)
-            return type;
-        if (enumType->isFinalized())
-            throw Error::TYPE_REDEFINITION;
-    } else {
-        std::unique_ptr<EnumType> newType(new EnumType(fullEnumName, enumClass));
+    bool forwardDeclaration = cur < end && *cur == ';';
+    if (!enumName.empty()) {
+        std::string fullEnumName;
+        if (enumName.size() >= 2 && enumName[0] == ':' && enumName[1] == ':')
+            fullEnumName = enumName.substr(2);
+        else {
+            for (std::vector<std::string>::const_iterator it = curNamespace.begin(); it != curNamespace.end(); ++it)
+                fullEnumName += *it+"::";
+            fullEnumName += enumName;
+        }
+        if (Type *type = typeSet->find(fullEnumName)) {
+            if (!((enumType = dynamic_cast<EnumType *>(type)) && enumType->isEnumClass() == enumClass))
+                throw Error::TYPE_REDEFINITION;
+            if (forwardDeclaration)
+                return type;
+            if (enumType->isFinalized())
+                throw Error::TYPE_REDEFINITION;
+        } else {
+            std::unique_ptr<EnumType> newType(new EnumType(fullEnumName, enumClass));
+            enumType = newType.get();
+            typeSet->add(fullEnumName, std::move(newType));
+        }
+    }
+    if (forwardDeclaration)
+        return enumType;
+    if (enumName.empty() && !parseNamesOnly) {
+        std::unique_ptr<EnumType> newType(new EnumType());
         enumType = newType.get();
-        typeSet->add(fullEnumName, std::move(newType));
+        typeSet->addAnonymous(std::move(newType));
     }
 
-    if (!forwardDeclaration) {
-        if (!matchSymbol('{')) // TODO enum MyEnum : unsigned short { ... }; and final
-            throw Error::INVALID_ENUM_SYNTAX;
-        for (skipWhitespaceAndComments(MULTI_LINE); !matchSymbol('}'); skipWhitespaceAndComments(MULTI_LINE)) {
-            if (cur >= end)
-                throw Error::UNEXPECTED_EOF;
-            std::string enumValue = readIdentifier();
-            if (enumValue.empty())
-                throw Error::INVALID_ENUM_SYNTAX;
-            if (!parseNamesOnly)
-                enumType->addValue(std::move(enumValue));
-            skipWhitespaceAndComments(MULTI_LINE);
-            if (matchSymbol('=')) {
-                skipExpression();
-                skipWhitespaceAndComments(MULTI_LINE);
-            }
-            matchSymbol(',');
+    if (matchSymbol(':')) {
+        while ((skipWhitespaceAndComments(MULTI_LINE), cur < end) && !(*cur == ';' || *cur == '{')) {
+            const char *prev = cur;
+            skipDirective();
+            skipStringLiteral();
+            cur += cur == prev;
         }
-        if (!parseNamesOnly)
-            enumType->finalize();
     }
+    if (!matchSymbol('{'))
+        throw Error::INVALID_ENUM_SYNTAX;
+    for (skipWhitespaceAndComments(MULTI_LINE); !matchSymbol('}'); skipWhitespaceAndComments(MULTI_LINE)) {
+        if (cur >= end)
+            throw Error::UNEXPECTED_EOF;
+        std::string enumValue = readIdentifier();
+        if (enumValue.empty())
+            throw Error::INVALID_ENUM_SYNTAX;
+        if (!parseNamesOnly)
+            enumType->addValue(std::move(enumValue));
+        skipWhitespaceAndComments(MULTI_LINE);
+        if (matchSymbol('=')) {
+            skipExpression();
+            skipWhitespaceAndComments(MULTI_LINE);
+        }
+        matchSymbol(',');
+    }
+    if (!parseNamesOnly)
+        enumType->finalize();
     return enumType;
 }
 
@@ -476,24 +520,19 @@ std::string HeaderParser::readIdentifier() {
 void HeaderParser::skipLine() {
     bool escaped = false;
     while (cur < end) {
-        switch (*cur) {
+        switch (*cur++) {
             case '\n':
-                if (!escaped) {
-                    ++cur;
+                if (!escaped)
                     return;
-                }
+                // fallthrough
+            default:
                 escaped = false;
-                break;
+                // fallthrough
             case ' ': case '\t': case '\r':
                 break;
             case '\\':
                 escaped = true;
-                break;
-            default:
-                escaped = false;
-                break;
         }
-        ++cur;
     }
 }
 
@@ -564,9 +603,18 @@ void HeaderParser::skipStringLiteral() {
                     if (cur >= end)
                         throw Error::UNEXPECTED_EOF;
                     ++cur;
-                    while (cur < end && !(*cur++ == ')' && matchKeyword(delimiter.c_str())));
+                    while (cur < end) {
+                        if (*cur++ == ')') {
+                            std::string::const_iterator it = delimiter.begin();
+                            do {
+                                if (it == delimiter.end())
+                                    return;
+                            } while (cur < end && *cur++ == *it++);
+                        }
+                    }
+                    throw Error::UNEXPECTED_EOF;
                 }
-                return;
+                // fallthrough
             default:
                 return;
         }
@@ -673,15 +721,16 @@ bool HeaderParser::matchSymbol(char s) {
 }
 
 bool HeaderParser::matchKeyword(const char *keyword) {
-    const char *sub = cur;
-    while (true) {
+    const char *subCur = cur;
+    do {
         if (!*keyword) {
-            cur = sub;
+            if (subCur < end && isNonSymbol(*subCur))
+                return false;
+            cur = subCur;
             return true;
         }
-        if (!(sub < end && *sub++ == *keyword++))
-            return false;
-    }
+    } while (subCur < end && *subCur++ == *keyword++);
+    return false;
 }
 
 bool HeaderParser::isNonSymbol(char c) {

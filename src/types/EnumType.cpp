@@ -26,6 +26,8 @@ std::string EnumType::ParserSwitchTreeCaseGenerator::operator()(ParserGenerator 
     return body;
 }
 
+EnumType::EnumType() : DirectType(TypeName()), enumClass(false) { }
+
 EnumType::EnumType(const std::string &name, bool enumClass) : DirectType(TypeName(name)), enumClass(enumClass) { }
 
 EnumType::EnumType(std::string &&name, bool enumClass) : DirectType(TypeName((std::string &&) name)), enumClass(enumClass) { }

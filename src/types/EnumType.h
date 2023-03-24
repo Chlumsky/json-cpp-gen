@@ -8,6 +8,7 @@
 class EnumType : public DirectType {
 
 public:
+    EnumType();
     EnumType(const std::string &name, bool enumClass);
     EnumType(std::string &&name, bool enumClass);
     virtual std::string generateParserFunctionBody(ParserGenerator *generator, const std::string &indent) const override;
