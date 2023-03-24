@@ -5,10 +5,7 @@
     ],
     "settings": {
         "jsonIOMode": "NULL_TERMINATED_STRING",
-        "keyFormat": "ANY",
-        "enumFormat": "ANY",
         "noThrow": false,
-        "verboseErrors": true,
         "strictSyntaxCheck": true,
         "checkMissingKeys": false,
         "checkRepeatingKeys": false,

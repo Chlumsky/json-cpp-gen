@@ -300,56 +300,22 @@ void ConfigurationParser::parseStdVectorConfigurationGeneratorDef(std::vector<Co
         throw Error::JSON_SYNTAX_ERROR;
 }
 
-void ConfigurationParser::parseNameFormat(NameFormat &value) {
+void ConfigurationParser::parseBool(bool &value) {
+    skipWhitespace();
+    if (cur[0] == 'f' && cur[1] == 'a' && cur[2] == 'l' && cur[3] == 's' && cur[4] == 'e' && !isAlphanumeric(cur[5]) && cur[5] != '_' && (cur += 5, true))
+        value = false;
+    else if (cur[0] == 't' && cur[1] == 'r' && cur[2] == 'u' && cur[3] == 'e' && !isAlphanumeric(cur[4]) && cur[4] != '_' && (cur += 4, true))
+        value = true;
+    else
+        throw Error::TYPE_MISMATCH;
+}
+
+void ConfigurationParser::parseSettingsJsonIO(Settings::JsonIO &value) {
     std::string str;
     parseStdString(str);
-    switch (str.size()) {
-        case 3:
-            if (str == "ANY") {
-                value = NameFormat::ANY;
-                return; 
-            }
-            break;
-        case 9:
-            if (str == "CAMELCASE") {
-                value = NameFormat::CAMELCASE;
-                return; 
-            }
-            break;
-        case 13:
-            if (str == "UPERCASE_DASH") {
-                value = NameFormat::UPERCASE_DASH;
-                return; 
-            }
-            break;
-        case 14:
-            if (str == "LOWERCASE_DASH") {
-                value = NameFormat::LOWERCASE_DASH;
-                return; 
-            }
-            break;
-        case 17:
-            if (str == "CAMELCASE_CAPITAL") {
-                value = NameFormat::CAMELCASE_CAPITAL;
-                return; 
-            }
-            break;
-        case 20:
-            switch (str[0]) {
-                case 'L':
-                    if (str == "LOWERCASE_UNDERSCORE") {
-                        value = NameFormat::LOWERCASE_UNDERSCORE;
-                        return; 
-                    }
-                    break;
-                case 'U':
-                    if (str == "UPPERCASE_UNDERSCORE") {
-                        value = NameFormat::UPPERCASE_UNDERSCORE;
-                        return; 
-                    }
-                    break;
-            }
-            break;
+    if (str == "NULL_TERMINATED_STRING") {
+        value = Settings::JsonIO::NULL_TERMINATED_STRING;
+        return; 
     }
     throw Error::UNKNOWN_ENUM_VALUE;
 }
@@ -480,26 +446,6 @@ void ConfigurationParser::parseSettingsNanPolicy(Settings::NanPolicy &value) {
     throw Error::UNKNOWN_ENUM_VALUE;
 }
 
-void ConfigurationParser::parseBool(bool &value) {
-    skipWhitespace();
-    if (cur[0] == 'f' && cur[1] == 'a' && cur[2] == 'l' && cur[3] == 's' && cur[4] == 'e' && !isAlphanumeric(cur[5]) && cur[5] != '_' && (cur += 5, true))
-        value = false;
-    else if (cur[0] == 't' && cur[1] == 'r' && cur[2] == 'u' && cur[3] == 'e' && !isAlphanumeric(cur[4]) && cur[4] != '_' && (cur += 4, true))
-        value = true;
-    else
-        throw Error::TYPE_MISMATCH;
-}
-
-void ConfigurationParser::parseSettingsJsonIO(Settings::JsonIO &value) {
-    std::string str;
-    parseStdString(str);
-    if (str == "NULL_TERMINATED_STRING") {
-        value = Settings::JsonIO::NULL_TERMINATED_STRING;
-        return; 
-    }
-    throw Error::UNKNOWN_ENUM_VALUE;
-}
-
 void ConfigurationParser::parseSettings(Settings &value) {
     std::string key;
     if (!matchSymbol('{'))
@@ -511,15 +457,49 @@ void ConfigurationParser::parseSettings(Settings &value) {
         parseStdString(key);
         if (!matchSymbol(':'))
             throw Error::JSON_SYNTAX_ERROR;
-        if (key.size() > 3) {
-            switch (key[3]) {
-                case 'F':
-                    if (key == "keyFormat") {
-                        parseNameFormat(value.keyFormat);
+        if (key.size() > 5) {
+            switch (key[5]) {
+                case 'I':
+                    if (key == "checkIntegerOverflow") {
+                        parseBool(value.checkIntegerOverflow);
                         continue;
                     }
                     break;
-                case 'P':
+                case 'M':
+                    if (key == "checkMissingKeys") {
+                        parseBool(value.checkMissingKeys);
+                        continue;
+                    }
+                    break;
+                case 'O':
+                    if (key == "jsonIOMode") {
+                        parseSettingsJsonIO(value.jsonIOMode);
+                        continue;
+                    }
+                    break;
+                case 'R':
+                    if (key == "checkRepeatingKeys") {
+                        parseBool(value.checkRepeatingKeys);
+                        continue;
+                    }
+                    break;
+                case 'e':
+                    switch (key.size()) {
+                        case 15:
+                            if (key == "ignoreExtraKeys") {
+                                parseBool(value.ignoreExtraKeys);
+                                continue;
+                            }
+                            break;
+                        case 18:
+                            if (key == "escapeForwardSlash") {
+                                parseBool(value.escapeForwardSlash);
+                                continue;
+                            }
+                            break;
+                    }
+                    break;
+                case 'l':
                     switch (key[0]) {
                         case 'i':
                             if (key == "infPolicy") {
@@ -535,73 +515,21 @@ void ConfigurationParser::parseSettings(Settings &value) {
                             break;
                     }
                     break;
-                case 'a':
-                    if (key == "escapeForwardSlash") {
-                        parseBool(value.escapeForwardSlash);
+                case 'm':
+                    if (key == "skipEmptyFields") {
+                        parseBool(value.skipEmptyFields);
                         continue;
                     }
                     break;
-                case 'b':
-                    if (key == "verboseErrors") {
-                        parseBool(value.verboseErrors);
-                        continue;
-                    }
-                    break;
-                case 'c':
-                    switch (key.size()) {
-                        case 16:
-                            if (key == "checkMissingKeys") {
-                                parseBool(value.checkMissingKeys);
-                                continue;
-                            }
-                            break;
-                        case 18:
-                            if (key == "checkRepeatingKeys") {
-                                parseBool(value.checkRepeatingKeys);
-                                continue;
-                            }
-                            break;
-                        case 20:
-                            if (key == "checkIntegerOverflow") {
-                                parseBool(value.checkIntegerOverflow);
-                                continue;
-                            }
-                            break;
-                    }
-                    break;
-                case 'h':
+                case 'o':
                     if (key == "noThrow") {
                         parseBool(value.noThrow);
                         continue;
                     }
                     break;
-                case 'i':
+                case 't':
                     if (key == "strictSyntaxCheck") {
                         parseBool(value.strictSyntaxCheck);
-                        continue;
-                    }
-                    break;
-                case 'm':
-                    if (key == "enumFormat") {
-                        parseNameFormat(value.enumFormat);
-                        continue;
-                    }
-                    break;
-                case 'n':
-                    if (key == "jsonIOMode") {
-                        parseSettingsJsonIO(value.jsonIOMode);
-                        continue;
-                    }
-                    break;
-                case 'o':
-                    if (key == "ignoreExtraKeys") {
-                        parseBool(value.ignoreExtraKeys);
-                        continue;
-                    }
-                    break;
-                case 'p':
-                    if (key == "skipEmptyFields") {
-                        parseBool(value.skipEmptyFields);
                         continue;
                     }
                     break;

@@ -3,7 +3,6 @@
 
 #include <string>
 #include <vector>
-#include "NameFormat.h"
 
 struct Settings {
     /// Specifies how the JSON data is received / outputted.
@@ -11,20 +10,14 @@ struct Settings {
         NULL_TERMINATED_STRING
         // Stream mode will be added in the future
     } jsonIOMode = JsonIO::NULL_TERMINATED_STRING;
-    /// Specifies how keys of structure member variables are formatted in the JSON file.
-    NameFormat keyFormat = NameFormat::ANY;
-    /// Specifies how enum values are formatted in the JSON file.
-    NameFormat enumFormat = NameFormat::ANY;
     /// Parser / serialization errors can be thrown or returned. The latter should only be used for strictly no-throw codebases.
     bool noThrow = false;
-    /// By default, errors are enumerated error codes. In verbose mode, they are instead a structure with the code and a message string.
-    bool verboseErrors = false; // TODO IMPLEMENT
     /// By default, not all of the JSON's syntax is checked to save performance. Enable strict syntax checking if you want to make sure that any invalid JSON file is detected.
     bool strictSyntaxCheck = false;
     /// If this is enabled, any time a JSON object is parsed into a C++ structure, but not all of its fields are present in the JSON, an error will be reported.
-    bool checkMissingKeys = true; // TODO IMPLEMENT
+    bool checkMissingKeys = false; // TODO IMPLEMENT
     /// Unless repeating keys are checked, repeated instances of the same key will simply result in the field being overwritten.
-    bool checkRepeatingKeys = true; // TODO IMPLEMENT
+    bool checkRepeatingKeys = false; // TODO IMPLEMENT
     /// When a JSON object contains an unknown element, it can either be ignored and its value silently skipped, or an error can be reported.
     bool ignoreExtraKeys = true;
     /// Unless enabled, parsing integers that are too large to fit the intended variable will simply truncate them.

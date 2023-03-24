@@ -50,11 +50,10 @@ protected:
     void parseStdVectorStdString(std::vector<std::string> &value);
     void parseConfigurationGeneratorDef(Configuration::GeneratorDef &value);
     void parseStdVectorConfigurationGeneratorDef(std::vector<Configuration::GeneratorDef> &value);
-    void parseNameFormat(NameFormat &value);
-    void parseSettingsInfPolicy(Settings::InfPolicy &value);
-    void parseSettingsNanPolicy(Settings::NanPolicy &value);
     void parseBool(bool &value);
     void parseSettingsJsonIO(Settings::JsonIO &value);
+    void parseSettingsInfPolicy(Settings::InfPolicy &value);
+    void parseSettingsNanPolicy(Settings::NanPolicy &value);
     void parseSettings(Settings &value);
     void parseStringAPI(StringAPI &value);
     void parseConfigurationStringDef(Configuration::StringDef &value);
