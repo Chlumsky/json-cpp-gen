@@ -225,8 +225,10 @@ const Type *HeaderParser::parseStruct() {
                         skipExpression();
                         skipWhitespaceAndComments(MULTI_LINE);
                     }
-                    if (cur < end && (*cur == ';' || *cur == ','))
-                        structType->addMember(memberName, memberType);
+                    if (cur < end && (*cur == ';' || *cur == ',')) {
+                        if (!structType->addMember(memberName, memberType))
+                            throw Error::DUPLICATE_STRUCT_MEMBER;
+                    }
                 }
             } while (matchSymbol(','));
             if (matchSymbol(';'))

@@ -24,10 +24,14 @@ const char *ConfigurationParser::Error::typeString() const {
             return "TYPE_MISMATCH";
         case Error::ARRAY_SIZE_MISMATCH:
             return "ARRAY_SIZE_MISMATCH";
-        case Error::UNKNOWN_KEY:
-            return "UNKNOWN_KEY";
         case Error::UNKNOWN_ENUM_VALUE:
             return "UNKNOWN_ENUM_VALUE";
+        case Error::UNKNOWN_KEY:
+            return "UNKNOWN_KEY";
+        case Error::MISSING_KEY:
+            return "MISSING_KEY";
+        case Error::REPEATED_KEY:
+            return "REPEATED_KEY";
         case Error::VALUE_OUT_OF_RANGE:
             return "VALUE_OUT_OF_RANGE";
         case Error::STRING_EXPECTED:

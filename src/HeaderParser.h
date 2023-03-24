@@ -16,6 +16,7 @@
     M(INVALID_TYPENAME_SYNTAX) \
     M(INVALID_ARRAY_SYNTAX) \
     M(INVALID_NAMESPACE_SYNTAX) \
+    M(DUPLICATE_STRUCT_MEMBER) \
     M(NOT_IMPLEMENTED) \
 
 // Parses structures from a C++ header file.

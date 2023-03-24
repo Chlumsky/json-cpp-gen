@@ -15,9 +15,9 @@ struct Settings {
     /// By default, not all of the JSON's syntax is checked to save performance. Enable strict syntax checking if you want to make sure that any invalid JSON file is detected.
     bool strictSyntaxCheck = false;
     /// If this is enabled, any time a JSON object is parsed into a C++ structure, but not all of its fields are present in the JSON, an error will be reported.
-    bool checkMissingKeys = false; // TODO IMPLEMENT
+    bool checkMissingKeys = false;
     /// Unless repeating keys are checked, repeated instances of the same key will simply result in the field being overwritten.
-    bool checkRepeatingKeys = false; // TODO IMPLEMENT
+    bool checkRepeatingKeys = false;
     /// When a JSON object contains an unknown element, it can either be ignored and its value silently skipped, or an error can be reported.
     bool ignoreExtraKeys = true;
     /// Unless enabled, parsing integers that are too large to fit the intended variable will simply truncate them.

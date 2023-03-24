@@ -18,8 +18,10 @@ public:
             UNEXPECTED_END_OF_FILE,
             TYPE_MISMATCH,
             ARRAY_SIZE_MISMATCH,
-            UNKNOWN_KEY,
             UNKNOWN_ENUM_VALUE,
+            UNKNOWN_KEY,
+            MISSING_KEY,
+            REPEATED_KEY,
             VALUE_OUT_OF_RANGE,
             STRING_EXPECTED,
             UTF16_ENCODING_ERROR
