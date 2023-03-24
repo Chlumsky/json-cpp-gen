@@ -9,11 +9,11 @@
 
 ObjectContainerType::ObjectContainerType(const ObjectContainerTemplate *containerTemplate, const Type *elementType) : ContainerType(containerTemplate, elementType) { }
 
-const ObjectContainerTemplate * ObjectContainerType::objectContainerTemplate() const {
+const ObjectContainerTemplate *ObjectContainerType::objectContainerTemplate() const {
     return static_cast<const ObjectContainerTemplate *>(containerTemplate);
 }
 
-const Type * ObjectContainerType::keyType() const {
+const Type *ObjectContainerType::keyType() const {
     return objectContainerTemplate()->keyType();
 }
 

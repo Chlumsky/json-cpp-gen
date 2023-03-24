@@ -10,8 +10,8 @@ class ObjectMapContainerType : public ContainerType<const Type *> {
 
 public:
     ObjectMapContainerType(const ObjectMapContainerTemplate *containerTemplate, const Type *elementType, const Type *keyType);
-    const ObjectMapContainerTemplate * objectMapContainerTemplate() const;
-    const Type * keyType() const;
+    const ObjectMapContainerTemplate *objectMapContainerTemplate() const;
+    const Type *keyType() const;
     virtual std::string generateParserFunctionBody(ParserGenerator *generator, const std::string &indent) const override;
     virtual std::string generateSerializerFunctionBody(SerializerGenerator *generator, const std::string &indent) const override;
     std::string generateClear(const char *subject) const;

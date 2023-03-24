@@ -41,7 +41,7 @@ public:
         UINT64_T
     };
 
-    static const char * getTypeName(Type type);
+    static const char *getTypeName(Type type);
 
     BasicType(Type type = VOID);
     virtual std::string generateParserFunctionBody(ParserGenerator *generator, const std::string &indent) const override;

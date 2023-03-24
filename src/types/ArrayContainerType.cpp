@@ -8,7 +8,7 @@
 
 ArrayContainerType::ArrayContainerType(const ArrayContainerTemplate *containerTemplate, const Type *elementType) : ContainerType(containerTemplate, elementType) { }
 
-const ArrayContainerTemplate * ArrayContainerType::arrayContainerTemplate() const {
+const ArrayContainerTemplate *ArrayContainerType::arrayContainerTemplate() const {
     return static_cast<const ArrayContainerTemplate *>(containerTemplate);
 }
 

@@ -12,7 +12,7 @@ class SerializerGenerator : public Generator {
 
 public:
     struct Error {
-        #define SERIALIZER_GENERATOR_ERROR_STR_DECL(e) static const char * const e;
+        #define SERIALIZER_GENERATOR_ERROR_STR_DECL(e) static const char *const e;
         FOR_SERIALIZER_ERRORS(SERIALIZER_GENERATOR_ERROR_STR_DECL)
         #undef SERIALIZER_GENERATOR_ERROR_STR_DECL
     };

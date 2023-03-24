@@ -82,14 +82,14 @@ void TypeSet::addBasicType(const char *name, BasicType::Type type) {
     types.insert(std::make_pair(std::string(name), std::unique_ptr<Type>(new BasicType(type))));
 }
 
-Type * TypeSet::find(const std::string &name) {
+Type *TypeSet::find(const std::string &name) {
     std::map<std::string, std::unique_ptr<Type> >::iterator it = types.find(name);
     if (it != types.end())
         return it->second.get();
     return nullptr;
 }
 
-const Type * TypeSet::find(const std::string &name) const {
+const Type *TypeSet::find(const std::string &name) const {
     std::map<std::string, std::unique_ptr<Type> >::const_iterator it = types.find(name);
     if (it != types.end())
         return it->second.get();
@@ -109,21 +109,21 @@ void TypeSet::addAnonymous(std::unique_ptr<Type> &&type) {
 }
 
 template <>
-TypeSet::ContainerTemplateMap<> & TypeSet::containerTemplateMap() {
+TypeSet::ContainerTemplateMap<> &TypeSet::containerTemplateMap() {
     return containerTemplates;
 }
 
 template <>
-TypeSet::ContainerTemplateMap<int> & TypeSet::containerTemplateMap() {
+TypeSet::ContainerTemplateMap<int> &TypeSet::containerTemplateMap() {
     return staticArrayContainerTemplates;
 }
 
 template <>
-TypeSet::ContainerTemplateMap<const Type *> & TypeSet::containerTemplateMap() {
+TypeSet::ContainerTemplateMap<const Type *> &TypeSet::containerTemplateMap() {
     return objectMapContainerTemplates;
 }
 
-const Type * TypeSet::finalizeInheritance() {
+const Type *TypeSet::finalizeInheritance() {
     for (const std::map<std::string, std::unique_ptr<Type> >::value_type &type : types) {
         if (StructureType *structType = dynamic_cast<StructureType *>(type.second.get()))
             if (!structType->finalizeInheritance())

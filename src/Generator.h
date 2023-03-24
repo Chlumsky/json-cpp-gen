@@ -23,8 +23,8 @@ public:
     void addFeature(unsigned featureBit);
     std::string getJsonMemberNameLiteral(const std::string &memberName) const;
     std::string getJsonEnumValueLiteral(const std::string &enumValue) const;
-    inline const StringType * stringType() const { return mStringType; }
-    inline const Settings & settings() const { return mSettings; }
+    inline const StringType *stringType() const { return mStringType; }
+    inline const Settings &settings() const { return mSettings; }
 
     static std::string charLiteral(char c);
 
@@ -35,7 +35,7 @@ protected:
         std::string body;
     };
 
-    static const char * const signature;
+    static const char *const signature;
 
     std::vector<std::string> classNamespaces;
     std::string className;

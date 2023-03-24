@@ -131,10 +131,10 @@ std::string AbsPath::operator-(const AbsPath &other) const {
     return relPath;
 }
 
-const std::string & AbsPath::string() const {
+const std::string &AbsPath::string() const {
     return absPath;
 }
 
-const char * AbsPath::cStr() const {
+const char *AbsPath::cStr() const {
     return absPath.c_str();
 }

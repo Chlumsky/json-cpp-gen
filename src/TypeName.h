@@ -11,8 +11,8 @@ public:
     inline TypeName(std::string &&body, const std::string &suffix) : nameBody((std::string &&) body), nameSuffix(suffix) { }
     inline explicit TypeName(const std::string &body, std::string &&suffix = std::string()) : nameBody(body), nameSuffix((std::string &&) suffix) { }
     inline explicit TypeName(std::string &&body, std::string &&suffix = std::string()) : nameBody((std::string &&) body), nameSuffix((std::string &&) suffix) { }
-    inline const std::string & body() const { return nameBody; }
-    inline const std::string & suffix() const { return nameSuffix; }
+    inline const std::string &body() const { return nameBody; }
+    inline const std::string &suffix() const { return nameSuffix; }
     std::string fullName() const;
     std::string variableDeclaration(const std::string &variableName) const;
     std::string refArgDeclaration(const std::string &argName) const;

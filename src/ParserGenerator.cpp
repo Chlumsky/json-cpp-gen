@@ -1,13 +1,13 @@
 
 #include "ParserGenerator.h"
 
-#define PARSER_GENERATOR_ERROR_STR_INSTANTIATE(e) const char * const ParserGenerator::Error::e = #e;
+#define PARSER_GENERATOR_ERROR_STR_INSTANTIATE(e) const char *const ParserGenerator::Error::e = #e;
 FOR_PARSER_ERRORS(PARSER_GENERATOR_ERROR_STR_INSTANTIATE)
 
 const unsigned ParserGenerator::FEATURE_READ_SIGNED = 0x0100;
 const unsigned ParserGenerator::FEATURE_READ_UNSIGNED = 0x0200;
 
-static constexpr const char * const COMMON_FUNCTION_IMPL_NO_THROW =
+static constexpr const char *const COMMON_FUNCTION_IMPL_NO_THROW =
 R"($::$(const char *str) : cur(str) { }
 
 void $::skipWhitespace() {
@@ -121,7 +121,7 @@ $::Error::Type $::unescape(char *codepoints) {
 }
 )";
 
-static constexpr const char * const COMMON_FUNCTION_IMPL_THROW =
+static constexpr const char *const COMMON_FUNCTION_IMPL_THROW =
 R"($::$(const char *str) : cur(str) { }
 
 void $::skipWhitespace() {

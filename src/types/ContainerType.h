@@ -10,7 +10,7 @@ class ContainerType : public Type {
 
 public:
     virtual ~ContainerType() = default;
-    inline const Type * elementType() const { return elemType; }
+    inline const Type *elementType() const { return elemType; }
 
 protected:
     const ContainerTemplate<T...> *containerTemplate;

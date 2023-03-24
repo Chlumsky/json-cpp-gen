@@ -15,23 +15,23 @@ class TypeSet {
 
 public:
     TypeSet();
-    Type * find(const std::string &name);
-    const Type * find(const std::string &name) const;
+    Type *find(const std::string &name);
+    const Type *find(const std::string &name) const;
     void add(std::unique_ptr<Type> &&type);
     void add(const std::string &name, std::unique_ptr<Type> &&type);
     void addAnonymous(std::unique_ptr<Type> &&type);
 
     template <typename... T>
-    ContainerTemplate<T...> * findContainerTemplate(const std::string &name);
+    ContainerTemplate<T...> *findContainerTemplate(const std::string &name);
     template <typename... T>
-    const ContainerTemplate<T...> * findContainerTemplate(const std::string &name) const;
+    const ContainerTemplate<T...> *findContainerTemplate(const std::string &name) const;
     template <typename... T>
     void addContainerTemplate(std::unique_ptr<ContainerTemplate<T...> > &&containerTemplate);
     template <typename... T>
-    const ContainerType<T...> * getContainerType(const ContainerTemplate<T...> *containerTemplate, const Type *elementType, T... templateArgs);
+    const ContainerType<T...> *getContainerType(const ContainerTemplate<T...> *containerTemplate, const Type *elementType, T... templateArgs);
 
     // Returns null on success, otherwise the type that failed
-    const Type * finalizeInheritance();
+    const Type *finalizeInheritance();
 
 private:
     template <typename... T>
@@ -46,12 +46,12 @@ private:
 
     void addBasicType(const char *name, BasicType::Type type);
     template <typename... T>
-    ContainerTemplateMap<T...> & containerTemplateMap();
+    ContainerTemplateMap<T...> &containerTemplateMap();
 
 };
 
 template <typename... T>
-ContainerTemplate<T...> * TypeSet::findContainerTemplate(const std::string &name) {
+ContainerTemplate<T...> *TypeSet::findContainerTemplate(const std::string &name) {
     ContainerTemplateMap<T...> &map = containerTemplateMap<T...>();
     typename ContainerTemplateMap<T...>::iterator it = map.find(name);
     if (it != map.end())
@@ -60,7 +60,7 @@ ContainerTemplate<T...> * TypeSet::findContainerTemplate(const std::string &name
 }
 
 template <typename... T>
-const ContainerTemplate<T...> * TypeSet::findContainerTemplate(const std::string &name) const {
+const ContainerTemplate<T...> *TypeSet::findContainerTemplate(const std::string &name) const {
     ContainerTemplateMap<T...> &map = containerTemplateMap<T...>();
     typename ContainerTemplateMap<T...>::const_iterator it = map.find(name);
     if (it != map.end())
@@ -76,7 +76,7 @@ void TypeSet::addContainerTemplate(std::unique_ptr<ContainerTemplate<T...> > &&c
 }
 
 template <typename... T>
-const ContainerType<T...> * TypeSet::getContainerType(const ContainerTemplate<T...> *containerTemplate, const Type *elementType, T... templateArgs) {
+const ContainerType<T...> *TypeSet::getContainerType(const ContainerTemplate<T...> *containerTemplate, const Type *elementType, T... templateArgs) {
     if (containerTemplate)
         return templateInstanceCache.get(containerTemplate, elementType, templateArgs...);
     return nullptr;

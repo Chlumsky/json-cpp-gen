@@ -43,7 +43,7 @@ static bool containsString(const std::vector<std::string> &list, const std::stri
     return false;
 }
 
-static const StringType * findStringType(const TypeSet &typeSet, const std::string &name) {
+static const StringType *findStringType(const TypeSet &typeSet, const std::string &name) {
     return dynamic_cast<const StringType *>(typeSet.find(name));
 }
 
@@ -90,7 +90,7 @@ static std::string visualizeErrorPosition(const std::string &str, int position, 
     return output;
 }
 
-int main(int argc, const char * const *argv) {
+int main(int argc, const char *const *argv) {
 
     if (argc < 2) {
         puts(

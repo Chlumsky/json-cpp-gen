@@ -9,7 +9,7 @@ class OptionalContainerType : public ContainerType<> {
 
 public:
     OptionalContainerType(const OptionalContainerTemplate *containerTemplate, const Type *elementType);
-    const OptionalContainerTemplate * optionalContainerTemplate() const;
+    const OptionalContainerTemplate *optionalContainerTemplate() const;
     virtual std::string generateParserFunctionBody(ParserGenerator *generator, const std::string &indent) const override;
     virtual std::string generateSerializerFunctionBody(SerializerGenerator *generator, const std::string &indent) const override;
     std::string generateClear(const char *subject) const;

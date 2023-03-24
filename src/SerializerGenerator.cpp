@@ -1,7 +1,7 @@
 
 #include "SerializerGenerator.h"
 
-#define SERIALIZER_GENERATOR_ERROR_STR_INSTANTIATE(e) const char * const SerializerGenerator::Error::e = #e;
+#define SERIALIZER_GENERATOR_ERROR_STR_INSTANTIATE(e) const char *const SerializerGenerator::Error::e = #e;
 FOR_SERIALIZER_ERRORS(SERIALIZER_GENERATOR_ERROR_STR_INSTANTIATE)
 
 const unsigned SerializerGenerator::FEATURE_WRITE_SIGNED = 0x0100;

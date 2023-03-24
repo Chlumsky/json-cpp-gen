@@ -16,7 +16,7 @@ HeaderParser::Error::operator bool() const {
     return type != OK;
 }
 
-const char * HeaderParser::Error::typeString() const {
+const char *HeaderParser::Error::typeString() const {
     switch (type) {
         #define ERROR_TYPE_CASE(x) case x: return #x;
         case OK:
@@ -28,7 +28,7 @@ const char * HeaderParser::Error::typeString() const {
 
 HeaderParser::HeaderParser(TypeSet *outputTypeSet, const char *headerStart, size_t headerLength, bool parseNamesOnly) : typeSet(outputTypeSet), cur(headerStart), end(headerStart+headerLength), parseNamesOnly(parseNamesOnly) { }
 
-const char * HeaderParser::currentChar() const {
+const char *HeaderParser::currentChar() const {
     return cur;
 }
 
@@ -37,7 +37,7 @@ void HeaderParser::parse() {
         parseSection();
 }
 
-Type * HeaderParser::findType(const std::string &name) {
+Type *HeaderParser::findType(const std::string &name) {
     if (name.empty())
         return nullptr;
     if (name.size() >= 2 && name[0] == ':' && name[1] == ':')
@@ -88,7 +88,7 @@ void HeaderParser::parseNamespace() {
     curNamespace.pop_back();
 }
 
-const Type * HeaderParser::parseStruct() {
+const Type *HeaderParser::parseStruct() {
     skipWhitespaceAndComments(MULTI_LINE);
     std::string structName = readNamespacedIdentifier();
     if (structName.empty())
@@ -240,7 +240,7 @@ const Type * HeaderParser::parseStruct() {
     return structType;
 }
 
-const Type * HeaderParser::parseEnum() {
+const Type *HeaderParser::parseEnum() {
     bool enumClass = false;
     skipWhitespaceAndComments(MULTI_LINE);
     if (matchKeyword("class")) {
@@ -299,7 +299,7 @@ const Type * HeaderParser::parseEnum() {
     return enumType;
 }
 
-const Type * HeaderParser::parseType() {
+const Type *HeaderParser::parseType() {
     const char *orig = cur;
     skipWhitespaceAndComments(MULTI_LINE);
     if (cur < end && ((isNonSymbol(*cur) && !isdigit(*cur)) || *cur == ':')) {
@@ -671,7 +671,7 @@ HeaderParser::Error parseHeader(TypeSet &outputTypeSet, const std::string &heade
     return HeaderParser::Error(parseErrorType, position);
 }
 
-const Type * parseType(TypeSet &typeSet, const std::string &typeString) {
+const Type *parseType(TypeSet &typeSet, const std::string &typeString) {
     try {
         return HeaderParser(&typeSet, typeString.c_str(), typeString.size()).parseType();
     } catch (HeaderParser::Error::Type) {

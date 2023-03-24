@@ -13,7 +13,7 @@ public:
     ObjectMapContainerTemplate(const std::string &name, const ObjectContainerAPI &api);
     virtual TypeName instanceName(const Type *elementType, const Type *keyType) const override;
     virtual std::unique_ptr<ContainerType<const Type *> > instantiate(TemplateInstanceCache *, const Type *elementType, const Type *keyType) const override;
-    inline const ObjectContainerAPI & api() const { return containerAPI; }
+    inline const ObjectContainerAPI &api() const { return containerAPI; }
 
 private:
     ObjectContainerAPI containerAPI;

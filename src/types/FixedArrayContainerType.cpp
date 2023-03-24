@@ -8,7 +8,7 @@
 
 FixedArrayContainerType::FixedArrayContainerType(const FixedArrayContainerTemplate *containerTemplate, const ArrayContainerType *arrayContainerType, const Type *elementType) : ContainerType(containerTemplate, elementType), arrayContainerType(arrayContainerType) { }
 
-const FixedArrayContainerTemplate * FixedArrayContainerType::fixedArrayContainerTemplate() const {
+const FixedArrayContainerTemplate *FixedArrayContainerType::fixedArrayContainerTemplate() const {
     return static_cast<const FixedArrayContainerTemplate *>(containerTemplate);
 }
 

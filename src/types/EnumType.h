@@ -13,7 +13,7 @@ public:
     virtual std::string generateParserFunctionBody(ParserGenerator *generator, const std::string &indent) const override;
     virtual std::string generateSerializerFunctionBody(SerializerGenerator *generator, const std::string &indent) const override;
     void addValue(const std::string &value);
-    const std::vector<std::string> & getValues() const;
+    const std::vector<std::string> &getValues() const;
     bool isEnumClass() const;
     bool isFinalized() const;
     void finalize();

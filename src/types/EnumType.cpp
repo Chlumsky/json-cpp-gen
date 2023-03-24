@@ -68,7 +68,7 @@ void EnumType::addValue(const std::string &value) {
     values.push_back(value);
 }
 
-const std::vector<std::string> & EnumType::getValues() const {
+const std::vector<std::string> &EnumType::getValues() const {
     return values;
 }
 

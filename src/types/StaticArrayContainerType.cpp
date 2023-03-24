@@ -8,7 +8,7 @@
 
 StaticArrayContainerType::StaticArrayContainerType(const StaticArrayContainerTemplate *containerTemplate, const Type *elementType, int length) : ContainerType(containerTemplate, elementType, length) { }
 
-const StaticArrayContainerTemplate * StaticArrayContainerType::staticArrayContainerTemplate() const {
+const StaticArrayContainerTemplate *StaticArrayContainerType::staticArrayContainerTemplate() const {
     return static_cast<const StaticArrayContainerTemplate *>(containerTemplate);
 }
 

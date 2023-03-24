@@ -9,11 +9,11 @@
 
 ObjectMapContainerType::ObjectMapContainerType(const ObjectMapContainerTemplate *containerTemplate, const Type *elementType, const Type *keyType) : ContainerType(containerTemplate, elementType, keyType) { }
 
-const ObjectMapContainerTemplate * ObjectMapContainerType::objectMapContainerTemplate() const {
+const ObjectMapContainerTemplate *ObjectMapContainerType::objectMapContainerTemplate() const {
     return static_cast<const ObjectMapContainerTemplate *>(containerTemplate);
 }
 
-const Type * ObjectMapContainerType::keyType() const {
+const Type *ObjectMapContainerType::keyType() const {
     return std::get<0>(templateArgs);
 }
 

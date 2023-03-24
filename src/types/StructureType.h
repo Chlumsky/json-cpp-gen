@@ -16,8 +16,8 @@ public:
     virtual std::string generateParserFunctionBody(ParserGenerator *generator, const std::string &indent) const override;
     virtual std::string generateSerializerFunctionBody(SerializerGenerator *generator, const std::string &indent) const override;
     void addMember(const std::string &name, const Type *type);
-    const std::vector<std::pair<std::string, const Type *> > & getMembers() const;
-    const Type * findMember(const std::string &name) const;
+    const std::vector<std::pair<std::string, const Type *> > &getMembers() const;
+    const Type *findMember(const std::string &name) const;
     bool membersFinalized() const;
     void finalizeMembers();
     bool finalizeInheritance();

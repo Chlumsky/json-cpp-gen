@@ -25,7 +25,7 @@ class ParserGenerator : public Generator {
 
 public:
     struct Error {
-        #define PARSER_GENERATOR_ERROR_STR_DECL(e) static const char * const e;
+        #define PARSER_GENERATOR_ERROR_STR_DECL(e) static const char *const e;
         FOR_PARSER_ERRORS(PARSER_GENERATOR_ERROR_STR_DECL)
         #undef PARSER_GENERATOR_ERROR_STR_DECL
     };

@@ -4,7 +4,7 @@
 #include "../ParserGenerator.h"
 #include "../SerializerGenerator.h"
 
-const char * BasicType::getTypeName(Type type) {
+const char *BasicType::getTypeName(Type type) {
     switch (type) {
         case VOID: return "void";
         case BOOL: return "bool";

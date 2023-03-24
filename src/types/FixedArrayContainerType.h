@@ -10,7 +10,7 @@ class FixedArrayContainerType : public ContainerType<> {
 
 public:
     FixedArrayContainerType(const FixedArrayContainerTemplate *containerTemplate, const ArrayContainerType *arrayContainerType, const Type *elementType);
-    const FixedArrayContainerTemplate * fixedArrayContainerTemplate() const;
+    const FixedArrayContainerTemplate *fixedArrayContainerTemplate() const;
     virtual std::string generateParserFunctionBody(ParserGenerator *generator, const std::string &indent) const override;
     virtual std::string generateSerializerFunctionBody(SerializerGenerator *generator, const std::string &indent) const override;
     std::string generateCopyFromArrayContainer(const char *subject, const char *x) const;

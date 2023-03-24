@@ -124,11 +124,11 @@ void StructureType::addMember(const std::string &name, const Type *type) {
     orderedMembers.emplace_back(name, type);
 }
 
-const std::vector<std::pair<std::string, const Type *> > & StructureType::getMembers() const {
+const std::vector<std::pair<std::string, const Type *> > &StructureType::getMembers() const {
     return orderedMembers;
 }
 
-const Type * StructureType::findMember(const std::string &name) const {
+const Type *StructureType::findMember(const std::string &name) const {
     std::map<std::string, const Type *>::const_iterator it = members.find(name);
     if (it != members.end())
         return it->second;

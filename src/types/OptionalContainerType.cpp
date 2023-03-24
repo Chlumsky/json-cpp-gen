@@ -8,7 +8,7 @@
 
 OptionalContainerType::OptionalContainerType(const OptionalContainerTemplate *containerTemplate, const Type *elementType) : ContainerType(containerTemplate, elementType) { }
 
-const OptionalContainerTemplate * OptionalContainerType::optionalContainerTemplate() const {
+const OptionalContainerTemplate *OptionalContainerType::optionalContainerTemplate() const {
     return static_cast<const OptionalContainerTemplate *>(containerTemplate);
 }
 
