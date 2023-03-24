@@ -473,6 +473,30 @@ std::string HeaderParser::readIdentifier() {
     return std::string();
 }
 
+void HeaderParser::skipLine() {
+    bool escaped = false;
+    while (cur < end) {
+        switch (*cur) {
+            case '\n':
+                if (!escaped) {
+                    ++cur;
+                    return;
+                }
+                escaped = false;
+                break;
+            case ' ': case '\t': case '\r':
+                break;
+            case '\\':
+                escaped = true;
+                break;
+            default:
+                escaped = false;
+                break;
+        }
+        ++cur;
+    }
+}
+
 void HeaderParser::skipWhitespaceAndComments(SkipWhitespaceMode mode) {
     const char *prev;
     do {
@@ -488,6 +512,7 @@ void HeaderParser::skipWhitespace(SkipWhitespaceMode mode) {
             case '\n':
                 if (mode != MULTI_LINE)
                     return;
+                // fallthrough
             case ' ': case '\t': case '\r':
                 ++cur;
                 break;
@@ -501,15 +526,7 @@ void HeaderParser::skipComment() {
     if (cur+1 < end && *cur == '/') {
         if (*(cur+1) == '/') { // single-line comment
             cur += 2;
-            while (cur < end) {
-                if (*cur == '\n')
-                    break;
-                if (*cur == '\\') {
-                    ++cur;
-                    cur += *cur == '\r';
-                }
-                ++cur;
-            }
+            skipLine();
         } else if (*(cur+1) == '*') { // multi-line comment
             cur += 2;
             while (true) {
@@ -535,10 +552,25 @@ void HeaderParser::skipStringLiteral() {
             case '\'':
                 endSymbol = '\'';
                 break;
-            // TODO multi-line string literals
+            case 'R':
+                // Raw string literal
+                if (cur+1 < end && cur[1] == '"') {
+                    cur += 2;
+                    std::string delimiter;
+                    delimiter.reserve(17);
+                    while (cur < end && *cur != '(')
+                        delimiter.push_back(*cur++);
+                    delimiter.push_back('"');
+                    if (cur >= end)
+                        throw Error::UNEXPECTED_EOF;
+                    ++cur;
+                    while (cur < end && !(*cur++ == ')' && matchKeyword(delimiter.c_str())));
+                }
+                return;
             default:
                 return;
         }
+        ++cur;
         while (!matchSymbol(endSymbol)) {
             if (cur >= end)
                 throw Error::UNEXPECTED_EOF;
@@ -629,7 +661,7 @@ void HeaderParser::skipTemplateArgument() {
 
 void HeaderParser::skipDirective() {
     if (skipWhitespaceAndComments(SINGLE_LINE), matchSymbol('#'))
-        while (skipWhitespaceAndComments(SINGLE_LINE), *cur++ != '\n');
+        skipLine();
 }
 
 bool HeaderParser::matchSymbol(char s) {

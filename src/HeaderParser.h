@@ -70,6 +70,7 @@ private:
     int parseArrayLength();
     std::string readNamespacedIdentifier();
     std::string readIdentifier();
+    void skipLine();
     void skipWhitespaceAndComments(SkipWhitespaceMode mode);
     void skipWhitespace(SkipWhitespaceMode mode);
     void skipComment();
