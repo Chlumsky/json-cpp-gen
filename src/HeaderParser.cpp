@@ -8,16 +8,33 @@
 #include "types/EnumType.h"
 #include "types/StaticArrayType.h"
 
+HeaderParser::Error::operator HeaderParser::Error::Type() const {
+    return type;
+}
+
+HeaderParser::Error::operator bool() const {
+    return type != OK;
+}
+
+const char * HeaderParser::Error::typeString() const {
+    switch (type) {
+        #define ERROR_TYPE_CASE(x) case x: return #x;
+        case OK:
+            return "OK";
+        FOR_HEADER_PARSER_ERROR_TYPES(ERROR_TYPE_CASE)
+    }
+    return "";
+}
+
 HeaderParser::HeaderParser(TypeSet *outputTypeSet, const char *headerStart, size_t headerLength, bool parseNamesOnly) : typeSet(outputTypeSet), cur(headerStart), end(headerStart+headerLength), parseNamesOnly(parseNamesOnly) { }
 
-HeaderParser::Error HeaderParser::parse() {
-    try {
-        while (skipWhitespaceAndComments(MULTI_LINE), cur < end)
-            parseSection();
-    } catch (Error error) {
-        return error;
-    }
-    return Error::OK;
+const char * HeaderParser::currentChar() const {
+    return cur;
+}
+
+void HeaderParser::parse() {
+    while (skipWhitespaceAndComments(MULTI_LINE), cur < end)
+        parseSection();
 }
 
 Type * HeaderParser::findType(const std::string &name) {
@@ -642,9 +659,22 @@ HeaderParser::Error preparseHeader(TypeSet &outputTypeSet, const std::string &he
 }
 
 HeaderParser::Error parseHeader(TypeSet &outputTypeSet, const std::string &headerString, bool parseNamesOnly) {
-    return HeaderParser(&outputTypeSet, headerString.c_str(), headerString.size(), parseNamesOnly).parse();
+    const char *headerStart = headerString.c_str();
+    HeaderParser parser(&outputTypeSet, headerStart, headerString.size(), parseNamesOnly);
+    HeaderParser::Error::Type parseErrorType = HeaderParser::Error::OK;
+    try {
+        parser.parse();
+    } catch (HeaderParser::Error::Type errorType) {
+        parseErrorType = errorType;
+    }
+    int position = int(parser.currentChar()-headerStart);
+    return HeaderParser::Error(parseErrorType, position);
 }
 
 const Type * parseType(TypeSet &typeSet, const std::string &typeString) {
-    return HeaderParser(&typeSet, typeString.c_str(), typeString.size()).parseType();
+    try {
+        return HeaderParser(&typeSet, typeString.c_str(), typeString.size()).parseType();
+    } catch (HeaderParser::Error::Type) {
+        return nullptr;
+    }
 }

@@ -9,23 +9,37 @@
 class HeaderParser {
 
 public:
-    enum class Error {
-        OK = 0,
-        TYPE_REDEFINITION,
-        UNSUPPORTED_TYPE,
-        UNEXPECTED_EOF,
-        STRUCT_NAME_EXPECTED,
-        ENUM_NAME_EXPECTED,
-        INVALID_STRUCTURE_SYNTAX,
-        INVALID_ENUM_SYNTAX,
-        INVALID_TYPENAME_SYNTAX,
-        INVALID_ARRAY_SYNTAX,
-        INVALID_NAMESPACE_SYNTAX,
-        NOT_IMPLEMENTED
+    struct Error {
+        #define FOR_HEADER_PARSER_ERROR_TYPES(M) \
+            M(TYPE_REDEFINITION) \
+            M(UNSUPPORTED_TYPE) \
+            M(UNEXPECTED_EOF) \
+            M(STRUCT_NAME_EXPECTED) \
+            M(ENUM_NAME_EXPECTED) \
+            M(INVALID_STRUCTURE_SYNTAX) \
+            M(INVALID_ENUM_SYNTAX) \
+            M(INVALID_TYPENAME_SYNTAX) \
+            M(INVALID_ARRAY_SYNTAX) \
+            M(INVALID_NAMESPACE_SYNTAX) \
+            M(NOT_IMPLEMENTED)
+
+        enum Type {
+            OK = 0,
+            #define HEADER_PARSER_ERROR_TYPE_ENUM(x) x,
+            FOR_HEADER_PARSER_ERROR_TYPES(HEADER_PARSER_ERROR_TYPE_ENUM)
+            #undef HEADER_PARSER_ERROR_TYPE_ENUM
+        } type;
+        int position;
+
+        inline Error(Type type = Error::OK, int position = -1) : type(type), position(position) { }
+        operator Type() const;
+        operator bool() const;
+        const char * typeString() const;
     };
 
     HeaderParser(TypeSet *outputTypeSet, const char *headerStart, size_t headerLength, bool parseNamesOnly = false);
-    Error parse();
+    const char * currentChar() const;
+    void parse();
     const Type * parseType();
 
 private:

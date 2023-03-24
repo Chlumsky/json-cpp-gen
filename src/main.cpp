@@ -47,6 +47,17 @@ static const StringType * findStringType(const TypeSet &typeSet, const std::stri
     return dynamic_cast<const StringType *>(typeSet.find(name));
 }
 
+static int lineAtPosition(const std::string &str, int position) {
+    int line = 1;
+    for (char c : str) {
+        if (!position--)
+            break;
+        if (c == '\n')
+            ++line;
+    }
+    return line;
+}
+
 static std::string visualizeErrorPosition(const std::string &str, int position, const std::string &indent) {
     int strLen = int(str.size());
     if (position >= strLen)
@@ -98,7 +109,13 @@ int main(int argc, const char * const *argv) {
 
     Configuration config;
     if (ConfigurationParser::Error error = ConfigurationParser::parse(config, configString.c_str())) {
-        fprintf(stderr, "Error: Malformed configuration file '%s'\n       %s at position %d\n%s", argv[1], error.typeString(), error.position, visualizeErrorPosition(configString, error.position, "       ").c_str());
+        fprintf(stderr,
+            "Error: Malformed configuration file '%s'\n"
+            "       %s at position %d (line %d)\n"
+            "%s",
+            argv[1], error.typeString(), error.position, lineAtPosition(configString, error.position),
+            visualizeErrorPosition(configString, error.position, "       ").c_str()
+        );
         return -1;
     }
 
@@ -165,16 +182,21 @@ int main(int argc, const char * const *argv) {
                 fprintf(stderr, "Error: Failed to open input file '%s', aborting\n", input.c_str());
                 return -1;
             }
-            HeaderParser::Error parseError = parseHeader(typeSet, inputString, parseNamesOnly);
-            if (parseError != HeaderParser::Error::OK) { // TODO report specific error
-                fprintf(stderr, "Error: Failed to parse input file '%s', aborting\n", input.c_str());
+            if (HeaderParser::Error parseError = parseHeader(typeSet, inputString, parseNamesOnly)) {
+                fprintf(stderr,
+                    "Error: Failed to parse input file '%s', aborting\n"
+                    "       %s at position %d (line %d)\n"
+                    "%s",
+                    input.c_str(), parseError.typeString(), parseError.position, lineAtPosition(inputString, parseError.position),
+                    visualizeErrorPosition(inputString, parseError.position, "       ").c_str()
+                );
                 return -1;
             }
         }
         parseNamesOnly = !parseNamesOnly;
     } while (!parseNamesOnly);
     if (const Type *badType = typeSet.finalizeInheritance()) {
-        fprintf(stderr, "Error: Cyclic inheritance for type %s\n", badType->name().body().c_str());
+        fprintf(stderr, "Error: Cyclic inheritance for type '%s', aborting\n", badType->name().body().c_str());
         return -1;
     }
 
