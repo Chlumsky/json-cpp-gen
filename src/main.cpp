@@ -157,17 +157,25 @@ int main(int argc, const char * const *argv) {
     }
 
     // INPUT SOURCE FILES
-    for (const std::string &input : config.inputs) {
-        std::string inputString;
-        if (!readTextFile(inputString, (basePath+input).cStr())) {
-            fprintf(stderr, "Error: Failed to open input file '%s', aborting\n", input.c_str());;
-            return -1;
+    bool parseNamesOnly = true;
+    do {
+        for (const std::string &input : config.inputs) {
+            std::string inputString;
+            if (!readTextFile(inputString, (basePath+input).cStr())) {
+                fprintf(stderr, "Error: Failed to open input file '%s', aborting\n", input.c_str());
+                return -1;
+            }
+            HeaderParser::Error parseError = parseHeader(typeSet, inputString, parseNamesOnly);
+            if (parseError != HeaderParser::Error::OK) { // TODO report specific error
+                fprintf(stderr, "Error: Failed to parse input file '%s', aborting\n", input.c_str());
+                return -1;
+            }
         }
-        HeaderParser::Error parseError = parseHeader(typeSet, inputString);
-        if (parseError != HeaderParser::Error::OK) { // TODO report specific error
-            fprintf(stderr, "Error: Failed to parse input file '%s', aborting\n", input.c_str());;
-            return -1;
-        }
+        parseNamesOnly = !parseNamesOnly;
+    } while (!parseNamesOnly);
+    if (const Type *badType = typeSet.finalizeInheritance()) {
+        fprintf(stderr, "Error: Cyclic inheritance for type %s\n", badType->name().body().c_str());
+        return -1;
     }
 
     // OUTPUT PARSERS

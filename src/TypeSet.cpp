@@ -2,6 +2,7 @@
 #include "TypeSet.h"
 
 #include "types/StringType.h"
+#include "types/StructureType.h"
 #include "container-templates/ArrayContainerTemplate.h"
 #include "container-templates/StaticArrayContainerTemplate.h"
 #include "container-templates/ObjectMapContainerTemplate.h"
@@ -120,4 +121,18 @@ TypeSet::ContainerTemplateMap<int> & TypeSet::containerTemplateMap() {
 template <>
 TypeSet::ContainerTemplateMap<const Type *> & TypeSet::containerTemplateMap() {
     return objectMapContainerTemplates;
+}
+
+const Type * TypeSet::finalizeInheritance() {
+    for (const std::map<std::string, std::unique_ptr<Type> >::value_type &type : types) {
+        if (StructureType *structType = dynamic_cast<StructureType *>(type.second.get()))
+            if (!structType->finalizeInheritance())
+                return structType;
+    }
+    for (const std::unique_ptr<Type> &type : anonymousTypes) {
+        if (StructureType *structType = dynamic_cast<StructureType *>(type.get()))
+            if (!structType->finalizeInheritance())
+                return structType;
+    }
+    return nullptr;
 }

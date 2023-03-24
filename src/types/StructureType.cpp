@@ -34,9 +34,8 @@ StructureType::StructureType(const std::string &name) : DirectType(TypeName(name
 
 StructureType::StructureType(std::string &&name) : DirectType(TypeName((std::string &&) name)) { }
 
-void StructureType::inheritFrom(const StructureType *baseType) {
-    members.insert(baseType->members.begin(), baseType->members.end());
-    orderedMembers.insert(orderedMembers.end(), baseType->orderedMembers.begin(), baseType->orderedMembers.end());
+void StructureType::inheritFrom(StructureType *baseType) {
+    baseTypes.push_back(baseType);
 }
 
 std::string StructureType::generateParserFunctionBody(ParserGenerator *generator, const std::string &indent) const {
@@ -136,10 +135,30 @@ const Type * StructureType::findMember(const std::string &name) const {
     return nullptr;
 }
 
-void StructureType::finalize() {
-    finalized = true;
+bool StructureType::membersFinalized() const {
+    return finalizedMembers;
 }
 
-bool StructureType::isFinalized() const {
-    return finalized;
+void StructureType::finalizeMembers() {
+    finalizedMembers = true;
+}
+
+bool StructureType::finalizeInheritance() {
+    if (inheritanceBeingFinalized) // cyclic inheritance
+        return false;
+    inheritanceBeingFinalized = true;
+    std::vector<std::pair<std::string, const Type *> > fullOrderedMembers;
+    for (StructureType *baseType : baseTypes) {
+        if (baseType) {
+            if (!baseType->finalizeInheritance())
+                return false;
+            members.insert(baseType->members.begin(), baseType->members.end());
+            fullOrderedMembers.insert(fullOrderedMembers.end(), baseType->orderedMembers.begin(), baseType->orderedMembers.end());
+        }
+    }
+    fullOrderedMembers.insert(fullOrderedMembers.end(), orderedMembers.begin(), orderedMembers.end());
+    orderedMembers = std::move(fullOrderedMembers);
+    baseTypes.clear();
+    inheritanceBeingFinalized = false;
+    return true;
 }

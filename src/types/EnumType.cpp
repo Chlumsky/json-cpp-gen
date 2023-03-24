@@ -71,3 +71,15 @@ void EnumType::addValue(const std::string &value) {
 const std::vector<std::string> & EnumType::getValues() const {
     return values;
 }
+
+bool EnumType::isEnumClass() const {
+    return enumClass;
+}
+
+bool EnumType::isFinalized() const {
+    return finalized;
+}
+
+void EnumType::finalize() {
+    finalized = true;
+}

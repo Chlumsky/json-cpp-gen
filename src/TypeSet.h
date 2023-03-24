@@ -30,6 +30,9 @@ public:
     template <typename... T>
     const ContainerType<T...> * getContainerType(const ContainerTemplate<T...> *containerTemplate, const Type *elementType, T... templateArgs);
 
+    // Returns null on success, otherwise the type that failed
+    const Type * finalizeInheritance();
+
 private:
     template <typename... T>
     using ContainerTemplateMap = std::map<std::string, std::unique_ptr<ContainerTemplate<T...> > >;

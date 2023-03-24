@@ -24,7 +24,7 @@ public:
         NOT_IMPLEMENTED
     };
 
-    HeaderParser(TypeSet *outputTypeSet, const char *headerStart, size_t headerLength);
+    HeaderParser(TypeSet *outputTypeSet, const char *headerStart, size_t headerLength, bool parseNamesOnly = false);
     Error parse();
     const Type * parseType();
 
@@ -33,7 +33,7 @@ private:
     const char *cur, *end;
     std::vector<std::string> curNamespace;
     std::vector<std::string> usingNamespaces;
-    bool parseStructNamesOnly = false; // prepass in case input files are in the wrong order
+    bool parseNamesOnly; // prepass in case input files are in the wrong order
 
     enum SkipWhitespaceMode {
         SINGLE_LINE,
@@ -71,7 +71,8 @@ private:
 
 };
 
-HeaderParser::Error parseHeader(TypeSet &outputTypeSet, const std::string &headerString);
+HeaderParser::Error preparseHeader(TypeSet &outputTypeSet, const std::string &headerString);
+HeaderParser::Error parseHeader(TypeSet &outputTypeSet, const std::string &headerString, bool parseNamesOnly = false);
 const Type * parseType(TypeSet &typeSet, const std::string &typeString);
 
 template <typename... T>
