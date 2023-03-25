@@ -96,7 +96,10 @@ const Type *TypeSet::find(const std::string &name) const {
 }
 
 void TypeSet::add(std::unique_ptr<Type> &&type) {
-    add(type->name().fullName(), std::move(type));
+    std::string fullName = type->name().fullName();
+    if (fullName.size() >= 2 && fullName[0] == ':' && fullName[1] == ':')
+        fullName = fullName.substr(2);
+    add((std::string &&) fullName, std::move(type));
 }
 
 void TypeSet::add(const std::string &name, std::unique_ptr<Type> &&type) {

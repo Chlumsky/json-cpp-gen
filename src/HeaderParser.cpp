@@ -345,111 +345,115 @@ Type *HeaderParser::parseEnum() {
 const Type *HeaderParser::parseType() {
     const char *orig = cur;
     skipWhitespaceAndComments(MULTI_LINE);
-    if (cur < end && ((isWordChar(*cur) && !isdigit(*cur)) || *cur == ':')) {
-        std::string typeName = readNamespacedIdentifier();
-        if (typeName.empty())
-            return nullptr;
-        const char *prev = cur;
-        skipWhitespaceAndComments(MULTI_LINE);
-        // Special case: multi-word fundamental types
-        if (typeName == "signed" || typeName == "unsigned" || typeName == "short" || typeName == "long") {
-            const char *kwStart = cur;
-            if (matchKeyword("short") || matchKeyword("long")) { // Possible 3 word type?
-                typeName += " "+std::string(kwStart, cur);
-                prev = cur;
-                skipWhitespaceAndComments(MULTI_LINE);
-                kwStart = cur;
-            }
-            if (matchKeyword("short") || matchKeyword("long")) { // 4 word type??? (unsigned long long int)
-                typeName += " "+std::string(kwStart, cur);
-                prev = cur;
-                skipWhitespaceAndComments(MULTI_LINE);
-                kwStart = cur;
-            }
-            if (matchKeyword("int") || matchKeyword("char") || matchKeyword("double") || matchKeyword("float")) {
-                typeName += " "+std::string(kwStart, cur);
-                prev = cur;
-            }
-            cur = prev;
-            if (Type *type = findType(typeName))
-                return type;
-        } else if (matchSymbol('<')) { // Template type
+    try {
+        if (cur < end && ((isWordChar(*cur) && !isdigit(*cur)) || *cur == ':')) {
+            std::string typeName = readNamespacedIdentifier();
+            if (typeName.empty())
+                return nullptr;
+            const char *prev = cur;
             skipWhitespaceAndComments(MULTI_LINE);
-            const Type *elementType = nullptr;
-            // regular container
-            if (ContainerTemplate<> *containerTemplate = findContainerTemplate<>(typeName)) {
-                int elementTypeIndex = containerTemplate->templateArgIndex('T');
-                for (int index = 0; !matchSymbol('>'); ++index) {
-                    if (cur >= end)
-                        throw Error::UNEXPECTED_EOF;
-                    if (index && !matchSymbol(','))
-                        throw Error::INVALID_TYPENAME_SYNTAX;
-                    if (index == elementTypeIndex) {
-                        if (!(elementType = parseType()))
-                            throw Error::INVALID_TYPENAME_SYNTAX;
-                    } else
-                        skipTemplateArgument();
+            // Special case: multi-word fundamental types
+            if (typeName == "signed" || typeName == "unsigned" || typeName == "short" || typeName == "long") {
+                const char *kwStart = cur;
+                if (matchKeyword("short") || matchKeyword("long")) { // Possible 3 word type?
+                    typeName += " "+std::string(kwStart, cur);
+                    prev = cur;
                     skipWhitespaceAndComments(MULTI_LINE);
+                    kwStart = cur;
                 }
-                if (elementType) {
-                    if (const Type *type = typeSet->getContainerType(containerTemplate, elementType))
-                        return type;
-                }
-            }
-            // static array container
-            else if (ContainerTemplate<int> *containerTemplate = findContainerTemplate<int>(typeName)) {
-                int arrayLength = -1;
-                int elementTypeIndex = containerTemplate->templateArgIndex('T');
-                int arrayLengthIndex = containerTemplate->templateArgIndex('N');
-                for (int index = 0; !matchSymbol('>'); ++index) {
-                    if (cur >= end)
-                        throw Error::UNEXPECTED_EOF;
-                    if (index && !matchSymbol(','))
-                        throw Error::INVALID_TYPENAME_SYNTAX;
-                    if (index == elementTypeIndex) {
-                        if (!(elementType = parseType()))
-                            throw Error::INVALID_TYPENAME_SYNTAX;
-                    } else if (index == arrayLengthIndex)
-                        arrayLength = parseArrayLength();
-                    else
-                        skipTemplateArgument();
+                if (matchKeyword("short") || matchKeyword("long")) { // 4 word type??? (unsigned long long int)
+                    typeName += " "+std::string(kwStart, cur);
+                    prev = cur;
                     skipWhitespaceAndComments(MULTI_LINE);
+                    kwStart = cur;
                 }
-                if (elementType && arrayLength >= 0) {
-                    if (const Type *type = typeSet->getContainerType(containerTemplate, elementType, arrayLength))
-                        return type;
+                if (matchKeyword("int") || matchKeyword("char") || matchKeyword("double") || matchKeyword("float")) {
+                    typeName += " "+std::string(kwStart, cur);
+                    prev = cur;
                 }
-            }
-            // object map container
-            else if (ContainerTemplate<const Type *> *containerTemplate = findContainerTemplate<const Type *>(typeName)) {
-                const Type *keyType = nullptr;
-                int keyTypeIndex = containerTemplate->templateArgIndex('K');
-                int elementTypeIndex = containerTemplate->templateArgIndex('T');
-                for (int index = 0; !matchSymbol('>'); ++index) {
-                    if (cur >= end)
-                        throw Error::UNEXPECTED_EOF;
-                    if (index && !matchSymbol(','))
-                        throw Error::INVALID_TYPENAME_SYNTAX;
-                    if (index == keyTypeIndex) {
-                        if (!(keyType = parseType()))
-                            throw Error::UNSUPPORTED_TYPE;
-                    } else if (index == elementTypeIndex) {
-                        if (!(elementType = parseType()))
+                cur = prev;
+                if (Type *type = findType(typeName))
+                    return type;
+            } else if (matchSymbol('<')) { // Template type
+                skipWhitespaceAndComments(MULTI_LINE);
+                const Type *elementType = nullptr;
+                // regular container
+                if (ContainerTemplate<> *containerTemplate = findContainerTemplate<>(typeName)) {
+                    int elementTypeIndex = containerTemplate->templateArgIndex('T');
+                    for (int index = 0; !matchSymbol('>'); ++index) {
+                        if (cur >= end)
+                            throw Error::UNEXPECTED_EOF;
+                        if (index && !matchSymbol(','))
                             throw Error::INVALID_TYPENAME_SYNTAX;
-                    } else
-                        skipTemplateArgument();
-                    skipWhitespaceAndComments(MULTI_LINE);
+                        if (index == elementTypeIndex) {
+                            if (!(elementType = parseType()))
+                                throw Error::INVALID_TYPENAME_SYNTAX;
+                        } else
+                            skipTemplateArgument();
+                        skipWhitespaceAndComments(MULTI_LINE);
+                    }
+                    if (elementType) {
+                        if (const Type *type = typeSet->getContainerType(containerTemplate, elementType))
+                            return type;
+                    }
                 }
-                if (keyType && elementType) {
-                    if (const Type *type = typeSet->getContainerType(containerTemplate, elementType, keyType))
-                        return type;
+                // static array container
+                else if (ContainerTemplate<int> *containerTemplate = findContainerTemplate<int>(typeName)) {
+                    int arrayLength = -1;
+                    int elementTypeIndex = containerTemplate->templateArgIndex('T');
+                    int arrayLengthIndex = containerTemplate->templateArgIndex('N');
+                    for (int index = 0; !matchSymbol('>'); ++index) {
+                        if (cur >= end)
+                            throw Error::UNEXPECTED_EOF;
+                        if (index && !matchSymbol(','))
+                            throw Error::INVALID_TYPENAME_SYNTAX;
+                        if (index == elementTypeIndex) {
+                            if (!(elementType = parseType()))
+                                throw Error::INVALID_TYPENAME_SYNTAX;
+                        } else if (index == arrayLengthIndex)
+                            arrayLength = parseArrayLength();
+                        else
+                            skipTemplateArgument();
+                        skipWhitespaceAndComments(MULTI_LINE);
+                    }
+                    if (elementType && arrayLength >= 0) {
+                        if (const Type *type = typeSet->getContainerType(containerTemplate, elementType, arrayLength))
+                            return type;
+                    }
                 }
+                // object map container
+                else if (ContainerTemplate<const Type *> *containerTemplate = findContainerTemplate<const Type *>(typeName)) {
+                    const Type *keyType = nullptr;
+                    int keyTypeIndex = containerTemplate->templateArgIndex('K');
+                    int elementTypeIndex = containerTemplate->templateArgIndex('T');
+                    for (int index = 0; !matchSymbol('>'); ++index) {
+                        if (cur >= end)
+                            throw Error::UNEXPECTED_EOF;
+                        if (index && !matchSymbol(','))
+                            throw Error::INVALID_TYPENAME_SYNTAX;
+                        if (index == keyTypeIndex) {
+                            if (!(keyType = parseType()))
+                                throw Error::UNSUPPORTED_TYPE;
+                        } else if (index == elementTypeIndex) {
+                            if (!(elementType = parseType()))
+                                throw Error::INVALID_TYPENAME_SYNTAX;
+                        } else
+                            skipTemplateArgument();
+                        skipWhitespaceAndComments(MULTI_LINE);
+                    }
+                    if (keyType && elementType) {
+                        if (const Type *type = typeSet->getContainerType(containerTemplate, elementType, keyType))
+                            return type;
+                    }
+                }
+            } else {
+                cur = prev;
+                if (Type *type = findType(typeName))
+                    return type;
             }
-        } else {
-            cur = prev;
-            if (Type *type = findType(typeName))
-                return type;
         }
+    } catch (Error::Type) {
+        // Ignore - rewind cur and return null
     }
     cur = orig;
     return nullptr;

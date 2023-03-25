@@ -123,7 +123,7 @@ struct Configuration {
 
     struct GeneratorDef {
         std::string name;
-        std::string baseClass;
+        //std::string baseClass; // TODO
         std::vector<std::string> types;
         std::vector<std::string> replacementIncludes;
         std::string headerOutput;

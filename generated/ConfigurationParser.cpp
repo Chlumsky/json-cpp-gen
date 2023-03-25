@@ -245,12 +245,6 @@ void ConfigurationParser::parseConfigurationGeneratorDef(Configuration::Generato
             throw Error::JSON_SYNTAX_ERROR;
         if (key.size() > 0) {
             switch (key[0]) {
-                case 'b':
-                    if (key == "baseClass") {
-                        parseStdString(value.baseClass);
-                        continue;
-                    }
-                    break;
                 case 'h':
                     if (key == "headerOutput") {
                         parseStdString(value.headerOutput);
