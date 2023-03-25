@@ -127,39 +127,39 @@ int main(int argc, const char *const *argv) {
     TypeSet typeSet;
     { // CUSTOM TYPE DEFINITIONS
         for (const Configuration::StringDef &stringDef : config.stringTypes)
-            typeSet.add(std::unique_ptr<Type>(new StringType(stringDef.name, stringDef.api)));
+            typeSet.add(std::unique_ptr<Type>(new StringType(Generator::safeName(stringDef.name), stringDef.api)));
         for (const Configuration::ConstStringDef &fixedStringDef : config.constStringTypes) {
             if (const StringType *dynamicStringType = findStringType(typeSet, fixedStringDef.stringType))
-                typeSet.add(std::unique_ptr<Type>(new ConstStringType(fixedStringDef.name, dynamicStringType, fixedStringDef.api)));
+                typeSet.add(std::unique_ptr<Type>(new ConstStringType(Generator::safeName(fixedStringDef.name), dynamicStringType, fixedStringDef.api)));
             else {
                 fprintf(stderr, "Error: String type '%s' not found, skipping fixed string type '%s'\n", fixedStringDef.stringType.c_str(), fixedStringDef.name.c_str());
                 continue;
             }
         }
         for (const Configuration::ArrayContainerDef &arrayContainerDef : config.arrayContainerTypes)
-            typeSet.addContainerTemplate(std::unique_ptr<ContainerTemplate<> >(new ArrayContainerTemplate(arrayContainerDef.name, arrayContainerDef.api)));
+            typeSet.addContainerTemplate(std::unique_ptr<ContainerTemplate<> >(new ArrayContainerTemplate(Generator::safeName(arrayContainerDef.name), arrayContainerDef.api)));
         for (const Configuration::FixedArrayContainerDef &fixedArrayContainerDef : config.fixedArrayContainerTypes) {
             if (const ArrayContainerTemplate *arrayContainerTemplate = dynamic_cast<const ArrayContainerTemplate *>(typeSet.findContainerTemplate<>(fixedArrayContainerDef.arrayContainerType)))
-                typeSet.addContainerTemplate(std::unique_ptr<ContainerTemplate<> >(new FixedArrayContainerTemplate(fixedArrayContainerDef.name, arrayContainerTemplate, fixedArrayContainerDef.api)));
+                typeSet.addContainerTemplate(std::unique_ptr<ContainerTemplate<> >(new FixedArrayContainerTemplate(Generator::safeName(fixedArrayContainerDef.name), arrayContainerTemplate, fixedArrayContainerDef.api)));
             else {
                 fprintf(stderr, "Error: Array container type '%s' not found, skipping fixed array container type '%s'\n", fixedArrayContainerDef.arrayContainerType.c_str(), fixedArrayContainerDef.name.c_str());
                 continue;
             }
         }
         for (const Configuration::StaticArrayContainerDef &staticArrayContainerDef : config.staticArrayContainerTypes)
-            typeSet.addContainerTemplate(std::unique_ptr<ContainerTemplate<int> >(new StaticArrayContainerTemplate(staticArrayContainerDef.name, staticArrayContainerDef.api)));
+            typeSet.addContainerTemplate(std::unique_ptr<ContainerTemplate<int> >(new StaticArrayContainerTemplate(Generator::safeName(staticArrayContainerDef.name), staticArrayContainerDef.api)));
         for (const Configuration::ObjectContainerDef &objectContainerDef : config.objectContainerTypes) {
             if (const Type *keyType = typeSet.find(objectContainerDef.keyType))
-                typeSet.addContainerTemplate(std::unique_ptr<ContainerTemplate<> >(new ObjectContainerTemplate(objectContainerDef.name, keyType, objectContainerDef.api)));
+                typeSet.addContainerTemplate(std::unique_ptr<ContainerTemplate<> >(new ObjectContainerTemplate(Generator::safeName(objectContainerDef.name), keyType, objectContainerDef.api)));
             else {
                 fprintf(stderr, "Error: Key type '%s' not found, skipping object container type '%s'\n", objectContainerDef.keyType.c_str(), objectContainerDef.name.c_str());
                 continue;
             }
         }
         for (const Configuration::ObjectMapContainerDef &objectMapContainerDef : config.objectMapContainerTypes)
-            typeSet.addContainerTemplate(std::unique_ptr<ContainerTemplate<const Type *> >(new ObjectMapContainerTemplate(objectMapContainerDef.name, objectMapContainerDef.api)));
+            typeSet.addContainerTemplate(std::unique_ptr<ContainerTemplate<const Type *> >(new ObjectMapContainerTemplate(Generator::safeName(objectMapContainerDef.name), objectMapContainerDef.api)));
         for (const Configuration::OptionalContainerDef &optionalContainerDef : config.optionalContainerTypes)
-            typeSet.addContainerTemplate(std::unique_ptr<ContainerTemplate<> >(new OptionalContainerTemplate(optionalContainerDef.name, optionalContainerDef.api)));
+            typeSet.addContainerTemplate(std::unique_ptr<ContainerTemplate<> >(new OptionalContainerTemplate(Generator::safeName(optionalContainerDef.name), optionalContainerDef.api)));
     }
 
     // STRING TYPE DEFINITION

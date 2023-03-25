@@ -1,12 +1,13 @@
 
 #include "HeaderParser.h"
 
+#include <cstring>
 #include <cctype>
-#include <stack>
 #include <memory>
 #include "types/StructureType.h"
 #include "types/EnumType.h"
 #include "types/StaticArrayType.h"
+#include "Generator.h"
 
 HeaderParser::Error::operator HeaderParser::Error::Type() const {
     return type;
@@ -87,7 +88,7 @@ void HeaderParser::parseNamespace() {
     curNamespace.pop_back();
 }
 
-const Type *HeaderParser::parseStruct() {
+Type *HeaderParser::parseStruct() {
     skipWhitespaceAndComments(MULTI_LINE);
     std::string structName = readNamespacedIdentifier();
     skipWhitespaceAndComments(MULTI_LINE);
@@ -120,18 +121,15 @@ const Type *HeaderParser::parseStruct() {
             if (structType->membersFinalized())
                 throw Error::TYPE_REDEFINITION;
         } else {
-            std::unique_ptr<StructureType> newType(new StructureType(fullStructName));
+            std::unique_ptr<StructureType> newType(new StructureType(Generator::safeName(fullStructName)));
             structType = newType.get();
             typeSet->add(fullStructName, std::move(newType));
         }
     }
     if (forwardDeclaration)
         return structType;
-    if (structName.empty() && !parseNamesOnly) {
-        std::unique_ptr<StructureType> newType(new StructureType());
-        structType = newType.get();
-        typeSet->addAnonymous(std::move(newType));
-    }
+    if (structName.empty() && !parseNamesOnly)
+        structType = typeSet->newUnnamedStruct();
 
     if (matchSymbol(':')) {
         skipWhitespaceAndComments(MULTI_LINE);
@@ -148,7 +146,11 @@ const Type *HeaderParser::parseStruct() {
             matchKeyword("virtual");
             if (const Type *baseType = parseType()) {
                 if (!nonPublic && !parseNamesOnly && dynamic_cast<const StructureType *>(baseType)) {
-                    if (StructureType *baseStructType = dynamic_cast<StructureType *>(typeSet->find(baseType->name().body())))
+                    // Get non-const pointer to baseType
+                    std::string baseTypeName = baseType->name().body();
+                    if (baseTypeName.size() >= 2 && baseTypeName[0] == ':' && baseTypeName[1] == ':')
+                        baseTypeName = baseTypeName.substr(2);
+                    if (StructureType *baseStructType = dynamic_cast<StructureType *>(typeSet->find(baseTypeName)))
                         structType->inheritFrom(baseStructType);
                     // else internal error
                 }
@@ -197,12 +199,14 @@ const Type *HeaderParser::parseStruct() {
             skipWhitespaceAndComments(MULTI_LINE);
         if (matchKeyword("mutable"))
             skipWhitespaceAndComments(MULTI_LINE);
+
         const Type *memberBaseType = nullptr;
+        bool nestedType = true;
         if (matchKeyword("struct")) {
             memberBaseType = parseStruct();
             skipWhitespaceAndComments(MULTI_LINE);
             if (matchSymbol(';')) {
-                if (!parseNamesOnly && !staticMember && memberBaseType && memberBaseType->name().body().empty()) {
+                if (!parseNamesOnly && !staticMember && memberBaseType && memberBaseType->name().substance() == TypeName::VIRTUAL) {
                     // Special case - non-variable anonymous structure is considered part of parent structure
                     if (!structType->absorb(dynamic_cast<const StructureType *>(memberBaseType)))
                         throw Error::DUPLICATE_STRUCT_MEMBER;
@@ -214,27 +218,22 @@ const Type *HeaderParser::parseStruct() {
             skipWhitespaceAndComments(MULTI_LINE);
             if (matchSymbol(';'))
                 continue;
-        }
+        } else
+            nestedType = false;
+
         if (parseNamesOnly || staticMember) {
             skipSection();
             continue;
         }
-        if (!memberBaseType)
+
+        if (!nestedType)
             memberBaseType = parseType();
         if (memberBaseType) {
             do {
                 skipWhitespaceAndComments(MULTI_LINE);
                 std::string memberName = readIdentifier();
                 if (!memberName.empty()) {
-                    std::stack<int> arrayDimensions;
-                    skipWhitespaceAndComments(MULTI_LINE);
-                    while (matchSymbol('[')) { // TODO
-                        arrayDimensions.push(parseArrayLength());
-                        skipWhitespaceAndComments(MULTI_LINE);
-                        if (!matchSymbol(']'))
-                            throw Error::INVALID_ARRAY_SYNTAX;
-                        skipWhitespaceAndComments(MULTI_LINE);
-                    }
+                    std::stack<int> arrayDimensions = parseArrayDimensions();
                     const Type *memberType = memberBaseType;
                     while (!arrayDimensions.empty()) {
                         std::string arrayTypeName = memberBaseType->name().body()+'['+std::to_string(arrayDimensions.top())+']'+memberBaseType->name().suffix();
@@ -251,7 +250,7 @@ const Type *HeaderParser::parseStruct() {
                         skipExpression();
                         skipWhitespaceAndComments(MULTI_LINE);
                     }
-                    if (cur < end && (*cur == ';' || *cur == ',') && !memberType->name().body().empty()) { // TODO anonymous structures / enums
+                    if (cur < end && (*cur == ';' || *cur == ',')) {
                         if (!structType->addMember(memberName, memberType))
                             throw Error::DUPLICATE_STRUCT_MEMBER;
                     }
@@ -269,7 +268,7 @@ const Type *HeaderParser::parseStruct() {
     return structType;
 }
 
-const Type *HeaderParser::parseEnum() {
+Type *HeaderParser::parseEnum() {
     bool enumClass = false;
     skipWhitespaceAndComments(MULTI_LINE);
     if (matchKeyword("class") || matchKeyword("struct")) {
@@ -285,15 +284,16 @@ const Type *HeaderParser::parseEnum() {
 
     EnumType *enumType = nullptr;
     bool forwardDeclaration = cur < end && *cur == ';';
+    std::string enumNamespace;
+    for (std::vector<std::string>::const_iterator it = curNamespace.begin(); it != curNamespace.end(); ++it)
+        enumNamespace += *it+"::";
     if (!enumName.empty()) {
         std::string fullEnumName;
-        if (enumName.size() >= 2 && enumName[0] == ':' && enumName[1] == ':')
+        if (enumName.size() >= 2 && enumName[0] == ':' && enumName[1] == ':') {
             fullEnumName = enumName.substr(2);
-        else {
-            for (std::vector<std::string>::const_iterator it = curNamespace.begin(); it != curNamespace.end(); ++it)
-                fullEnumName += *it+"::";
-            fullEnumName += enumName;
-        }
+            enumNamespace.clear();
+        } else
+            fullEnumName = enumNamespace+enumName;
         if (Type *type = typeSet->find(fullEnumName)) {
             if (!((enumType = dynamic_cast<EnumType *>(type)) && enumType->isEnumClass() == enumClass))
                 throw Error::TYPE_REDEFINITION;
@@ -302,18 +302,15 @@ const Type *HeaderParser::parseEnum() {
             if (enumType->isFinalized())
                 throw Error::TYPE_REDEFINITION;
         } else {
-            std::unique_ptr<EnumType> newType(new EnumType(fullEnumName, enumClass));
+            std::unique_ptr<EnumType> newType(new EnumType(enumClass, enumNamespace, Generator::safeName(fullEnumName)));
             enumType = newType.get();
             typeSet->add(fullEnumName, std::move(newType));
         }
     }
     if (forwardDeclaration)
         return enumType;
-    if (enumName.empty() && !parseNamesOnly) {
-        std::unique_ptr<EnumType> newType(new EnumType());
-        enumType = newType.get();
-        typeSet->addAnonymous(std::move(newType));
-    }
+    if (enumName.empty() && !parseNamesOnly)
+        enumType = typeSet->newUnnamedEnum(enumClass, enumNamespace);
 
     if (matchSymbol(':')) {
         while ((skipWhitespaceAndComments(MULTI_LINE), cur < end) && !(*cur == ';' || *cur == '{')) {
@@ -348,7 +345,7 @@ const Type *HeaderParser::parseEnum() {
 const Type *HeaderParser::parseType() {
     const char *orig = cur;
     skipWhitespaceAndComments(MULTI_LINE);
-    if (cur < end && ((isNonSymbol(*cur) && !isdigit(*cur)) || *cur == ':')) {
+    if (cur < end && ((isWordChar(*cur) && !isdigit(*cur)) || *cur == ':')) {
         std::string typeName = readNamespacedIdentifier();
         if (typeName.empty())
             return nullptr;
@@ -465,12 +462,25 @@ int HeaderParser::parseArrayLength() {
         std::string number;
         do {
             number.push_back(*cur++);
-        } while (cur < end && isNonSymbol(*cur));
+        } while (cur < end && isWordChar(*cur));
         int arrayLength = 0;
         if (sscanf(number.c_str(), "%i", &arrayLength) == 1)
             return arrayLength;
     }
     throw Error::INVALID_ARRAY_SYNTAX;
+}
+
+std::stack<int> HeaderParser::parseArrayDimensions() {
+    std::stack<int> arrayDimensions;
+    skipWhitespaceAndComments(MULTI_LINE);
+    while (matchSymbol('[')) { // TODO
+        arrayDimensions.push(parseArrayLength());
+        skipWhitespaceAndComments(MULTI_LINE);
+        if (!matchSymbol(']'))
+            throw Error::INVALID_ARRAY_SYNTAX;
+        skipWhitespaceAndComments(MULTI_LINE);
+    }
+    return arrayDimensions;
 }
 
 std::string HeaderParser::readNamespacedIdentifier() {
@@ -481,7 +491,7 @@ std::string HeaderParser::readNamespacedIdentifier() {
         skipWhitespaceAndComments(MULTI_LINE);
         rootNamespace = true;
     }
-    if (cur < end && isNonSymbol(*cur) && !isdigit(*cur)) {
+    if (cur < end && isWordChar(*cur) && !isdigit(*cur)) {
         std::string identifier;
         if (rootNamespace)
             identifier = "::";
@@ -507,11 +517,11 @@ std::string HeaderParser::readNamespacedIdentifier() {
 }
 
 std::string HeaderParser::readIdentifier() {
-    if (cur < end && isNonSymbol(*cur) && !isdigit(*cur)) {
+    if (cur < end && isWordChar(*cur) && !isdigit(*cur)) {
         std::string identifier;
         do {
             identifier.push_back(*cur++);
-        } while (cur < end && isNonSymbol(*cur));
+        } while (cur < end && isWordChar(*cur));
         return identifier;
     }
     return std::string();
@@ -724,7 +734,7 @@ bool HeaderParser::matchKeyword(const char *keyword) {
     const char *subCur = cur;
     do {
         if (!*keyword) {
-            if (subCur < end && isNonSymbol(*subCur))
+            if (subCur < end && isWordChar(*subCur))
                 return false;
             cur = subCur;
             return true;
@@ -733,7 +743,7 @@ bool HeaderParser::matchKeyword(const char *keyword) {
     return false;
 }
 
-bool HeaderParser::isNonSymbol(char c) {
+bool HeaderParser::isWordChar(char c) {
     return isalnum(c) || c == '_' || c&0x80;
 }
 

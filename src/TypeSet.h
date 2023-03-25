@@ -8,8 +8,12 @@
 #include "Type.h"
 #include "types/BasicType.h"
 #include "types/ContainerType.h"
+#include "types/StructureType.h"
+#include "types/EnumType.h"
 #include "ContainerTemplate.h"
 #include "TemplateInstanceCache.h"
+
+#define UNNAMED_PREFIX "Unnamed"
 
 class TypeSet {
 
@@ -19,7 +23,8 @@ public:
     const Type *find(const std::string &name) const;
     void add(std::unique_ptr<Type> &&type);
     void add(const std::string &name, std::unique_ptr<Type> &&type);
-    void addAnonymous(std::unique_ptr<Type> &&type);
+    StructureType *newUnnamedStruct();
+    EnumType *newUnnamedEnum(bool enumClass, const std::string &enumNamespace);
 
     template <typename... T>
     ContainerTemplate<T...> *findContainerTemplate(const std::string &name);
@@ -38,7 +43,7 @@ private:
     using ContainerTemplateMap = std::map<std::string, std::unique_ptr<ContainerTemplate<T...> > >;
 
     std::map<std::string, std::unique_ptr<Type> > types;
-    std::vector<std::unique_ptr<Type> > anonymousTypes;
+    std::vector<std::unique_ptr<Type> > unnamedTypes;
     TemplateInstanceCache templateInstanceCache;
     ContainerTemplateMap<> containerTemplates;
     ContainerTemplateMap<int> staticArrayContainerTemplates;

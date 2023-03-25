@@ -79,6 +79,7 @@ std::string SerializerGenerator::generateHeader() {
     }
 
     code += "\nprotected:\n";
+    code += generateVirtualTypedefs(INDENT);
     code += INDENT+stringType()->name().refArgDeclaration("json")+";\n\n";
     code += INDENT+className+"("+stringType()->name().refArgDeclaration("json")+");\n";
     code += INDENT "void write(char c);\n";

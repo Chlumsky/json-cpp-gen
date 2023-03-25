@@ -1,6 +1,7 @@
 
 #include "Generator.h"
 
+#include <cctype>
 #include "NameFormat.h"
 
 const char *const Generator::signature =
@@ -32,11 +33,98 @@ void Generator::addFeature(unsigned featureBit) {
 }
 
 std::string Generator::getJsonMemberNameLiteral(const std::string &memberName) const {
-    return "\""+memberName+"\""; // TODO
+    return "\""+memberName+"\"";
 }
 
 std::string Generator::getJsonEnumValueLiteral(const std::string &enumValue) const {
-    return "\""+enumValue+"\""; // TODO
+    return "\""+enumValue+"\"";
+}
+
+void Generator::resolveVirtualTypename(const Type *type, const Type *parentType, const std::string &memberName) {
+    if (type->name().substance() == TypeName::VIRTUAL && resolvedVirtualTypenames.insert(type->name().body()).second) {
+        std::string typeName = parentType->name().body()+"::"+memberName;
+        for (char c : type->name().suffix()) {
+            if (c == '[')
+                typeName += "[0]";
+        }
+        virtualTypedefs.emplace_back((std::string &&) typeName, type->name().body());
+    }
+}
+
+std::string Generator::generateVirtualTypedefs(const std::string &indent) {
+    std::string code;
+    if (!virtualTypedefs.empty()) {
+        code += indent+"template <typename T> struct NonRef { typedef T Type; };\n";
+        code += indent+"template <typename T> struct NonRef<T &> { typedef T Type; };\n";
+        code += indent+"template <typename T> struct NonRef<const T &> { typedef T Type; };\n\n";
+        for (const std::pair<std::string, std::string> &virtualTypedef : virtualTypedefs)
+            code += indent+"typedef typename NonRef<decltype("+virtualTypedef.first+")>::Type "+virtualTypedef.second+";\n";
+        code += "\n";
+    }
+    return code;
+}
+
+std::string Generator::generateFunctionName(const char *prefix, const Type *type) {
+    std::string functionName = prefix+formatName(type->name().body(), NameFormat::CAMELCASE_CAPITAL);
+    for (char c : type->name().suffix()) {
+        if (isalnum(c))
+            functionName.push_back(c);
+        else if (c == '[')
+            functionName.push_back('_');
+    }
+    // Resolve collision
+    if (usedFunctionNames.find(functionName) != usedFunctionNames.end()) {
+        std::string baseFunctionName = functionName;
+        if (!baseFunctionName.empty() && baseFunctionName.back() >= '0' && baseFunctionName.back() <= '9')
+            baseFunctionName.push_back('_');
+        int i = 0;
+        do {
+            functionName = baseFunctionName+std::to_string(++i);
+        } while (usedFunctionNames.find(functionName) != usedFunctionNames.end());
+    }
+    usedFunctionNames.insert(functionName);
+    return functionName;
+}
+
+std::string Generator::beginNamespace() const {
+    std::string code;
+    for (const std::string &namespaceName : classNamespaces)
+        code += "namespace "+namespaceName+" {\n\n";
+    return code;
+}
+
+std::string Generator::endNamespace() const {
+    std::string code;
+    for (size_t n = classNamespaces.size(); n; --n)
+        code += "\n}\n";
+    return code;
+}
+
+static bool isWordChar(char c) {
+    return isalnum(c) || c == '_' || c&0x80;
+}
+
+static bool matchSubstr(const std::string &str, size_t pos, const char *needle) {
+    while (pos < str.size() && *needle && str[pos++] == *needle++);
+    return !*needle;
+}
+
+std::string Generator::safeName(const std::string &name) {
+    if (name.empty() || name.front() == ':')
+        return name;
+    bool nameStart = true;
+    for (size_t i = 0; i < name.size() && (isWordChar(name[i]) || name[i] == ':'); ++i) {
+        if (nameStart && (
+            (matchSubstr(name, i, "Error") && !isWordChar(name.c_str()[i+sizeof("Error")-1])) ||
+            (matchSubstr(name, i, "NonRef") && !isWordChar(name.c_str()[i+sizeof("NonRef")-1])) ||
+            (matchSubstr(name, i, UNNAMED_PREFIX) && name.c_str()[i+sizeof(UNNAMED_PREFIX)-1] >= '0' && name.c_str()[i+sizeof(UNNAMED_PREFIX)-1] <= '9')
+        )) {
+            // Add global namespace if name contains names used by parsers or serializers
+            return "::"+name;
+        }
+        nameStart = name[i] == ':';
+    }
+    return name;
 }
 
 std::string Generator::charLiteral(char c) {
@@ -60,32 +148,4 @@ std::string Generator::charLiteral(char c) {
         buffer[4] = "0123456789abcdef"[c&0x0f];
         return buffer;
     }
-}
-
-std::string Generator::generateFunctionName(const char *prefix, const Type *type) {
-    std::string functionName = prefix+formatName(type->name().body(), NameFormat::CAMELCASE_CAPITAL);
-    for (char c : type->name().suffix()) {
-        if (isalnum(c))
-            functionName.push_back(c);
-        else if (c == '[')
-            functionName.push_back('_');
-    }
-    while (usedFunctionNames.find(functionName) != usedFunctionNames.end())
-        functionName.push_back('_'); // TODO
-    usedFunctionNames.insert(functionName);
-    return functionName;
-}
-
-std::string Generator::beginNamespace() const {
-    std::string code;
-    for (const std::string &namespaceName : classNamespaces)
-        code += "namespace "+namespaceName+" {\n\n";
-    return code;
-}
-
-std::string Generator::endNamespace() const {
-    std::string code;
-    for (size_t n = classNamespaces.size(); n; --n)
-        code += "\n}\n";
-    return code;
 }

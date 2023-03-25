@@ -3,6 +3,7 @@
 
 #include <string>
 #include <vector>
+#include <stack>
 #include "TypeSet.h"
 
 #define FOR_HEADER_PARSER_ERROR_TYPES(M) \
@@ -63,9 +64,10 @@ private:
 
     void parseSection();
     void parseNamespace();
-    const Type *parseStruct();
-    const Type *parseEnum();
+    Type *parseStruct();
+    Type *parseEnum();
     int parseArrayLength();
+    std::stack<int> parseArrayDimensions();
     std::string readNamespacedIdentifier();
     std::string readIdentifier();
     void skipLine();
@@ -81,7 +83,7 @@ private:
     bool matchSymbol(char s);
     bool matchKeyword(const char *keyword);
 
-    static bool isNonSymbol(char c);
+    static bool isWordChar(char c);
 
 };
 

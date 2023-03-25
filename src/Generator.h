@@ -23,9 +23,11 @@ public:
     void addFeature(unsigned featureBit);
     std::string getJsonMemberNameLiteral(const std::string &memberName) const;
     std::string getJsonEnumValueLiteral(const std::string &enumValue) const;
+    void resolveVirtualTypename(const Type *type, const Type *parentType, const std::string &memberName);
     inline const StringType *stringType() const { return mStringType; }
     inline const Settings &settings() const { return mSettings; }
 
+    static std::string safeName(const std::string &name);
     static std::string charLiteral(char c);
 
 protected:
@@ -45,9 +47,12 @@ protected:
     std::vector<Function> functions;
     std::map<std::string, std::string> functionNames;
     std::set<std::string> usedFunctionNames;
+    std::vector<std::pair<std::string, std::string> > virtualTypedefs;
+    std::set<std::string> resolvedVirtualTypenames;
     std::vector<const Type *> entryTypes;
     unsigned featureBits;
 
+    std::string generateVirtualTypedefs(const std::string &indent);
     std::string generateFunctionName(const char *prefix, const Type *type);
     std::string beginNamespace() const;
     std::string endNamespace() const;

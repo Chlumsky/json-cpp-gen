@@ -11,35 +11,32 @@ public:
     virtual std::string operator()(ParserGenerator *parserGenerator, const std::string &caseLabel, const StringType *valueType, const char *value, int knownMinLength, const std::string &indent) override;
 
 private:
-    std::string prefix;
+    const EnumType *parent;
 
 };
 
-EnumType::ParserSwitchTreeCaseGenerator::ParserSwitchTreeCaseGenerator(const EnumType *parent) : prefix(parent->valuePrefix()) { }
+EnumType::ParserSwitchTreeCaseGenerator::ParserSwitchTreeCaseGenerator(const EnumType *parent) : parent(parent) { }
 
 std::string EnumType::ParserSwitchTreeCaseGenerator::operator()(ParserGenerator *parserGenerator, const std::string &caseLabel, const StringType *valueType, const char *value, int, const std::string &indent) {
     std::string body;
     body += indent+"if ("+valueType->generateEqualsStringLiteral(value, parserGenerator->getJsonMemberNameLiteral(caseLabel).c_str())+") {\n";
-    body += indent+INDENT "value = "+prefix+caseLabel+";\n";
+    body += indent+INDENT "value = "+Generator::safeName(parent->valuePrefix+caseLabel)+";\n";
     body += indent+INDENT "return"+(parserGenerator->settings().noThrow ? " Error::OK" : "")+"; \n";
     body += indent+"}\n";
     return body;
 }
 
-EnumType::EnumType() : DirectType(TypeName()), enumClass(false) { }
+EnumType::EnumType(bool enumClass, const std::string &enumNamespace, const std::string &name, TypeName::Substance nameSubstance) :
+    DirectType(TypeName(name, nameSubstance)),
+    enumClass(enumClass),
+    valuePrefix(enumClass && nameSubstance == TypeName::ACTUAL ? this->name().body()+"::" : enumNamespace)
+{ }
 
-EnumType::EnumType(const std::string &name, bool enumClass) : DirectType(TypeName(name)), enumClass(enumClass) { }
-
-EnumType::EnumType(std::string &&name, bool enumClass) : DirectType(TypeName((std::string &&) name)), enumClass(enumClass) { }
-
-std::string EnumType::valuePrefix() const {
-    if (enumClass)
-        return name().body()+"::";
-    std::string prefix = name().body();
-    while (!prefix.empty() && prefix.back() != ':')
-        prefix.pop_back();
-    return prefix;
-}
+EnumType::EnumType(bool enumClass, const std::string &enumNamespace, std::string &&name, TypeName::Substance nameSubstance) :
+    DirectType(TypeName((std::string &&) name, nameSubstance)),
+    enumClass(enumClass),
+    valuePrefix(enumClass && nameSubstance == TypeName::ACTUAL ? this->name().body()+"::" : enumNamespace)
+{ }
 
 std::string EnumType::generateParserFunctionBody(ParserGenerator *generator, const std::string &indent) const {
     std::string body;
@@ -56,10 +53,9 @@ std::string EnumType::generateParserFunctionBody(ParserGenerator *generator, con
 
 std::string EnumType::generateSerializerFunctionBody(SerializerGenerator *generator, const std::string &indent) const {
     std::string body;
-    std::string prefix = valuePrefix();
     body += indent+"switch (value) {\n";
     for (const std::string &enumValue : values)
-        body += indent+INDENT "case "+prefix+enumValue+": write(\"\\\""+enumValue+"\\\"\"); break;\n";
+        body += indent+INDENT "case "+Generator::safeName(valuePrefix+enumValue)+": write(\"\\\""+enumValue+"\\\"\"); break;\n";
     body += indent+INDENT "default:\n";
     body += indent+INDENT INDENT+generator->generateErrorStatement(SerializerGenerator::Error::UNKNOWN_ENUM_VALUE)+";\n";
     body += indent+"}\n";

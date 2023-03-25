@@ -28,6 +28,8 @@ static std::string hexUint32(unsigned long x) {
 
 std::string StructureType::ParserSwitchTreeCaseGenerator::operator()(ParserGenerator *parserGenerator, const std::string &caseLabel, const StringType *valueType, const char *value, int, const std::string &indent) {
     const Type *memberType = parent->findMember(caseLabel);
+    if (memberType->name().substance() == TypeName::VIRTUAL)
+        parserGenerator->resolveVirtualTypename(memberType, parent, caseLabel);
     std::string body;
     body += indent+"if ("+valueType->generateEqualsStringLiteral(value, parserGenerator->getJsonMemberNameLiteral(caseLabel).c_str())+") {\n";
     if (parserGenerator->settings().checkMissingKeys || parserGenerator->settings().checkRepeatingKeys) {
@@ -53,11 +55,9 @@ std::string StructureType::ParserSwitchTreeCaseGenerator::operator()(ParserGener
     return body;
 }
 
-StructureType::StructureType() : DirectType(TypeName()) { }
+StructureType::StructureType(const std::string &name, TypeName::Substance nameSubstance) : DirectType(TypeName(name, nameSubstance)) { }
 
-StructureType::StructureType(const std::string &name) : DirectType(TypeName(name)) { }
-
-StructureType::StructureType(std::string &&name) : DirectType(TypeName((std::string &&) name)) { }
+StructureType::StructureType(std::string &&name, TypeName::Substance nameSubstance) : DirectType(TypeName((std::string &&) name, nameSubstance)) { }
 
 std::string StructureType::generateParserFunctionBody(ParserGenerator *generator, const std::string &indent) const {
     std::string body;
@@ -117,7 +117,7 @@ std::string StructureType::generateParserFunctionBody(ParserGenerator *generator
         body += indent+"if (!(";
         for (size_t i = 0; i < groups-1; ++i)
             body += "doneKeys["+std::to_string(i)+"] == 0xffffffff && ";
-        body += "doneKeys["+std::to_string(groups-1)+"] == "+hexUint32(~0ul>>(31-(orderedMembers.size()-1)%32))+"))\n";
+        body += "doneKeys["+std::to_string(groups-1)+"] == "+hexUint32(~(orderedMembers.size()%32 ? ~0ul<<(orderedMembers.size()%32) : 0ul))+"))\n";
         body += indent+INDENT+generator->generateErrorStatement(ParserGenerator::Error::MISSING_KEY)+";\n";
     }
     return body;
@@ -130,6 +130,8 @@ std::string StructureType::generateSerializerFunctionBody(SerializerGenerator *g
     bool first = true;
     bool maybeFirst = false;
     for (const std::pair<std::string, const Type *> &member : orderedMembers) {
+        if (member.second->name().substance() == TypeName::VIRTUAL)
+            generator->resolveVirtualTypename(member.second, this, member.first);
         const OptionalContainerType *optionalMemberType = nullptr;
         if (generator->settings().skipEmptyFields)
             optionalMemberType = dynamic_cast<const OptionalContainerType *>(member.second);

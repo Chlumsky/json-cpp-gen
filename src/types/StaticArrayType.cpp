@@ -4,7 +4,7 @@
 #include "../ParserGenerator.h"
 #include "../SerializerGenerator.h"
 
-StaticArrayType::StaticArrayType(const Type *elementType, int length) : Type(TypeName(elementType->name().body(), '['+std::to_string(length)+']'+elementType->name().suffix())), elemType(elementType), length(length) { }
+StaticArrayType::StaticArrayType(const Type *elementType, int length) : Type(TypeName(elementType->name().body(), '['+std::to_string(length)+']'+elementType->name().suffix(), elementType->name().substance())), elemType(elementType), length(length) { }
 
 std::string StaticArrayType::generateParserFunctionBody(ParserGenerator *generator, const std::string &indent) const {
     std::string body;

@@ -10,9 +10,8 @@
 class StructureType : public DirectType {
 
 public:
-    StructureType();
-    explicit StructureType(const std::string &name);
-    explicit StructureType(std::string &&name);
+    explicit StructureType(const std::string &name, TypeName::Substance nameSubstance = TypeName::ACTUAL);
+    explicit StructureType(std::string &&name, TypeName::Substance nameSubstance = TypeName::ACTUAL);
     virtual std::string generateParserFunctionBody(ParserGenerator *generator, const std::string &indent) const override;
     virtual std::string generateSerializerFunctionBody(SerializerGenerator *generator, const std::string &indent) const override;
     void inheritFrom(StructureType *baseType);

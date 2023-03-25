@@ -2,7 +2,6 @@
 #include "TypeSet.h"
 
 #include "types/StringType.h"
-#include "types/StructureType.h"
 #include "container-templates/ArrayContainerTemplate.h"
 #include "container-templates/StaticArrayContainerTemplate.h"
 #include "container-templates/ObjectMapContainerTemplate.h"
@@ -104,8 +103,16 @@ void TypeSet::add(const std::string &name, std::unique_ptr<Type> &&type) {
     types[name] = std::move(type);
 }
 
-void TypeSet::addAnonymous(std::unique_ptr<Type> &&type) {
-    anonymousTypes.push_back(std::move(type));
+StructureType *TypeSet::newUnnamedStruct() {
+    StructureType *structType = new StructureType(UNNAMED_PREFIX+std::to_string(unnamedTypes.size()), TypeName::VIRTUAL);
+    unnamedTypes.push_back(std::unique_ptr<Type>(structType));
+    return structType;
+}
+
+EnumType *TypeSet::newUnnamedEnum(bool enumClass, const std::string &enumNamespace) {
+    EnumType *enumType = new EnumType(enumClass, enumNamespace, UNNAMED_PREFIX+std::to_string(unnamedTypes.size()), TypeName::VIRTUAL);
+    unnamedTypes.push_back(std::unique_ptr<Type>(enumType));
+    return enumType;
 }
 
 template <>
@@ -129,7 +136,7 @@ const Type *TypeSet::finalizeInheritance() {
             if (!structType->finalizeInheritance())
                 return structType;
     }
-    for (const std::unique_ptr<Type> &type : anonymousTypes) {
+    for (const std::unique_ptr<Type> &type : unnamedTypes) {
         if (StructureType *structType = dynamic_cast<StructureType *>(type.get()))
             if (!structType->finalizeInheritance())
                 return structType;

@@ -6,13 +6,21 @@
 class TypeName {
 
 public:
-    TypeName() = default;
-    inline TypeName(const std::string &body, const std::string &suffix) : nameBody(body), nameSuffix(suffix) { }
-    inline TypeName(std::string &&body, const std::string &suffix) : nameBody((std::string &&) body), nameSuffix(suffix) { }
-    inline explicit TypeName(const std::string &body, std::string &&suffix = std::string()) : nameBody(body), nameSuffix((std::string &&) suffix) { }
-    inline explicit TypeName(std::string &&body, std::string &&suffix = std::string()) : nameBody((std::string &&) body), nameSuffix((std::string &&) suffix) { }
+    enum Substance {
+        ACTUAL,
+        VIRTUAL
+    };
+
+    inline TypeName() : nameSubstance(VIRTUAL) { }
+    inline TypeName(const std::string &body, const std::string &suffix, Substance substance = ACTUAL) : nameBody(body), nameSuffix(suffix), nameSubstance(substance) { }
+    inline TypeName(std::string &&body, const std::string &suffix, Substance substance = ACTUAL) : nameBody((std::string &&) body), nameSuffix(suffix), nameSubstance(substance) { }
+    inline explicit TypeName(const std::string &body, std::string &&suffix = std::string(), Substance substance = ACTUAL) : nameBody(body), nameSuffix((std::string &&) suffix), nameSubstance(substance) { }
+    inline explicit TypeName(std::string &&body, std::string &&suffix = std::string(), Substance substance = ACTUAL) : nameBody((std::string &&) body), nameSuffix((std::string &&) suffix), nameSubstance(substance) { }
+    inline TypeName(const std::string &body, Substance substance) : nameBody(body), nameSubstance(substance) { }
+    inline TypeName(std::string &&body, Substance substance) : nameBody((std::string &&) body), nameSubstance(substance) { }
     inline const std::string &body() const { return nameBody; }
     inline const std::string &suffix() const { return nameSuffix; }
+    inline Substance substance() const { return nameSubstance; }
     std::string fullName() const;
     std::string variableDeclaration(const std::string &variableName) const;
     std::string refArgDeclaration(const std::string &argName) const;
@@ -20,5 +28,6 @@ public:
 
 private:
     std::string nameBody, nameSuffix;
+    Substance nameSubstance;
 
 };

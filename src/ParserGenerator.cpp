@@ -394,6 +394,7 @@ std::string ParserGenerator::generateHeader() {
     }
 
     code += "\nprotected:\n";
+    code += generateVirtualTypedefs(INDENT);
     code += INDENT "const char *cur;\n\n";
     code += INDENT "explicit "+className+"(const char *str);\n";
     code += INDENT "void skipWhitespace();\n";
