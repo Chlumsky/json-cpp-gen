@@ -42,11 +42,9 @@ std::string EnumType::generateParserFunctionBody(ParserGenerator *generator, con
     std::string body;
     if (values.empty())
         return indent+generator->generateErrorStatement(ParserGenerator::Error::UNKNOWN_ENUM_VALUE)+";\n";
-    // TODO make str a class member to reduce the number of allocations
-    body += indent+generator->stringType()->name().variableDeclaration("str")+";\n";
-    body += generator->generateValueParse(generator->stringType(), "str", indent);
+    body += generator->generateValueParse(generator->stringType(), ParserGenerator::COMMON_STRING_BUFFER, indent);
     ParserSwitchTreeCaseGenerator switchTreeCaseGenerator(this);
-    body += generator->generateSwitchTree(&switchTreeCaseGenerator, StringSwitchTree::build(values.data(), values.size()).get(), generator->stringType(), "str", indent);
+    body += generator->generateSwitchTree(&switchTreeCaseGenerator, StringSwitchTree::build(values.data(), values.size()).get(), generator->stringType(), ParserGenerator::COMMON_STRING_BUFFER, indent);
     body += indent+generator->generateErrorStatement(ParserGenerator::Error::UNKNOWN_ENUM_VALUE)+";";
     return body;
 }

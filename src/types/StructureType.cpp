@@ -62,8 +62,6 @@ StructureType::StructureType(std::string &&name, TypeName::Substance nameSubstan
 std::string StructureType::generateParserFunctionBody(ParserGenerator *generator, const std::string &indent) const {
     std::string body;
     std::vector<bool> optionalMembers;
-    // TODO make key a class member to reduce the number of allocations
-    body += indent+generator->stringType()->name().variableDeclaration("key")+";\n";
     body += indent+"if (!matchSymbol('{'))\n";
     body += indent+INDENT+generator->generateErrorStatement(ParserGenerator::Error::TYPE_MISMATCH)+";\n";
     if ((generator->settings().checkMissingKeys || generator->settings().checkRepeatingKeys) && !orderedMembers.empty())
@@ -75,7 +73,7 @@ std::string StructureType::generateParserFunctionBody(ParserGenerator *generator
         body += indent+INDENT "if (!separatorCheck)\n";
         body += indent+INDENT INDENT+generator->generateErrorStatement(ParserGenerator::Error::JSON_SYNTAX_ERROR)+";\n";
     }
-    body += generator->generateValueParse(generator->stringType(), "key", indent+INDENT);
+    body += generator->generateValueParse(generator->stringType(), ParserGenerator::COMMON_STRING_BUFFER, indent+INDENT);
     body += indent+INDENT "if (!matchSymbol(':'))\n";
     body += indent+INDENT INDENT+generator->generateErrorStatement(ParserGenerator::Error::JSON_SYNTAX_ERROR)+";\n";
     if (!orderedMembers.empty()) {
@@ -84,7 +82,7 @@ std::string StructureType::generateParserFunctionBody(ParserGenerator *generator
         for (const std::pair<std::string, const Type *> &member : orderedMembers)
             labels.push_back(member.first);
         ParserSwitchTreeCaseGenerator switchTreeCaseGenerator(this, optionalMembers);
-        body += generator->generateSwitchTree(&switchTreeCaseGenerator, StringSwitchTree::build(labels.data(), labels.size()).get(), generator->stringType(), "key", indent+INDENT);
+        body += generator->generateSwitchTree(&switchTreeCaseGenerator, StringSwitchTree::build(labels.data(), labels.size()).get(), generator->stringType(), ParserGenerator::COMMON_STRING_BUFFER, indent+INDENT);
     }
     if (generator->settings().ignoreExtraKeys) {
         if (generator->settings().noThrow) {

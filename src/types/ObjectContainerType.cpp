@@ -19,8 +19,11 @@ const Type *ObjectContainerType::keyType() const {
 
 std::string ObjectContainerType::generateParserFunctionBody(ParserGenerator *generator, const std::string &indent) const {
     std::string body;
-    // TODO if keyType() == generator->stringType() use global string buffer when available
-    body += indent+keyType()->name().variableDeclaration("key")+";\n";
+    const char *keyName = "key";
+    if (keyType() == generator->stringType())
+        keyName = ParserGenerator::COMMON_STRING_BUFFER;
+    else
+        body += indent+keyType()->name().variableDeclaration(keyName)+";\n";
     body += indent+"if (!matchSymbol('{'))\n";
     body += indent+INDENT+generator->generateErrorStatement(ParserGenerator::Error::TYPE_MISMATCH)+";\n";
     body += indent+generateClear("value")+";\n";
@@ -31,10 +34,10 @@ std::string ObjectContainerType::generateParserFunctionBody(ParserGenerator *gen
         body += indent+INDENT "if (!separatorCheck)\n";
         body += indent+INDENT INDENT+generator->generateErrorStatement(ParserGenerator::Error::JSON_SYNTAX_ERROR)+";\n";
     }
-    body += generator->generateValueParse(keyType(), "key", indent+INDENT);
+    body += generator->generateValueParse(keyType(), keyName, indent+INDENT);
     body += indent+INDENT "if (!matchSymbol(':'))\n";
     body += indent+INDENT INDENT+generator->generateErrorStatement(ParserGenerator::Error::JSON_SYNTAX_ERROR)+";\n";
-    std::string elemRef = generateRefByKey("value", "key");
+    std::string elemRef = generateRefByKey("value", keyName);
     body += generator->generateValueParse(elementType(), elemRef, indent+INDENT);
     if (generator->settings().strictSyntaxCheck)
         body += indent+INDENT "separatorCheck = matchSymbol(',');\n";

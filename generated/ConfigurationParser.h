@@ -38,6 +38,7 @@ public:
 
 protected:
     const char *cur;
+    std::string buffer;
 
     explicit ConfigurationParser(const char *str);
     void skipWhitespace();

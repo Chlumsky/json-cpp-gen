@@ -233,44 +233,43 @@ void ConfigurationParser::parseStdVectorStdString(std::vector<std::string> &valu
 }
 
 void ConfigurationParser::parseConfigurationGeneratorDef(Configuration::GeneratorDef &value) {
-    std::string key;
     if (!matchSymbol('{'))
         throw Error::TYPE_MISMATCH;
     int separatorCheck = -1;
     for (; !matchSymbol('}'); separatorCheck = matchSymbol(',')) {
         if (!separatorCheck)
             throw Error::JSON_SYNTAX_ERROR;
-        parseStdString(key);
+        parseStdString(buffer);
         if (!matchSymbol(':'))
             throw Error::JSON_SYNTAX_ERROR;
-        if (key.size() > 0) {
-            switch (key[0]) {
+        if (buffer.size() > 0) {
+            switch (buffer[0]) {
                 case 'h':
-                    if (key == "headerOutput") {
+                    if (buffer == "headerOutput") {
                         parseStdString(value.headerOutput);
                         continue;
                     }
                     break;
                 case 'n':
-                    if (key == "name") {
+                    if (buffer == "name") {
                         parseStdString(value.name);
                         continue;
                     }
                     break;
                 case 'r':
-                    if (key == "replacementIncludes") {
+                    if (buffer == "replacementIncludes") {
                         parseStdVectorStdString(value.replacementIncludes);
                         continue;
                     }
                     break;
                 case 's':
-                    if (key == "sourceOutput") {
+                    if (buffer == "sourceOutput") {
                         parseStdString(value.sourceOutput);
                         continue;
                     }
                     break;
                 case 't':
-                    if (key == "types") {
+                    if (buffer == "types") {
                         parseStdVectorStdString(value.types);
                         continue;
                     }
@@ -309,9 +308,8 @@ void ConfigurationParser::parseBool(bool &value) {
 }
 
 void ConfigurationParser::parseSettingsJsonIO(Settings::JsonIO &value) {
-    std::string str;
-    parseStdString(str);
-    if (str == "NULL_TERMINATED_STRING") {
+    parseStdString(buffer);
+    if (buffer == "NULL_TERMINATED_STRING") {
         value = Settings::JsonIO::NULL_TERMINATED_STRING;
         return; 
     }
@@ -319,19 +317,18 @@ void ConfigurationParser::parseSettingsJsonIO(Settings::JsonIO &value) {
 }
 
 void ConfigurationParser::parseSettingsInfPolicy(Settings::InfPolicy &value) {
-    std::string str;
-    parseStdString(str);
-    switch (str.size()) {
+    parseStdString(buffer);
+    switch (buffer.size()) {
         case 10:
-            switch (str[0]) {
+            switch (buffer[0]) {
                 case 'N':
-                    if (str == "NULL_VALUE") {
+                    if (buffer == "NULL_VALUE") {
                         value = Settings::InfPolicy::NULL_VALUE;
                         return; 
                     }
                     break;
                 case 'Z':
-                    if (str == "ZERO_VALUE") {
+                    if (buffer == "ZERO_VALUE") {
                         value = Settings::InfPolicy::ZERO_VALUE;
                         return; 
                     }
@@ -339,27 +336,27 @@ void ConfigurationParser::parseSettingsInfPolicy(Settings::InfPolicy &value) {
             }
             break;
         case 16:
-            if (str == "SERIALIZER_ERROR") {
+            if (buffer == "SERIALIZER_ERROR") {
                 value = Settings::InfPolicy::SERIALIZER_ERROR;
                 return; 
             }
             break;
         case 17:
-            if (str == "EXPONENT_OVERFLOW") {
+            if (buffer == "EXPONENT_OVERFLOW") {
                 value = Settings::InfPolicy::EXPONENT_OVERFLOW;
                 return; 
             }
             break;
         case 26:
-            switch (str[0]) {
+            switch (buffer[0]) {
                 case 'L':
-                    if (str == "LOWERCASE_INF_STRING_VALUE") {
+                    if (buffer == "LOWERCASE_INF_STRING_VALUE") {
                         value = Settings::InfPolicy::LOWERCASE_INF_STRING_VALUE;
                         return; 
                     }
                     break;
                 case 'U':
-                    if (str == "UPPERCASE_INF_STRING_VALUE") {
+                    if (buffer == "UPPERCASE_INF_STRING_VALUE") {
                         value = Settings::InfPolicy::UPPERCASE_INF_STRING_VALUE;
                         return; 
                     }
@@ -367,21 +364,21 @@ void ConfigurationParser::parseSettingsInfPolicy(Settings::InfPolicy &value) {
             }
             break;
         case 28:
-            if (str == "CAPITALIZED_INF_STRING_VALUE") {
+            if (buffer == "CAPITALIZED_INF_STRING_VALUE") {
                 value = Settings::InfPolicy::CAPITALIZED_INF_STRING_VALUE;
                 return; 
             }
             break;
         case 31:
-            switch (str[0]) {
+            switch (buffer[0]) {
                 case 'L':
-                    if (str == "LOWERCASE_INFINITY_STRING_VALUE") {
+                    if (buffer == "LOWERCASE_INFINITY_STRING_VALUE") {
                         value = Settings::InfPolicy::LOWERCASE_INFINITY_STRING_VALUE;
                         return; 
                     }
                     break;
                 case 'U':
-                    if (str == "UPPERCASE_INFINITY_STRING_VALUE") {
+                    if (buffer == "UPPERCASE_INFINITY_STRING_VALUE") {
                         value = Settings::InfPolicy::UPPERCASE_INFINITY_STRING_VALUE;
                         return; 
                     }
@@ -389,7 +386,7 @@ void ConfigurationParser::parseSettingsInfPolicy(Settings::InfPolicy &value) {
             }
             break;
         case 33:
-            if (str == "CAPITALIZED_INFINITY_STRING_VALUE") {
+            if (buffer == "CAPITALIZED_INFINITY_STRING_VALUE") {
                 value = Settings::InfPolicy::CAPITALIZED_INFINITY_STRING_VALUE;
                 return; 
             }
@@ -399,42 +396,41 @@ void ConfigurationParser::parseSettingsInfPolicy(Settings::InfPolicy &value) {
 }
 
 void ConfigurationParser::parseSettingsNanPolicy(Settings::NanPolicy &value) {
-    std::string str;
-    parseStdString(str);
-    if (str.size() > 0) {
-        switch (str[0]) {
+    parseStdString(buffer);
+    if (buffer.size() > 0) {
+        switch (buffer[0]) {
             case 'L':
-                if (str == "LOWERCASE_NAN_STRING_VALUE") {
+                if (buffer == "LOWERCASE_NAN_STRING_VALUE") {
                     value = Settings::NanPolicy::LOWERCASE_NAN_STRING_VALUE;
                     return; 
                 }
                 break;
             case 'M':
-                if (str == "MIXED_CASE_NAN_STRING_VALUE") {
+                if (buffer == "MIXED_CASE_NAN_STRING_VALUE") {
                     value = Settings::NanPolicy::MIXED_CASE_NAN_STRING_VALUE;
                     return; 
                 }
                 break;
             case 'N':
-                if (str == "NULL_VALUE") {
+                if (buffer == "NULL_VALUE") {
                     value = Settings::NanPolicy::NULL_VALUE;
                     return; 
                 }
                 break;
             case 'S':
-                if (str == "SERIALIZER_ERROR") {
+                if (buffer == "SERIALIZER_ERROR") {
                     value = Settings::NanPolicy::SERIALIZER_ERROR;
                     return; 
                 }
                 break;
             case 'U':
-                if (str == "UPPERCASE_NAN_STRING_VALUE") {
+                if (buffer == "UPPERCASE_NAN_STRING_VALUE") {
                     value = Settings::NanPolicy::UPPERCASE_NAN_STRING_VALUE;
                     return; 
                 }
                 break;
             case 'Z':
-                if (str == "ZERO_VALUE") {
+                if (buffer == "ZERO_VALUE") {
                     value = Settings::NanPolicy::ZERO_VALUE;
                     return; 
                 }
@@ -445,52 +441,51 @@ void ConfigurationParser::parseSettingsNanPolicy(Settings::NanPolicy &value) {
 }
 
 void ConfigurationParser::parseSettings(Settings &value) {
-    std::string key;
     if (!matchSymbol('{'))
         throw Error::TYPE_MISMATCH;
     int separatorCheck = -1;
     for (; !matchSymbol('}'); separatorCheck = matchSymbol(',')) {
         if (!separatorCheck)
             throw Error::JSON_SYNTAX_ERROR;
-        parseStdString(key);
+        parseStdString(buffer);
         if (!matchSymbol(':'))
             throw Error::JSON_SYNTAX_ERROR;
-        if (key.size() > 5) {
-            switch (key[5]) {
+        if (buffer.size() > 5) {
+            switch (buffer[5]) {
                 case 'I':
-                    if (key == "checkIntegerOverflow") {
+                    if (buffer == "checkIntegerOverflow") {
                         parseBool(value.checkIntegerOverflow);
                         continue;
                     }
                     break;
                 case 'M':
-                    if (key == "checkMissingKeys") {
+                    if (buffer == "checkMissingKeys") {
                         parseBool(value.checkMissingKeys);
                         continue;
                     }
                     break;
                 case 'O':
-                    if (key == "jsonIOMode") {
+                    if (buffer == "jsonIOMode") {
                         parseSettingsJsonIO(value.jsonIOMode);
                         continue;
                     }
                     break;
                 case 'R':
-                    if (key == "checkRepeatingKeys") {
+                    if (buffer == "checkRepeatingKeys") {
                         parseBool(value.checkRepeatingKeys);
                         continue;
                     }
                     break;
                 case 'e':
-                    switch (key.size()) {
+                    switch (buffer.size()) {
                         case 15:
-                            if (key == "ignoreExtraKeys") {
+                            if (buffer == "ignoreExtraKeys") {
                                 parseBool(value.ignoreExtraKeys);
                                 continue;
                             }
                             break;
                         case 18:
-                            if (key == "escapeForwardSlash") {
+                            if (buffer == "escapeForwardSlash") {
                                 parseBool(value.escapeForwardSlash);
                                 continue;
                             }
@@ -498,15 +493,15 @@ void ConfigurationParser::parseSettings(Settings &value) {
                     }
                     break;
                 case 'l':
-                    switch (key[0]) {
+                    switch (buffer[0]) {
                         case 'i':
-                            if (key == "infPolicy") {
+                            if (buffer == "infPolicy") {
                                 parseSettingsInfPolicy(value.infPolicy);
                                 continue;
                             }
                             break;
                         case 'n':
-                            if (key == "nanPolicy") {
+                            if (buffer == "nanPolicy") {
                                 parseSettingsNanPolicy(value.nanPolicy);
                                 continue;
                             }
@@ -514,19 +509,19 @@ void ConfigurationParser::parseSettings(Settings &value) {
                     }
                     break;
                 case 'm':
-                    if (key == "skipEmptyFields") {
+                    if (buffer == "skipEmptyFields") {
                         parseBool(value.skipEmptyFields);
                         continue;
                     }
                     break;
                 case 'o':
-                    if (key == "noThrow") {
+                    if (buffer == "noThrow") {
                         parseBool(value.noThrow);
                         continue;
                     }
                     break;
                 case 't':
-                    if (key == "strictSyntaxCheck") {
+                    if (buffer == "strictSyntaxCheck") {
                         parseBool(value.strictSyntaxCheck);
                         continue;
                     }
@@ -540,53 +535,52 @@ void ConfigurationParser::parseSettings(Settings &value) {
 }
 
 void ConfigurationParser::parseStringAPI(StringAPI &value) {
-    std::string key;
     if (!matchSymbol('{'))
         throw Error::TYPE_MISMATCH;
     int separatorCheck = -1;
     for (; !matchSymbol('}'); separatorCheck = matchSymbol(',')) {
         if (!separatorCheck)
             throw Error::JSON_SYNTAX_ERROR;
-        parseStdString(key);
+        parseStdString(buffer);
         if (!matchSymbol(':'))
             throw Error::JSON_SYNTAX_ERROR;
-        if (key.size() > 4) {
-            switch (key[4]) {
+        if (buffer.size() > 4) {
+            switch (buffer[4]) {
                 case 'a':
-                    if (key == "iterateChars") {
+                    if (buffer == "iterateChars") {
                         parseStdString(value.iterateChars);
                         continue;
                     }
                     break;
                 case 'e':
-                    if (key == "getLength") {
+                    if (buffer == "getLength") {
                         parseStdString(value.getLength);
                         continue;
                     }
                     break;
                 case 'h':
-                    if (key == "getCharAt") {
+                    if (buffer == "getCharAt") {
                         parseStdString(value.getCharAt);
                         continue;
                     }
                     break;
                 case 'l':
-                    if (key == "equalsStringLiteral") {
+                    if (buffer == "equalsStringLiteral") {
                         parseStdString(value.equalsStringLiteral);
                         continue;
                     }
                     break;
                 case 'n':
-                    if (key.size() > 7) {
-                        switch (key[7]) {
+                    if (buffer.size() > 7) {
+                        switch (buffer[7]) {
                             case 'S':
-                                if (key == "appendCStr") {
+                                if (buffer == "appendCStr") {
                                     parseStdString(value.appendCStr);
                                     continue;
                                 }
                                 break;
                             case 'h':
-                                if (key == "appendChar") {
+                                if (buffer == "appendChar") {
                                     parseStdString(value.appendChar);
                                     continue;
                                 }
@@ -595,7 +589,7 @@ void ConfigurationParser::parseStringAPI(StringAPI &value) {
                     }
                     break;
                 case 'r':
-                    if (key == "clear") {
+                    if (buffer == "clear") {
                         parseStdString(value.clear);
                         continue;
                     }
@@ -609,25 +603,24 @@ void ConfigurationParser::parseStringAPI(StringAPI &value) {
 }
 
 void ConfigurationParser::parseConfigurationStringDef(Configuration::StringDef &value) {
-    std::string key;
     if (!matchSymbol('{'))
         throw Error::TYPE_MISMATCH;
     int separatorCheck = -1;
     for (; !matchSymbol('}'); separatorCheck = matchSymbol(',')) {
         if (!separatorCheck)
             throw Error::JSON_SYNTAX_ERROR;
-        parseStdString(key);
+        parseStdString(buffer);
         if (!matchSymbol(':'))
             throw Error::JSON_SYNTAX_ERROR;
-        switch (key.size()) {
+        switch (buffer.size()) {
             case 3:
-                if (key == "api") {
+                if (buffer == "api") {
                     parseStringAPI(value.api);
                     continue;
                 }
                 break;
             case 4:
-                if (key == "name") {
+                if (buffer == "name") {
                     parseStdString(value.name);
                     continue;
                 }
@@ -655,32 +648,31 @@ void ConfigurationParser::parseStdVectorConfigurationStringDef(std::vector<Confi
 }
 
 void ConfigurationParser::parseConstStringAPI(ConstStringAPI &value) {
-    std::string key;
     if (!matchSymbol('{'))
         throw Error::TYPE_MISMATCH;
     int separatorCheck = -1;
     for (; !matchSymbol('}'); separatorCheck = matchSymbol(',')) {
         if (!separatorCheck)
             throw Error::JSON_SYNTAX_ERROR;
-        parseStdString(key);
+        parseStdString(buffer);
         if (!matchSymbol(':'))
             throw Error::JSON_SYNTAX_ERROR;
-        if (key.size() > 0) {
-            switch (key[0]) {
+        if (buffer.size() > 0) {
+            switch (buffer[0]) {
                 case 'c':
-                    if (key == "copyFromString") {
+                    if (buffer == "copyFromString") {
                         parseStdString(value.copyFromString);
                         continue;
                     }
                     break;
                 case 'i':
-                    if (key == "iterateChars") {
+                    if (buffer == "iterateChars") {
                         parseStdString(value.iterateChars);
                         continue;
                     }
                     break;
                 case 'm':
-                    if (key == "moveFromString") {
+                    if (buffer == "moveFromString") {
                         parseStdString(value.moveFromString);
                         continue;
                     }
@@ -694,31 +686,30 @@ void ConfigurationParser::parseConstStringAPI(ConstStringAPI &value) {
 }
 
 void ConfigurationParser::parseConfigurationConstStringDef(Configuration::ConstStringDef &value) {
-    std::string key;
     if (!matchSymbol('{'))
         throw Error::TYPE_MISMATCH;
     int separatorCheck = -1;
     for (; !matchSymbol('}'); separatorCheck = matchSymbol(',')) {
         if (!separatorCheck)
             throw Error::JSON_SYNTAX_ERROR;
-        parseStdString(key);
+        parseStdString(buffer);
         if (!matchSymbol(':'))
             throw Error::JSON_SYNTAX_ERROR;
-        switch (key.size()) {
+        switch (buffer.size()) {
             case 3:
-                if (key == "api") {
+                if (buffer == "api") {
                     parseConstStringAPI(value.api);
                     continue;
                 }
                 break;
             case 4:
-                if (key == "name") {
+                if (buffer == "name") {
                     parseStdString(value.name);
                     continue;
                 }
                 break;
             case 10:
-                if (key == "stringType") {
+                if (buffer == "stringType") {
                     parseStdString(value.stringType);
                     continue;
                 }
@@ -746,31 +737,30 @@ void ConfigurationParser::parseStdVectorConfigurationConstStringDef(std::vector<
 }
 
 void ConfigurationParser::parseArrayContainerAPI(ArrayContainerAPI &value) {
-    std::string key;
     if (!matchSymbol('{'))
         throw Error::TYPE_MISMATCH;
     int separatorCheck = -1;
     for (; !matchSymbol('}'); separatorCheck = matchSymbol(',')) {
         if (!separatorCheck)
             throw Error::JSON_SYNTAX_ERROR;
-        parseStdString(key);
+        parseStdString(buffer);
         if (!matchSymbol(':'))
             throw Error::JSON_SYNTAX_ERROR;
-        switch (key.size()) {
+        switch (buffer.size()) {
             case 5:
-                if (key == "clear") {
+                if (buffer == "clear") {
                     parseStdString(value.clear);
                     continue;
                 }
                 break;
             case 11:
-                if (key == "refAppended") {
+                if (buffer == "refAppended") {
                     parseStdString(value.refAppended);
                     continue;
                 }
                 break;
             case 15:
-                if (key == "iterateElements") {
+                if (buffer == "iterateElements") {
                     parseStdString(value.iterateElements);
                     continue;
                 }
@@ -783,25 +773,24 @@ void ConfigurationParser::parseArrayContainerAPI(ArrayContainerAPI &value) {
 }
 
 void ConfigurationParser::parseConfigurationArrayContainerDef(Configuration::ArrayContainerDef &value) {
-    std::string key;
     if (!matchSymbol('{'))
         throw Error::TYPE_MISMATCH;
     int separatorCheck = -1;
     for (; !matchSymbol('}'); separatorCheck = matchSymbol(',')) {
         if (!separatorCheck)
             throw Error::JSON_SYNTAX_ERROR;
-        parseStdString(key);
+        parseStdString(buffer);
         if (!matchSymbol(':'))
             throw Error::JSON_SYNTAX_ERROR;
-        switch (key.size()) {
+        switch (buffer.size()) {
             case 3:
-                if (key == "api") {
+                if (buffer == "api") {
                     parseArrayContainerAPI(value.api);
                     continue;
                 }
                 break;
             case 4:
-                if (key == "name") {
+                if (buffer == "name") {
                     parseStdString(value.name);
                     continue;
                 }
@@ -829,31 +818,30 @@ void ConfigurationParser::parseStdVectorConfigurationArrayContainerDef(std::vect
 }
 
 void ConfigurationParser::parseObjectContainerAPI(ObjectContainerAPI &value) {
-    std::string key;
     if (!matchSymbol('{'))
         throw Error::TYPE_MISMATCH;
     int separatorCheck = -1;
     for (; !matchSymbol('}'); separatorCheck = matchSymbol(',')) {
         if (!separatorCheck)
             throw Error::JSON_SYNTAX_ERROR;
-        parseStdString(key);
+        parseStdString(buffer);
         if (!matchSymbol(':'))
             throw Error::JSON_SYNTAX_ERROR;
-        switch (key.size()) {
+        switch (buffer.size()) {
             case 5:
-                if (key == "clear") {
+                if (buffer == "clear") {
                     parseStdString(value.clear);
                     continue;
                 }
                 break;
             case 8:
-                if (key == "refByKey") {
+                if (buffer == "refByKey") {
                     parseStdString(value.refByKey);
                     continue;
                 }
                 break;
             case 15:
-                if (key == "iterateElements") {
+                if (buffer == "iterateElements") {
                     parseStdString(value.iterateElements);
                     continue;
                 }
@@ -866,31 +854,30 @@ void ConfigurationParser::parseObjectContainerAPI(ObjectContainerAPI &value) {
 }
 
 void ConfigurationParser::parseConfigurationObjectContainerDef(Configuration::ObjectContainerDef &value) {
-    std::string key;
     if (!matchSymbol('{'))
         throw Error::TYPE_MISMATCH;
     int separatorCheck = -1;
     for (; !matchSymbol('}'); separatorCheck = matchSymbol(',')) {
         if (!separatorCheck)
             throw Error::JSON_SYNTAX_ERROR;
-        parseStdString(key);
+        parseStdString(buffer);
         if (!matchSymbol(':'))
             throw Error::JSON_SYNTAX_ERROR;
-        switch (key.size()) {
+        switch (buffer.size()) {
             case 3:
-                if (key == "api") {
+                if (buffer == "api") {
                     parseObjectContainerAPI(value.api);
                     continue;
                 }
                 break;
             case 4:
-                if (key == "name") {
+                if (buffer == "name") {
                     parseStdString(value.name);
                     continue;
                 }
                 break;
             case 7:
-                if (key == "keyType") {
+                if (buffer == "keyType") {
                     parseStdString(value.keyType);
                     continue;
                 }
@@ -918,38 +905,37 @@ void ConfigurationParser::parseStdVectorConfigurationObjectContainerDef(std::vec
 }
 
 void ConfigurationParser::parseOptionalContainerAPI(OptionalContainerAPI &value) {
-    std::string key;
     if (!matchSymbol('{'))
         throw Error::TYPE_MISMATCH;
     int separatorCheck = -1;
     for (; !matchSymbol('}'); separatorCheck = matchSymbol(',')) {
         if (!separatorCheck)
             throw Error::JSON_SYNTAX_ERROR;
-        parseStdString(key);
+        parseStdString(buffer);
         if (!matchSymbol(':'))
             throw Error::JSON_SYNTAX_ERROR;
-        if (key.size() > 0) {
-            switch (key[0]) {
+        if (buffer.size() > 0) {
+            switch (buffer[0]) {
                 case 'c':
-                    if (key == "clear") {
+                    if (buffer == "clear") {
                         parseStdString(value.clear);
                         continue;
                     }
                     break;
                 case 'g':
-                    if (key == "getValue") {
+                    if (buffer == "getValue") {
                         parseStdString(value.getValue);
                         continue;
                     }
                     break;
                 case 'h':
-                    if (key == "hasValue") {
+                    if (buffer == "hasValue") {
                         parseStdString(value.hasValue);
                         continue;
                     }
                     break;
                 case 'r':
-                    if (key == "refInitialized") {
+                    if (buffer == "refInitialized") {
                         parseStdString(value.refInitialized);
                         continue;
                     }
@@ -963,25 +949,24 @@ void ConfigurationParser::parseOptionalContainerAPI(OptionalContainerAPI &value)
 }
 
 void ConfigurationParser::parseConfigurationOptionalContainerDef(Configuration::OptionalContainerDef &value) {
-    std::string key;
     if (!matchSymbol('{'))
         throw Error::TYPE_MISMATCH;
     int separatorCheck = -1;
     for (; !matchSymbol('}'); separatorCheck = matchSymbol(',')) {
         if (!separatorCheck)
             throw Error::JSON_SYNTAX_ERROR;
-        parseStdString(key);
+        parseStdString(buffer);
         if (!matchSymbol(':'))
             throw Error::JSON_SYNTAX_ERROR;
-        switch (key.size()) {
+        switch (buffer.size()) {
             case 3:
-                if (key == "api") {
+                if (buffer == "api") {
                     parseOptionalContainerAPI(value.api);
                     continue;
                 }
                 break;
             case 4:
-                if (key == "name") {
+                if (buffer == "name") {
                     parseStdString(value.name);
                     continue;
                 }
@@ -1009,25 +994,24 @@ void ConfigurationParser::parseStdVectorConfigurationOptionalContainerDef(std::v
 }
 
 void ConfigurationParser::parseConfigurationObjectMapContainerDef(Configuration::ObjectMapContainerDef &value) {
-    std::string key;
     if (!matchSymbol('{'))
         throw Error::TYPE_MISMATCH;
     int separatorCheck = -1;
     for (; !matchSymbol('}'); separatorCheck = matchSymbol(',')) {
         if (!separatorCheck)
             throw Error::JSON_SYNTAX_ERROR;
-        parseStdString(key);
+        parseStdString(buffer);
         if (!matchSymbol(':'))
             throw Error::JSON_SYNTAX_ERROR;
-        switch (key.size()) {
+        switch (buffer.size()) {
             case 3:
-                if (key == "api") {
+                if (buffer == "api") {
                     parseObjectContainerAPI(value.api);
                     continue;
                 }
                 break;
             case 4:
-                if (key == "name") {
+                if (buffer == "name") {
                     parseStdString(value.name);
                     continue;
                 }
@@ -1055,32 +1039,31 @@ void ConfigurationParser::parseStdVectorConfigurationObjectMapContainerDef(std::
 }
 
 void ConfigurationParser::parseFixedArrayContainerAPI(FixedArrayContainerAPI &value) {
-    std::string key;
     if (!matchSymbol('{'))
         throw Error::TYPE_MISMATCH;
     int separatorCheck = -1;
     for (; !matchSymbol('}'); separatorCheck = matchSymbol(',')) {
         if (!separatorCheck)
             throw Error::JSON_SYNTAX_ERROR;
-        parseStdString(key);
+        parseStdString(buffer);
         if (!matchSymbol(':'))
             throw Error::JSON_SYNTAX_ERROR;
-        if (key.size() > 0) {
-            switch (key[0]) {
+        if (buffer.size() > 0) {
+            switch (buffer[0]) {
                 case 'c':
-                    if (key == "copyFromArrayContainer") {
+                    if (buffer == "copyFromArrayContainer") {
                         parseStdString(value.copyFromArrayContainer);
                         continue;
                     }
                     break;
                 case 'i':
-                    if (key == "iterateElements") {
+                    if (buffer == "iterateElements") {
                         parseStdString(value.iterateElements);
                         continue;
                     }
                     break;
                 case 'm':
-                    if (key == "moveFromArrayContainer") {
+                    if (buffer == "moveFromArrayContainer") {
                         parseStdString(value.moveFromArrayContainer);
                         continue;
                     }
@@ -1094,31 +1077,30 @@ void ConfigurationParser::parseFixedArrayContainerAPI(FixedArrayContainerAPI &va
 }
 
 void ConfigurationParser::parseConfigurationFixedArrayContainerDef(Configuration::FixedArrayContainerDef &value) {
-    std::string key;
     if (!matchSymbol('{'))
         throw Error::TYPE_MISMATCH;
     int separatorCheck = -1;
     for (; !matchSymbol('}'); separatorCheck = matchSymbol(',')) {
         if (!separatorCheck)
             throw Error::JSON_SYNTAX_ERROR;
-        parseStdString(key);
+        parseStdString(buffer);
         if (!matchSymbol(':'))
             throw Error::JSON_SYNTAX_ERROR;
-        switch (key.size()) {
+        switch (buffer.size()) {
             case 3:
-                if (key == "api") {
+                if (buffer == "api") {
                     parseFixedArrayContainerAPI(value.api);
                     continue;
                 }
                 break;
             case 4:
-                if (key == "name") {
+                if (buffer == "name") {
                     parseStdString(value.name);
                     continue;
                 }
                 break;
             case 18:
-                if (key == "arrayContainerType") {
+                if (buffer == "arrayContainerType") {
                     parseStdString(value.arrayContainerType);
                     continue;
                 }
@@ -1146,17 +1128,16 @@ void ConfigurationParser::parseStdVectorConfigurationFixedArrayContainerDef(std:
 }
 
 void ConfigurationParser::parseStaticArrayContainerAPI(StaticArrayContainerAPI &value) {
-    std::string key;
     if (!matchSymbol('{'))
         throw Error::TYPE_MISMATCH;
     int separatorCheck = -1;
     for (; !matchSymbol('}'); separatorCheck = matchSymbol(',')) {
         if (!separatorCheck)
             throw Error::JSON_SYNTAX_ERROR;
-        parseStdString(key);
+        parseStdString(buffer);
         if (!matchSymbol(':'))
             throw Error::JSON_SYNTAX_ERROR;
-        if (key == "refByIndex") {
+        if (buffer == "refByIndex") {
             parseStdString(value.refByIndex);
             continue;
         }
@@ -1167,25 +1148,24 @@ void ConfigurationParser::parseStaticArrayContainerAPI(StaticArrayContainerAPI &
 }
 
 void ConfigurationParser::parseConfigurationStaticArrayContainerDef(Configuration::StaticArrayContainerDef &value) {
-    std::string key;
     if (!matchSymbol('{'))
         throw Error::TYPE_MISMATCH;
     int separatorCheck = -1;
     for (; !matchSymbol('}'); separatorCheck = matchSymbol(',')) {
         if (!separatorCheck)
             throw Error::JSON_SYNTAX_ERROR;
-        parseStdString(key);
+        parseStdString(buffer);
         if (!matchSymbol(':'))
             throw Error::JSON_SYNTAX_ERROR;
-        switch (key.size()) {
+        switch (buffer.size()) {
             case 3:
-                if (key == "api") {
+                if (buffer == "api") {
                     parseStaticArrayContainerAPI(value.api);
                     continue;
                 }
                 break;
             case 4:
-                if (key == "name") {
+                if (buffer == "name") {
                     parseStdString(value.name);
                     continue;
                 }
@@ -1213,39 +1193,38 @@ void ConfigurationParser::parseStdVectorConfigurationStaticArrayContainerDef(std
 }
 
 void ConfigurationParser::parseConfiguration(Configuration &value) {
-    std::string key;
     if (!matchSymbol('{'))
         throw Error::TYPE_MISMATCH;
     int separatorCheck = -1;
     for (; !matchSymbol('}'); separatorCheck = matchSymbol(',')) {
         if (!separatorCheck)
             throw Error::JSON_SYNTAX_ERROR;
-        parseStdString(key);
+        parseStdString(buffer);
         if (!matchSymbol(':'))
             throw Error::JSON_SYNTAX_ERROR;
-        switch (key.size()) {
+        switch (buffer.size()) {
             case 6:
-                if (key == "inputs") {
+                if (buffer == "inputs") {
                     parseStdVectorStdString(value.inputs);
                     continue;
                 }
                 break;
             case 7:
-                if (key == "parsers") {
+                if (buffer == "parsers") {
                     parseStdVectorConfigurationGeneratorDef(value.parsers);
                     continue;
                 }
                 break;
             case 8:
-                switch (key[0]) {
+                switch (buffer[0]) {
                     case 'i':
-                        if (key == "includes") {
+                        if (buffer == "includes") {
                             parseStdVectorStdString(value.includes);
                             continue;
                         }
                         break;
                     case 's':
-                        if (key == "settings") {
+                        if (buffer == "settings") {
                             parseSettings(value.settings);
                             continue;
                         }
@@ -1253,21 +1232,21 @@ void ConfigurationParser::parseConfiguration(Configuration &value) {
                 }
                 break;
             case 10:
-                if (key == "stringType") {
+                if (buffer == "stringType") {
                     parseStdString(value.stringType);
                     continue;
                 }
                 break;
             case 11:
-                switch (key[1]) {
+                switch (buffer[1]) {
                     case 'e':
-                        if (key == "serializers") {
+                        if (buffer == "serializers") {
                             parseStdVectorConfigurationGeneratorDef(value.serializers);
                             continue;
                         }
                         break;
                     case 't':
-                        if (key == "stringTypes") {
+                        if (buffer == "stringTypes") {
                             parseStdVectorConfigurationStringDef(value.stringTypes);
                             continue;
                         }
@@ -1275,43 +1254,43 @@ void ConfigurationParser::parseConfiguration(Configuration &value) {
                 }
                 break;
             case 16:
-                if (key == "constStringTypes") {
+                if (buffer == "constStringTypes") {
                     parseStdVectorConfigurationConstStringDef(value.constStringTypes);
                     continue;
                 }
                 break;
             case 19:
-                if (key == "arrayContainerTypes") {
+                if (buffer == "arrayContainerTypes") {
                     parseStdVectorConfigurationArrayContainerDef(value.arrayContainerTypes);
                     continue;
                 }
                 break;
             case 20:
-                if (key == "objectContainerTypes") {
+                if (buffer == "objectContainerTypes") {
                     parseStdVectorConfigurationObjectContainerDef(value.objectContainerTypes);
                     continue;
                 }
                 break;
             case 22:
-                if (key == "optionalContainerTypes") {
+                if (buffer == "optionalContainerTypes") {
                     parseStdVectorConfigurationOptionalContainerDef(value.optionalContainerTypes);
                     continue;
                 }
                 break;
             case 23:
-                if (key == "objectMapContainerTypes") {
+                if (buffer == "objectMapContainerTypes") {
                     parseStdVectorConfigurationObjectMapContainerDef(value.objectMapContainerTypes);
                     continue;
                 }
                 break;
             case 24:
-                if (key == "fixedArrayContainerTypes") {
+                if (buffer == "fixedArrayContainerTypes") {
                     parseStdVectorConfigurationFixedArrayContainerDef(value.fixedArrayContainerTypes);
                     continue;
                 }
                 break;
             case 25:
-                if (key == "staticArrayContainerTypes") {
+                if (buffer == "staticArrayContainerTypes") {
                     parseStdVectorConfigurationStaticArrayContainerDef(value.staticArrayContainerTypes);
                     continue;
                 }

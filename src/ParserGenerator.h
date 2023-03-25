@@ -38,6 +38,8 @@ public:
         virtual std::string operator()(ParserGenerator *parserGenerator, const std::string &caseLabel, const StringType *valueType, const char *value, int knownMinLength, const std::string &indent) = 0;
     };
 
+    static constexpr const char *const COMMON_STRING_BUFFER = "buffer";
+
     static const unsigned FEATURE_READ_SIGNED;
     static const unsigned FEATURE_READ_UNSIGNED;
 

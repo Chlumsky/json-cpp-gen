@@ -105,9 +105,6 @@ for the [`ConfigurationParser`](generated/ConfigurationParser.h) class.
 - Full UTF-8 & UTF-16 support
 
 Currently **NOT** supported but planned features:
-- Out of order structure declaration - input header files must currently be in the correct order - WIP
-- Anonymous structures
-- Structure / enum declaration and variable declaration in one statement
 - Omitting specific member variables from parsing and serialization - planned via annotations
 - Structure members under different name in JSON - planned via annotations
 - Classes - currently ignored due to their data being typically private but explicit enablement via annotations is planned - access to private members must be ensured by the user
