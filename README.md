@@ -40,7 +40,7 @@ for a more complex example.
 
 The generated parsers and serializers are highly efficient because
 no intermediate DOM or other auxiliary data structures are constructed -
-data is read directly to / from the input structures.
+data is read directly from / to the input structures.
 
 ## How to use
 
@@ -102,7 +102,7 @@ for the [`ConfigurationParser`](generated/ConfigurationParser.h) class.
     - Custom string, array, object, and optional types if defined in the configuration file, see [below](#Custom-types)
 - Namespaces
 - Structure inheritance (basic support)
-- Full UTF-8 & UTF-16 support
+- Full UTF-8 & UTF-16 support in JSON
 
 Currently **NOT** supported but planned features:
 - Omitting specific member variables from parsing and serialization - planned via annotations
@@ -133,8 +133,7 @@ and how they should be written in the configuration file.
 You can specify multiple types for each category.
 
 These are mostly demonstrated on types from the standard library,
-which however should not be put into the configuration file as they are present implicitly
-and would cause collisions.
+which however should not be put into the configuration file as they are present by default.
 
 ### String (dynamic)
 
@@ -147,8 +146,9 @@ and would cause collisions.
         "getCharAt": "$S[$I]",
         "appendChar": "$S.push_back($X)",
         "appendCStr": "$S += $X",
-        "iterateChars": "for (char $E : $S) { $F }",
-        "equalsStringLiteral": "$S == $X"
+        "appendStringLiteral": "$S += $X",
+        "equalsStringLiteral": "$S == $X",
+        "iterateChars": "for (char $E : $S) { $F }"
     }
 } ]
 ```

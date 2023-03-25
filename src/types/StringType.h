@@ -18,8 +18,9 @@ public:
     std::string generateGetCharAt(const char *subject, const char *index) const;
     std::string generateAppendChar(const char *subject, const char *x) const;
     std::string generateAppendCStr(const char *subject, const char *x) const;
-    std::string generateIterateChars(const char *subject, const char *iteratorName, const char *endIteratorName, const char *elementName, const char *body) const;
+    std::string generateAppendStringLiteral(const char *subject, const char *x) const;
     std::string generateEqualsStringLiteral(const char *subject, const char *x) const;
+    std::string generateIterateChars(const char *subject, const char *iteratorName, const char *endIteratorName, const char *elementName, const char *body) const;
 
 private:
     StringAPI api;

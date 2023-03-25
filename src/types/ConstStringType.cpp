@@ -3,6 +3,7 @@
 
 #include "../pattern-fill.h"
 #include "../ParserGenerator.h"
+#include "../SerializerGenerator.h"
 
 ConstStringType::ConstStringType(const std::string &name, const StringType *stringType, const ConstStringAPI &api) : Type(TypeName(name)), stringType(stringType), api(api) { }
 
@@ -18,9 +19,9 @@ std::string ConstStringType::generateParserFunctionBody(ParserGenerator *generat
 
 std::string ConstStringType::generateSerializerFunctionBody(SerializerGenerator *generator, const std::string &indent) const {
     std::string body;
-    body += indent+"write('\"');\n";
+    body += indent+generator->stringType()->generateAppendChar(SerializerGenerator::OUTPUT_STRING, "'\"'")+";\n";
     body += indent+generateIterateChars("value", "i", "end", "c", "writeEscaped(c);")+"\n";
-    body += indent+"write('\"');\n";
+    body += indent+generator->stringType()->generateAppendChar(SerializerGenerator::OUTPUT_STRING, "'\"'")+";\n";
     return body;
 }
 

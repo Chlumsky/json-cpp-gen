@@ -72,31 +72,31 @@ static std::string generateFloatSerialization(SerializerGenerator *generator, Ba
             body += indent+INDENT INDENT+generator->generateErrorStatement(SerializerGenerator::Error::UNREPRESENTABLE_FLOAT_VALUE)+";\n";
             break;
         case Settings::InfPolicy::EXPONENT_OVERFLOW:
-            body += indent+INDENT INDENT "write(\"-1e999\");\n";
+            body += indent+INDENT INDENT+generator->stringType()->generateAppendStringLiteral(SerializerGenerator::OUTPUT_STRING, "\"-1e999\"")+";\n";
             break;
         case Settings::InfPolicy::ZERO_VALUE:
-            body += indent+INDENT INDENT "write('0');\n";
+            body += indent+INDENT INDENT+generator->stringType()->generateAppendChar(SerializerGenerator::OUTPUT_STRING, "'0'")+";\n";
             break;
         case Settings::InfPolicy::NULL_VALUE:
-            body += indent+INDENT INDENT "write(\"null\");\n";
+            body += indent+INDENT INDENT+generator->stringType()->generateAppendStringLiteral(SerializerGenerator::OUTPUT_STRING, "\"null\"")+";\n";
             break;
         case Settings::InfPolicy::UPPERCASE_INF_STRING_VALUE:
-            body += indent+INDENT INDENT "write(\"\\\"-INF\\\"\");\n";
+            body += indent+INDENT INDENT+generator->stringType()->generateAppendStringLiteral(SerializerGenerator::OUTPUT_STRING, "\"\\\"-INF\\\"\"")+";\n";
             break;
         case Settings::InfPolicy::LOWERCASE_INF_STRING_VALUE:
-            body += indent+INDENT INDENT "write(\"\\\"-inf\\\"\");\n";
+            body += indent+INDENT INDENT+generator->stringType()->generateAppendStringLiteral(SerializerGenerator::OUTPUT_STRING, "\"\\\"-inf\\\"\"")+";\n";
             break;
         case Settings::InfPolicy::CAPITALIZED_INF_STRING_VALUE:
-            body += indent+INDENT INDENT "write(\"\\\"-Inf\\\"\");\n";
+            body += indent+INDENT INDENT+generator->stringType()->generateAppendStringLiteral(SerializerGenerator::OUTPUT_STRING, "\"\\\"-Inf\\\"\"")+";\n";
             break;
         case Settings::InfPolicy::UPPERCASE_INFINITY_STRING_VALUE:
-            body += indent+INDENT INDENT "write(\"\\\"-INFINITY\\\"\");\n";
+            body += indent+INDENT INDENT+generator->stringType()->generateAppendStringLiteral(SerializerGenerator::OUTPUT_STRING, "\"\\\"-INFINITY\\\"\"")+";\n";
             break;
         case Settings::InfPolicy::LOWERCASE_INFINITY_STRING_VALUE:
-            body += indent+INDENT INDENT "write(\"\\\"-infinity\\\"\");\n";
+            body += indent+INDENT INDENT+generator->stringType()->generateAppendStringLiteral(SerializerGenerator::OUTPUT_STRING, "\"\\\"-infinity\\\"\"")+";\n";
             break;
         case Settings::InfPolicy::CAPITALIZED_INFINITY_STRING_VALUE:
-            body += indent+INDENT INDENT "write(\"\\\"-Infinity\\\"\");\n";
+            body += indent+INDENT INDENT+generator->stringType()->generateAppendStringLiteral(SerializerGenerator::OUTPUT_STRING, "\"\\\"-Infinity\\\"\"")+";\n";
             break;
     }
     body += indent+INDENT INDENT "break;\n";
@@ -107,31 +107,31 @@ static std::string generateFloatSerialization(SerializerGenerator *generator, Ba
             body += indent+INDENT INDENT INDENT+generator->generateErrorStatement(SerializerGenerator::Error::UNREPRESENTABLE_FLOAT_VALUE)+";\n";
             break;
         case Settings::InfPolicy::EXPONENT_OVERFLOW:
-            body += indent+INDENT INDENT INDENT "write(\"1e999\");\n";
+            body += indent+INDENT INDENT+generator->stringType()->generateAppendStringLiteral(SerializerGenerator::OUTPUT_STRING, "\"1e999\"")+";\n";
             break;
         case Settings::InfPolicy::ZERO_VALUE:
-            body += indent+INDENT INDENT INDENT "write('0');\n";
+            body += indent+INDENT INDENT+generator->stringType()->generateAppendChar(SerializerGenerator::OUTPUT_STRING, "'0'")+";\n";
             break;
         case Settings::InfPolicy::NULL_VALUE:
-            body += indent+INDENT INDENT INDENT "write(\"null\");\n";
+            body += indent+INDENT INDENT+generator->stringType()->generateAppendStringLiteral(SerializerGenerator::OUTPUT_STRING, "\"null\"")+";\n";
             break;
         case Settings::InfPolicy::UPPERCASE_INF_STRING_VALUE:
-            body += indent+INDENT INDENT INDENT "write(\"\\\"INF\\\"\");\n";
+            body += indent+INDENT INDENT+generator->stringType()->generateAppendStringLiteral(SerializerGenerator::OUTPUT_STRING, "\"\\\"INF\\\"\"")+";\n";
             break;
         case Settings::InfPolicy::LOWERCASE_INF_STRING_VALUE:
-            body += indent+INDENT INDENT INDENT "write(\"\\\"inf\\\"\");\n";
+            body += indent+INDENT INDENT+generator->stringType()->generateAppendStringLiteral(SerializerGenerator::OUTPUT_STRING, "\"\\\"inf\\\"\"")+";\n";
             break;
         case Settings::InfPolicy::CAPITALIZED_INF_STRING_VALUE:
-            body += indent+INDENT INDENT INDENT "write(\"\\\"Inf\\\"\");\n";
+            body += indent+INDENT INDENT+generator->stringType()->generateAppendStringLiteral(SerializerGenerator::OUTPUT_STRING, "\"\\\"Inf\\\"\"")+";\n";
             break;
         case Settings::InfPolicy::UPPERCASE_INFINITY_STRING_VALUE:
-            body += indent+INDENT INDENT INDENT "write(\"\\\"INFINITY\\\"\");\n";
+            body += indent+INDENT INDENT+generator->stringType()->generateAppendStringLiteral(SerializerGenerator::OUTPUT_STRING, "\"\\\"INFINITY\\\"\"")+";\n";
             break;
         case Settings::InfPolicy::LOWERCASE_INFINITY_STRING_VALUE:
-            body += indent+INDENT INDENT INDENT "write(\"\\\"infinity\\\"\");\n";
+            body += indent+INDENT INDENT+generator->stringType()->generateAppendStringLiteral(SerializerGenerator::OUTPUT_STRING, "\"\\\"infinity\\\"\"")+";\n";
             break;
         case Settings::InfPolicy::CAPITALIZED_INFINITY_STRING_VALUE:
-            body += indent+INDENT INDENT INDENT "write(\"\\\"Infinity\\\"\");\n";
+            body += indent+INDENT INDENT+generator->stringType()->generateAppendStringLiteral(SerializerGenerator::OUTPUT_STRING, "\"\\\"Infinity\\\"\"")+";\n";
             break;
     }
     body += indent+INDENT INDENT INDENT "break;\n";
@@ -143,24 +143,24 @@ static std::string generateFloatSerialization(SerializerGenerator *generator, Ba
             body += indent+INDENT INDENT+generator->generateErrorStatement(SerializerGenerator::Error::UNREPRESENTABLE_FLOAT_VALUE)+";\n";
             break;
         case Settings::NanPolicy::ZERO_VALUE:
-            body += indent+INDENT INDENT "write('0');\n";
+            body += indent+INDENT INDENT+generator->stringType()->generateAppendChar(SerializerGenerator::OUTPUT_STRING, "'0'")+";\n";
             break;
         case Settings::NanPolicy::NULL_VALUE:
-            body += indent+INDENT INDENT "write(\"null\");\n";
+            body += indent+INDENT INDENT+generator->stringType()->generateAppendStringLiteral(SerializerGenerator::OUTPUT_STRING, "\"null\"")+";\n";
             break;
         case Settings::NanPolicy::UPPERCASE_NAN_STRING_VALUE:
-            body += indent+INDENT INDENT "write(\"\\\"NAN\\\"\");\n";
+            body += indent+INDENT INDENT+generator->stringType()->generateAppendStringLiteral(SerializerGenerator::OUTPUT_STRING, "\"\\\"NAN\\\"\"")+";\n";
             break;
         case Settings::NanPolicy::LOWERCASE_NAN_STRING_VALUE:
-            body += indent+INDENT INDENT "write(\"\\\"nan\\\"\");\n";
+            body += indent+INDENT INDENT+generator->stringType()->generateAppendStringLiteral(SerializerGenerator::OUTPUT_STRING, "\"\\\"nan\\\"\"")+";\n";
             break;
         case Settings::NanPolicy::MIXED_CASE_NAN_STRING_VALUE:
-            body += indent+INDENT INDENT "write(\"\\\"NaN\\\"\");\n";
+            body += indent+INDENT INDENT+generator->stringType()->generateAppendStringLiteral(SerializerGenerator::OUTPUT_STRING, "\"\\\"NaN\\\"\"")+";\n";
             break;
     }
     body += indent+INDENT INDENT "break;\n";
     body += indent+INDENT "default:\n";
-    body += indent+INDENT INDENT "write(buffer);\n";
+    body += indent+INDENT INDENT+generator->stringType()->generateAppendCStr(SerializerGenerator::OUTPUT_STRING, "buffer")+";\n";
     body += indent+"}\n";
     return body;
 }
@@ -260,7 +260,13 @@ std::string BasicType::generateSerializerFunctionBody(SerializerGenerator *gener
         case VOID:
             break;
         case BOOL:
-            return indent+"write(value ? \"true\" : \"false\");\n";
+            return (
+                indent+"if (value) {\n"+
+                indent+INDENT+generator->stringType()->generateAppendStringLiteral(SerializerGenerator::OUTPUT_STRING, "\"true\"")+";\n"+
+                indent+"} else {\n"+
+                indent+INDENT+generator->stringType()->generateAppendStringLiteral(SerializerGenerator::OUTPUT_STRING, "\"false\"")+";\n"+
+                indent+"}\n"
+            );
         // Signed integer types
         case CHAR:
             return generateSignedSerializerFunctionBody(generator, UNSIGNED_CHAR, indent);

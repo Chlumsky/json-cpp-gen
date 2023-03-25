@@ -23,14 +23,14 @@ std::string FixedArrayContainerType::generateParserFunctionBody(ParserGenerator 
 std::string FixedArrayContainerType::generateSerializerFunctionBody(SerializerGenerator *generator, const std::string &indent) const {
     std::string body;
     body += indent+"bool prev = false;\n";
-    body += indent+"write('[');\n";
+    body += indent+generator->stringType()->generateAppendChar(SerializerGenerator::OUTPUT_STRING, "'['")+";\n";
     std::string iterBody;
-    iterBody += "if (prev) ";
-    iterBody += "write(','); ";
-    iterBody += "prev = true; ";
+    iterBody += "if (prev) { ";
+    iterBody += generator->stringType()->generateAppendChar(SerializerGenerator::OUTPUT_STRING, "','");
+    iterBody += "; } prev = true; ";
     iterBody += generator->generateValueSerialization(elementType(), "elem");
     body += indent+generateIterateElements("value", "i", "end", "elem", iterBody.c_str())+"\n";
-    body += indent+"write(']');\n";
+    body += indent+generator->stringType()->generateAppendChar(SerializerGenerator::OUTPUT_STRING, "']'")+";\n";
     return body;
 }
 

@@ -585,6 +585,12 @@ void ConfigurationParser::parseStringAPI(StringAPI &value) {
                                     continue;
                                 }
                                 break;
+                            case 't':
+                                if (buffer == "appendStringLiteral") {
+                                    parseStdString(value.appendStringLiteral);
+                                    continue;
+                                }
+                                break;
                         }
                     }
                     break;

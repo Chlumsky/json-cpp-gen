@@ -53,7 +53,7 @@ std::string EnumType::generateSerializerFunctionBody(SerializerGenerator *genera
     std::string body;
     body += indent+"switch (value) {\n";
     for (const std::string &enumValue : values)
-        body += indent+INDENT "case "+Generator::safeName(valuePrefix+enumValue)+": write(\"\\\""+enumValue+"\\\"\"); break;\n";
+        body += indent+INDENT "case "+Generator::safeName(valuePrefix+enumValue)+": "+generator->stringType()->generateAppendStringLiteral(SerializerGenerator::OUTPUT_STRING, ("\"\\\""+enumValue+"\\\"\"").c_str())+"; break;\n";
     body += indent+INDENT "default:\n";
     body += indent+INDENT INDENT+generator->generateErrorStatement(SerializerGenerator::Error::UNKNOWN_ENUM_VALUE)+";\n";
     body += indent+"}\n";

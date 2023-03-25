@@ -30,10 +30,11 @@ std::string OptionalContainerType::generateParserFunctionBody(ParserGenerator *g
 
 std::string OptionalContainerType::generateSerializerFunctionBody(SerializerGenerator *generator, const std::string &indent) const {
     std::string body;
-    body += indent+"if ("+generateHasValue("value")+")\n";
+    body += indent+"if ("+generateHasValue("value")+") {\n";
     body += generator->generateValueSerialization(elementType(), generateGetValue("value"), indent+INDENT);
-    body += indent+"else\n";
-    body += indent+INDENT "write(\"null\");\n";
+    body += indent+"} else {\n";
+    body += indent+INDENT+generator->stringType()->generateAppendStringLiteral(SerializerGenerator::OUTPUT_STRING, "\"null\"")+";\n";
+    body += indent+"}\n";
     return body;
 }
 

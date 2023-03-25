@@ -123,7 +123,7 @@ std::string StructureType::generateParserFunctionBody(ParserGenerator *generator
 
 std::string StructureType::generateSerializerFunctionBody(SerializerGenerator *generator, const std::string &indent) const {
     if (orderedMembers.empty())
-        return indent+"write(\"{}\");\n";
+        return indent+generator->stringType()->generateAppendStringLiteral(SerializerGenerator::OUTPUT_STRING, "\"{}\"")+";\n";
     std::string body;
     bool first = true;
     bool maybeFirst = false;
@@ -138,7 +138,7 @@ std::string StructureType::generateSerializerFunctionBody(SerializerGenerator *g
         if (optionalMemberType) {
             if (first) {
                 body += indent+"bool prev = false;\n";
-                body += indent+"write('{');\n";
+                body += indent+generator->stringType()->generateAppendChar(SerializerGenerator::OUTPUT_STRING, "'{'")+";\n";
                 maybeFirst = true;
             }
             body += indent+"if ("+optionalMemberType->generateHasValue(("value."+member.first).c_str())+") {\n";
@@ -146,11 +146,9 @@ std::string StructureType::generateSerializerFunctionBody(SerializerGenerator *g
             memberSerialization = generator->generateValueSerialization(optionalMemberType->elementType(), optionalMemberType->generateGetValue(("value."+member.first).c_str()), subIndent);
         } else
             memberSerialization = generator->generateValueSerialization(member.second, "value."+member.first, subIndent);
-        if (maybeFirst && !first) {
-            body += subIndent+"if (prev)\n";
-            body += subIndent+INDENT "write(',');\n";
-        }
-        body += subIndent+"write(\""+(maybeFirst ? "" : first ? "{" : ",")+"\\\"\" "+generator->getJsonMemberNameLiteral(member.first)+" \"\\\":\");\n"; // TODO optimize, add strlen
+        if (maybeFirst && !first)
+            body += subIndent+"if (prev) { "+generator->stringType()->generateAppendChar(SerializerGenerator::OUTPUT_STRING, "','")+"; }\n";
+        body += subIndent+generator->stringType()->generateAppendStringLiteral(SerializerGenerator::OUTPUT_STRING, (std::string("\"")+(maybeFirst ? "" : first ? "{" : ",")+"\\\"\" "+generator->getJsonMemberNameLiteral(member.first)+" \"\\\":\"").c_str())+";\n"; // TODO merge to one literal
         body += memberSerialization;
         if (optionalMemberType) {
             if (maybeFirst)
@@ -160,7 +158,7 @@ std::string StructureType::generateSerializerFunctionBody(SerializerGenerator *g
             maybeFirst = false;
         first = false;
     }
-    body += indent+"write('}');\n";
+    body += indent+generator->stringType()->generateAppendChar(SerializerGenerator::OUTPUT_STRING, "'}'")+";\n";
     return body;
 }
 

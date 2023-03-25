@@ -61,10 +61,12 @@ struct StringAPI {
     std::string appendChar;
     // $S = subject string, $X = C string to append
     std::string appendCStr;
-    // $S = subject string, $I = iterator variable name, $Z = end variable name, $E = name of element (char) variable, $F = loop body
-    std::string iterateChars;
+    // $S = subject string, $X = string literal to append
+    std::string appendStringLiteral;
     // $S = subject string, $X = string literal to compare
     std::string equalsStringLiteral;
+    // $S = subject string, $I = iterator variable name, $Z = end variable name, $E = name of element (char) variable, $F = loop body
+    std::string iterateChars;
 };
 
 struct ConstStringAPI {

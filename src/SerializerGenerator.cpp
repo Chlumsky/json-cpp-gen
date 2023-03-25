@@ -10,6 +10,14 @@ const unsigned SerializerGenerator::FEATURE_SERIALIZE_FLOAT = 0x1000;
 const unsigned SerializerGenerator::FEATURE_SERIALIZE_DOUBLE = 0x2000;
 const unsigned SerializerGenerator::FEATURE_SERIALIZE_LONG_DOUBLE = 0x4000;
 
+static std::string hexUint8(unsigned char x) {
+    char buffer[] = "00";
+    char *c = buffer+sizeof(buffer)-1;
+    for (int i = 0; i < 2; ++i, x >>= 4)
+        *--c = "0123456789abcdef"[x&0x0f];
+    return std::string(buffer);
+}
+
 SerializerGenerator::SerializerGenerator(const std::string &className, const StringType *stringType, const Settings &settings) : Generator(className, stringType, settings) { }
 
 void SerializerGenerator::generateSerializerFunction(const Type *type) {
@@ -80,10 +88,8 @@ std::string SerializerGenerator::generateHeader() {
 
     code += "\nprotected:\n";
     code += generateVirtualTypedefs(INDENT);
-    code += INDENT+stringType()->name().refArgDeclaration("json")+";\n\n";
-    code += INDENT+className+"("+stringType()->name().refArgDeclaration("json")+");\n";
-    code += INDENT "void write(char c);\n";
-    code += INDENT "void write(const char *str);\n";
+    code += INDENT+stringType()->name().refArgDeclaration(OUTPUT_STRING)+";\n\n";
+    code += INDENT+className+"("+stringType()->name().refArgDeclaration(OUTPUT_STRING)+");\n";
     code += INDENT "void writeEscaped(char c);\n";
     code += "\n";
 
@@ -150,16 +156,8 @@ std::string SerializerGenerator::generateSource(const std::string &relativeHeade
     code += "}\n\n";
 
     // Constructor
-    code += className+"::"+className+"("+stringType()->name().refArgDeclaration("json")+") : json(json) {\n";
-    code += INDENT+stringType()->generateClear("json")+";\n";
-    code += "}\n\n";
-    // write(char)
-    code += "void "+className+"::write(char c) {\n";
-    code += INDENT+stringType()->generateAppendChar("json", "c")+";\n";
-    code += "}\n\n";
-    // write(const char *)
-    code += "void "+className+"::write(const char *str) {\n";
-    code += INDENT+stringType()->generateAppendCStr("json", "str")+";\n";
+    code += className+"::"+className+"("+stringType()->name().refArgDeclaration(OUTPUT_STRING)+") : "+OUTPUT_STRING+"("+OUTPUT_STRING+") {\n";
+    code += INDENT+stringType()->generateClear(OUTPUT_STRING)+";\n";
     code += "}\n\n";
     // writeEscaped
     code += "void "+className+"::writeEscaped(char c) {\n";
@@ -173,19 +171,19 @@ std::string SerializerGenerator::generateSource(const std::string &relativeHeade
             case '\r': alias = 'r'; break;
             case '\t': alias = 't'; break;
         }
-        char buffer[256];
         if (alias)
-            sprintf(buffer, INDENT INDENT "case '\\%c': write(\"\\\\%c\"); break;\n", alias, alias);
-        else
-            sprintf(buffer, INDENT INDENT "case '\\x%02x': write(\"\\\\u%04x\"); break;\n", i, i);
-        code += buffer;
+            code += std::string(INDENT INDENT "case '\\")+alias+"': "+stringType()->generateAppendStringLiteral(OUTPUT_STRING, (std::string("\"\\\\")+alias+"\"").c_str())+"; break;\n";
+        else {
+            std::string hexChar = hexUint8((unsigned char) i);
+            code += INDENT INDENT "case '\\x"+hexChar+"': "+stringType()->generateAppendStringLiteral(OUTPUT_STRING, ("\"\\\\u00"+hexChar+"\"").c_str())+"; break;\n";
+        }
     }
-    code += INDENT INDENT "case '\"': write(\"\\\\\\\"\"); break;\n";
+    code += INDENT INDENT "case '\"': "+stringType()->generateAppendStringLiteral(OUTPUT_STRING, "\"\\\\\\\"\"")+"; break;\n";
     if (settings().escapeForwardSlash)
-        code += INDENT INDENT "case '/': write(\"\\\\/\"); break;\n";
-    code += INDENT INDENT "case '\\\\': write(\"\\\\\\\\\"); break;\n";
+        code += INDENT INDENT "case '/': "+stringType()->generateAppendStringLiteral(OUTPUT_STRING, "\"\\\\/\"")+"; break;\n";
+    code += INDENT INDENT "case '\\\\': "+stringType()->generateAppendStringLiteral(OUTPUT_STRING, "\"\\\\\\\\\"")+"; break;\n";
     code += INDENT INDENT "default:\n";
-    code += INDENT INDENT INDENT "write(c);\n";
+    code += INDENT INDENT INDENT+stringType()->generateAppendChar(OUTPUT_STRING, "c")+";\n";
     code += INDENT "}\n";
     code += "}\n";
 
@@ -195,12 +193,14 @@ std::string SerializerGenerator::generateSource(const std::string &relativeHeade
         code += "\n";
         code += "template <typename U, typename T>\n";
         code += "void "+className+"::writeSigned(T value) {\n";
-        code += INDENT "if (value < 0)\n";
-        code += INDENT INDENT "write('-'), value = -value;\n";
+        code += INDENT "if (value < 0) {\n";
+        code += INDENT INDENT+stringType()->generateAppendChar(OUTPUT_STRING, "'-'")+";\n";
+        code += INDENT INDENT "value = -value;\n";
+        code += INDENT "}\n";
         code += INDENT "U unsignedValue = static_cast<U>(value);\n";
         code += INDENT "char buffer[4*(sizeof(U)+1)], *cur = &(buffer[4*(sizeof(U)+1)-1] = '\\0');\n";
         code += INDENT "do *--cur = '0'+unsignedValue%10; while (unsignedValue /= 10);\n";
-        code += INDENT "write(cur);\n";
+        code += INDENT+stringType()->generateAppendCStr(OUTPUT_STRING, "cur")+";\n";
         code += "}\n";
     }
     if (featureBits&FEATURE_WRITE_UNSIGNED) {
@@ -209,7 +209,7 @@ std::string SerializerGenerator::generateSource(const std::string &relativeHeade
         code += "void "+className+"::writeUnsigned(T value) {\n";
         code += INDENT "char buffer[4*(sizeof(T)+1)], *cur = &(buffer[4*(sizeof(T)+1)-1] = '\\0');\n";
         code += INDENT "do *--cur = '0'+value%10; while (value /= 10);\n";
-        code += INDENT "write(cur);\n";
+        code += INDENT+stringType()->generateAppendCStr(OUTPUT_STRING, "cur")+";\n";
         code += "}\n";
     }
 

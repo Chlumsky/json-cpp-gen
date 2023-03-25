@@ -17,6 +17,8 @@ public:
         #undef SERIALIZER_GENERATOR_ERROR_STR_DECL
     };
 
+    static constexpr const char *const OUTPUT_STRING = "json";
+
     static const unsigned FEATURE_WRITE_SIGNED;
     static const unsigned FEATURE_WRITE_UNSIGNED;
     static const unsigned FEATURE_SERIALIZE_FLOAT;

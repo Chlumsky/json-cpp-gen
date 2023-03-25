@@ -48,17 +48,17 @@ std::string StaticArrayContainerType::generateParserFunctionBody(ParserGenerator
 
 std::string StaticArrayContainerType::generateSerializerFunctionBody(SerializerGenerator *generator, const std::string &indent) const {
     std::string body;
-    body += indent+"write('[');\n";
+    body += indent+generator->stringType()->generateAppendChar(SerializerGenerator::OUTPUT_STRING, "'['")+";\n";
     if (length() >= 1) {
         body += generator->generateValueSerialization(elementType(), generateRefByIndex("value", "0"), indent);
         if (length() >= 2) {
             body += indent+"for (int i = 1; i < "+std::to_string(length())+"; ++i) {\n";
-            body += indent+INDENT "write(',');\n";
+            body += indent+INDENT+generator->stringType()->generateAppendChar(SerializerGenerator::OUTPUT_STRING, "','")+";\n";
             body += generator->generateValueSerialization(elementType(), generateRefByIndex("value", "i"), indent+INDENT);
             body += indent+"}\n";
         }
     }
-    body += indent+"write(']');\n";
+    body += indent+generator->stringType()->generateAppendChar(SerializerGenerator::OUTPUT_STRING, "']'")+";\n";
     return body;
 }
 
