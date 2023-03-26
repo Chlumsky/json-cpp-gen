@@ -49,10 +49,6 @@ private:
     std::vector<std::string> usingNamespaces;
     bool parseNamesOnly; // prepass in case input files are in the wrong order
 
-    enum SkipWhitespaceMode {
-        SINGLE_LINE,
-        MULTI_LINE
-    };
     enum BraceTypes {
         ANY_BRACES_EXCEPT_ANGLED,
         ANY_BRACES_INCLUDING_ANGLED
@@ -71,15 +67,13 @@ private:
     std::string readNamespacedIdentifier();
     std::string readIdentifier();
     void skipLine();
-    void skipWhitespaceAndComments(SkipWhitespaceMode mode);
-    void skipWhitespace(SkipWhitespaceMode mode);
-    void skipComment();
-    void skipStringLiteral();
+    void skipWhitespaceAndComments();
+    bool skipComment();
+    bool skipStringLiteral();
     void skipExpression();
     void skipBlock(BraceTypes braceTypes);
     void skipSection();
     void skipTemplateArgument();
-    void skipDirective();
     bool matchSymbol(char s);
     bool matchKeyword(const char *keyword);
 
