@@ -11,6 +11,7 @@ template <typename... T>
 class ContainerType;
 
 class TemplateInstanceCache;
+class ArrayContainerTemplate;
 
 // Represents a container type template such as std::vector, std::unique_ptr, etc.
 template <typename... T>
@@ -22,6 +23,7 @@ public:
     virtual TypeName instanceName(const Type *elementType, T... templateArgs) const = 0;
     int templateArgIndex(char c) const;
     virtual std::unique_ptr<ContainerType<T...> > instantiate(TemplateInstanceCache *instanceCache, const Type *elementType, T... templateArgs) const = 0;
+    inline virtual const ArrayContainerTemplate *arrayContainerTemplate() const { return nullptr; }
 
 protected:
     inline explicit ContainerTemplate(const std::string &name) : templateName(name) { }

@@ -112,12 +112,10 @@ Type *HeaderParser::parseStruct() {
             fullStructName += structName;
         }
         if (Type *type = typeSet->find(fullStructName)) {
-            if (!(structType = dynamic_cast<StructureType *>(type)))
+            if (!(structType = type->structurePrototype()))
                 throw Error::TYPE_REDEFINITION;
             if (forwardDeclaration)
                 return type;
-            if (structType->membersFinalized())
-                throw Error::TYPE_REDEFINITION;
         } else {
             std::unique_ptr<StructureType> newType(new StructureType(Generator::safeName(fullStructName)));
             structType = newType.get();
@@ -143,15 +141,8 @@ Type *HeaderParser::parseStruct() {
             }
             matchKeyword("virtual");
             if (const Type *baseType = parseType()) {
-                if (!nonPublic && !parseNamesOnly && dynamic_cast<const StructureType *>(baseType)) {
-                    // Get non-const pointer to baseType
-                    std::string baseTypeName = baseType->name().body();
-                    if (baseTypeName.size() >= 2 && baseTypeName[0] == ':' && baseTypeName[1] == ':')
-                        baseTypeName = baseTypeName.substr(2);
-                    if (StructureType *baseStructType = dynamic_cast<StructureType *>(typeSet->find(baseTypeName)))
-                        structType->inheritFrom(baseStructType);
-                    // else internal error
-                }
+                if (!nonPublic && !parseNamesOnly)
+                    structType->inheritFrom(baseType);
             } else {
                 // Skip unrecognized type name - modified skipExpression()
                 while (skipWhitespaceAndComments(), cur < end) {
@@ -205,7 +196,7 @@ Type *HeaderParser::parseStruct() {
             if (matchSymbol(';')) {
                 if (!parseNamesOnly && !staticMember && memberBaseType && memberBaseType->name().substance() == TypeName::VIRTUAL) {
                     // Special case - non-variable anonymous structure is considered part of parent structure
-                    if (!structType->absorb(dynamic_cast<const StructureType *>(memberBaseType)))
+                    if (!structType->absorb(memberBaseType->structureType()))
                         throw Error::DUPLICATE_STRUCT_MEMBER;
                 }
                 continue;
@@ -292,12 +283,10 @@ Type *HeaderParser::parseEnum() {
         } else
             fullEnumName = enumNamespace+enumName;
         if (Type *type = typeSet->find(fullEnumName)) {
-            if (!((enumType = dynamic_cast<EnumType *>(type)) && enumType->isEnumClass() == enumClass))
+            if (!((enumType = type->enumPrototype()) && enumType->isEnumClass() == enumClass))
                 throw Error::TYPE_REDEFINITION;
             if (forwardDeclaration)
                 return type;
-            if (enumType->isFinalized())
-                throw Error::TYPE_REDEFINITION;
         } else {
             std::unique_ptr<EnumType> newType(new EnumType(enumClass, enumNamespace, Generator::safeName(fullEnumName)));
             enumType = newType.get();

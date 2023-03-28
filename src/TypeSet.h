@@ -36,7 +36,7 @@ public:
     const ContainerType<T...> *getContainerType(const ContainerTemplate<T...> *containerTemplate, const Type *elementType, T... templateArgs);
 
     // Returns null on success, otherwise the type that failed
-    const Type *finalizeInheritance();
+    const Type *compile();
 
 private:
     template <typename... T>
@@ -52,6 +52,8 @@ private:
     void addBasicType(const char *name, BasicType::Type type);
     template <typename... T>
     ContainerTemplateMap<T...> &containerTemplateMap();
+    template <typename... T>
+    const ContainerTemplateMap<T...> &containerTemplateMap() const;
 
 };
 
@@ -66,7 +68,7 @@ ContainerTemplate<T...> *TypeSet::findContainerTemplate(const std::string &name)
 
 template <typename... T>
 const ContainerTemplate<T...> *TypeSet::findContainerTemplate(const std::string &name) const {
-    ContainerTemplateMap<T...> &map = containerTemplateMap<T...>();
+    const ContainerTemplateMap<T...> &map = containerTemplateMap<T...>();
     typename ContainerTemplateMap<T...>::const_iterator it = map.find(name);
     if (it != map.end())
         return it->second.get();

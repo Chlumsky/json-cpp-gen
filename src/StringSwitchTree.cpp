@@ -35,7 +35,7 @@ std::unique_ptr<StringSwitchTree> StringSwitchTree::build(const std::string *lab
     }
 
     // Find string position (or length) with most unique values and use it as root switch
-    int commonPrefixLength = 0;
+    size_t commonPrefixLength = 0;
     int maxVariance = 0;
     int maxVariancePos = LEAF_NODE_MARKER;
     for (size_t i = 0; i < minLength; ++i) {
@@ -54,7 +54,7 @@ std::unique_ptr<StringSwitchTree> StringSwitchTree::build(const std::string *lab
         if (commonPrefixLength == i && variance == 1)
             ++commonPrefixLength;
     }
-    if (maxVariance <= maxLength-minLength+1) {
+    if (maxVariance <= int(maxLength-minLength+1)) {
         int lengthVariance = 0;
         std::vector<bool> lengthOccurences(maxLength+1, false);
         for (const std::string *label = labels, *end = labels+count; label < end; ++label) {

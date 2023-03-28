@@ -13,6 +13,7 @@ public:
     StringType(std::string &&name, const StringAPI &api);
     virtual std::string generateParserFunctionBody(ParserGenerator *generator, const std::string &indent) const override;
     virtual std::string generateSerializerFunctionBody(SerializerGenerator *generator, const std::string &indent) const override;
+    inline virtual const StringType *stringType() const override { return this; }
     std::string generateClear(const char *subject) const;
     std::string generateGetLength(const char *subject) const;
     std::string generateGetCharAt(const char *subject, const char *index) const;

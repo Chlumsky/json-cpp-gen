@@ -10,7 +10,7 @@ const char *const Generator::signature =
 
 const unsigned Generator::FEATURE_CSTDLIB = 0x01;
 
-Generator::Generator(const std::string &className, const StringType *stringType, const Settings &settings) : mStringType(stringType), mSettings(settings), featureBits(0) {
+Generator::Generator(const std::string &className, const StringType *stringType, const Settings &settings) : mStringType(stringType), mSettings(settings) {
     std::string namePart;
     for (char c : className) {
         if (c == ':') {

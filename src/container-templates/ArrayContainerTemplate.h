@@ -15,6 +15,7 @@ public:
     virtual TypeName instanceName(const Type *elementType) const override;
     virtual std::unique_ptr<ContainerType<> > instantiate(TemplateInstanceCache *, const Type *elementType) const override;
     inline const ArrayContainerAPI &api() const { return containerAPI; }
+    inline virtual const ArrayContainerTemplate *arrayContainerTemplate() const override { return this; }
 
 private:
     ArrayContainerAPI containerAPI;

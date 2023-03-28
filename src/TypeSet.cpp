@@ -124,7 +124,17 @@ TypeSet::ContainerTemplateMap<> &TypeSet::containerTemplateMap() {
 }
 
 template <>
+const TypeSet::ContainerTemplateMap<> &TypeSet::containerTemplateMap() const {
+    return containerTemplates;
+}
+
+template <>
 TypeSet::ContainerTemplateMap<int> &TypeSet::containerTemplateMap() {
+    return staticArrayContainerTemplates;
+}
+
+template <>
+const TypeSet::ContainerTemplateMap<int> &TypeSet::containerTemplateMap() const {
     return staticArrayContainerTemplates;
 }
 
@@ -133,16 +143,28 @@ TypeSet::ContainerTemplateMap<const Type *> &TypeSet::containerTemplateMap() {
     return objectMapContainerTemplates;
 }
 
-const Type *TypeSet::finalizeInheritance() {
-    for (const std::map<std::string, std::unique_ptr<Type> >::value_type &type : types) {
-        if (StructureType *structType = dynamic_cast<StructureType *>(type.second.get()))
-            if (!structType->finalizeInheritance())
-                return structType;
-    }
-    for (const std::unique_ptr<Type> &type : unnamedTypes) {
-        if (StructureType *structType = dynamic_cast<StructureType *>(type.get()))
-            if (!structType->finalizeInheritance())
-                return structType;
+template <>
+const TypeSet::ContainerTemplateMap<const Type *> &TypeSet::containerTemplateMap() const {
+    return objectMapContainerTemplates;
+}
+
+const Type *TypeSet::compile() {
+    int resultFlags;
+    do { // Repeat in case of back and forth dependencies
+        resultFlags = 0;
+        for (const std::map<std::string, std::unique_ptr<Type> >::value_type &type : types)
+            resultFlags |= type.second->compile();
+        for (const std::unique_ptr<Type> &type : unnamedTypes)
+            resultFlags |= type->compile();
+    } while (resultFlags&Type::CHANGE_FLAG);
+    // Cyclic dependency detected
+    if (resultFlags&Type::BASE_DEPENDENCY_FLAG) {
+        for (const std::map<std::string, std::unique_ptr<Type> >::value_type &type : types)
+            if (type.second->compile()&Type::BASE_DEPENDENCY_FLAG)
+                return type.second.get();
+        for (const std::unique_ptr<Type> &type : unnamedTypes)
+            if (type->compile()&Type::BASE_DEPENDENCY_FLAG)
+                return type.get();
     }
     return nullptr;
 }

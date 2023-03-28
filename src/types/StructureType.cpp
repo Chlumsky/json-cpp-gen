@@ -41,7 +41,7 @@ std::string StructureType::ParserSwitchTreeCaseGenerator::operator()(ParserGener
         }
         body += indent+INDENT+checkBits+" |= "+checkMask+";\n";
         if (parserGenerator->settings().checkMissingKeys)
-            optionalMembers.push_back(!!dynamic_cast<const OptionalContainerType *>(memberType));
+            optionalMembers.push_back(!!memberType->optionalContainerType());
         ++i;
     }
     if (parserGenerator->settings().noThrow) {
@@ -132,7 +132,7 @@ std::string StructureType::generateSerializerFunctionBody(SerializerGenerator *g
             generator->resolveVirtualTypename(member.second, this, member.first);
         const OptionalContainerType *optionalMemberType = nullptr;
         if (generator->settings().skipEmptyFields)
-            optionalMemberType = dynamic_cast<const OptionalContainerType *>(member.second);
+            optionalMemberType = member.second->optionalContainerType();
         std::string memberSerialization;
         std::string subIndent = indent;
         if (optionalMemberType) {
@@ -162,7 +162,11 @@ std::string StructureType::generateSerializerFunctionBody(SerializerGenerator *g
     return body;
 }
 
-void StructureType::inheritFrom(StructureType *baseType) {
+StructureType *StructureType::structurePrototype() {
+    return finalizedMembers ? nullptr : this;
+}
+
+void StructureType::inheritFrom(const Type *baseType) {
     baseTypes.push_back(baseType);
 }
 
@@ -204,22 +208,25 @@ void StructureType::finalizeMembers() {
     finalizedMembers = true;
 }
 
-bool StructureType::finalizeInheritance() {
-    if (inheritanceBeingFinalized) // cyclic inheritance
-        return false;
-    inheritanceBeingFinalized = true;
+int StructureType::compile() {
+    if (baseTypes.empty())
+        return 0;
+    for (const Type *baseType : baseTypes) {
+        if (const StructureType *baseStructType = baseType->structureType()) {
+            if (!baseStructType->baseTypes.empty())
+                return BASE_DEPENDENCY_FLAG;
+        }
+    }
     std::vector<std::pair<std::string, const Type *> > fullOrderedMembers;
-    for (StructureType *baseType : baseTypes) {
-        if (baseType) {
-            if (!baseType->finalizeInheritance())
-                return false;
-            for (const std::pair<std::string, const Type *> &baseMember : baseType->orderedMembers) {
+    for (const Type *baseType : baseTypes) {
+        if (const StructureType *baseStructType = baseType->structureType()) {
+            for (const std::pair<std::string, const Type *> &baseMember : baseStructType->orderedMembers) {
                 std::map<std::string, const Type *>::iterator it = members.find(baseMember.first);
                 if (it == members.end()) {
                     members.insert(it, baseMember);
                     fullOrderedMembers.push_back(baseMember);
                 } else { // member shadowing
-                    std::string qualifiedName = baseType->name().body()+"::"+baseMember.first;
+                    std::string qualifiedName = baseStructType->name().body()+"::"+baseMember.first;
                     members.insert(std::make_pair(qualifiedName, baseMember.second));
                     fullOrderedMembers.emplace_back(std::move(qualifiedName), baseMember.second);
                 }
@@ -229,6 +236,5 @@ bool StructureType::finalizeInheritance() {
     fullOrderedMembers.insert(fullOrderedMembers.end(), orderedMembers.begin(), orderedMembers.end());
     orderedMembers = std::move(fullOrderedMembers);
     baseTypes.clear();
-    inheritanceBeingFinalized = false;
-    return true;
+    return CHANGE_FLAG;
 }

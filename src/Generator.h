@@ -50,7 +50,7 @@ protected:
     std::vector<std::pair<std::string, std::string> > virtualTypedefs;
     std::set<std::string> resolvedVirtualTypenames;
     std::vector<const Type *> entryTypes;
-    unsigned featureBits;
+    unsigned featureBits = 0;
 
     std::string generateVirtualTypedefs(const std::string &indent);
     std::string generateFunctionName(const char *prefix, const Type *type);

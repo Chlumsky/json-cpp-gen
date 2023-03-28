@@ -28,7 +28,7 @@ void SerializerGenerator::generateSerializerFunction(const Type *type) {
 }
 
 std::string SerializerGenerator::generateSerializerFunctionCall(const Type *type, const std::string &inputArg) {
-    if (!type)
+    if (!(type && (type = type->actualType())))
         return std::string();
     std::string &functionName = functionNames[type->name().fullName()];
     if (functionName.empty()) {

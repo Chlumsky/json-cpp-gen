@@ -61,6 +61,7 @@ protected:
     void parseStringAPI(StringAPI &value);
     void parseConfigurationStringDef(Configuration::StringDef &value);
     void parseStdVectorConfigurationStringDef(std::vector<Configuration::StringDef> &value);
+    void parseStdMapStdStringStdString(std::map<std::string, std::string> &value);
     void parseConstStringAPI(ConstStringAPI &value);
     void parseConfigurationConstStringDef(Configuration::ConstStringDef &value);
     void parseStdVectorConfigurationConstStringDef(std::vector<Configuration::ConstStringDef> &value);

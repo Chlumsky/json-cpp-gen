@@ -60,6 +60,10 @@ std::string EnumType::generateSerializerFunctionBody(SerializerGenerator *genera
     return body;
 }
 
+EnumType *EnumType::enumPrototype() {
+    return finalized ? nullptr : this;
+}
+
 void EnumType::addValue(const std::string &value) {
     values.push_back(value);
 }

@@ -16,6 +16,7 @@
 #include "TypeSet.h"
 #include "types/StringType.h"
 #include "types/ConstStringType.h"
+#include "types/TypeAlias.h"
 #include "container-templates/OptionalContainerTemplate.h"
 #include "container-templates/ArrayContainerTemplate.h"
 #include "container-templates/FixedArrayContainerTemplate.h"
@@ -44,7 +45,15 @@ static bool containsString(const std::vector<std::string> &list, const std::stri
 }
 
 static const StringType *findStringType(const TypeSet &typeSet, const std::string &name) {
-    return dynamic_cast<const StringType *>(typeSet.find(name));
+    if (const Type *type = typeSet.find(name))
+        return type->stringType();
+    return nullptr;
+}
+
+static const ArrayContainerTemplate *findArrayContainerTemplate(const TypeSet &typeSet, const std::string &name) {
+    if (const ContainerTemplate<> *containerTemplate = typeSet.findContainerTemplate<>(name))
+        return containerTemplate->arrayContainerTemplate();
+    return nullptr;
 }
 
 static int lineAtPosition(const std::string &str, int position) {
@@ -93,9 +102,10 @@ static std::string visualizeErrorPosition(const std::string &str, int position, 
 int main(int argc, const char *const *argv) {
 
     if (argc < 2) {
-        puts(
+        fputs(
             "Usage: " PROGRAM_FILE_NAME " configuration.json\n"
-            "See the documentation for information about the structure of the configuration file."
+            "See the documentation for information about the structure of the configuration file.\n",
+            stderr
         );
         return 0;
     }
@@ -120,7 +130,7 @@ int main(int argc, const char *const *argv) {
     }
 
     if (config.parsers.empty() && config.serializers.empty()) {
-        puts("No output requested");
+        fputs("No output requested\n", stderr);
         return 0;
     }
 
@@ -139,7 +149,7 @@ int main(int argc, const char *const *argv) {
         for (const Configuration::ArrayContainerDef &arrayContainerDef : config.arrayContainerTypes)
             typeSet.addContainerTemplate(std::unique_ptr<ContainerTemplate<> >(new ArrayContainerTemplate(Generator::safeName(arrayContainerDef.name), arrayContainerDef.api)));
         for (const Configuration::FixedArrayContainerDef &fixedArrayContainerDef : config.fixedArrayContainerTypes) {
-            if (const ArrayContainerTemplate *arrayContainerTemplate = dynamic_cast<const ArrayContainerTemplate *>(typeSet.findContainerTemplate<>(fixedArrayContainerDef.arrayContainerType)))
+            if (const ArrayContainerTemplate *arrayContainerTemplate = findArrayContainerTemplate(typeSet, fixedArrayContainerDef.arrayContainerType))
                 typeSet.addContainerTemplate(std::unique_ptr<ContainerTemplate<> >(new FixedArrayContainerTemplate(Generator::safeName(fixedArrayContainerDef.name), arrayContainerTemplate, fixedArrayContainerDef.api)));
             else {
                 fprintf(stderr, "Error: Array container type '%s' not found, skipping fixed array container type '%s'\n", fixedArrayContainerDef.arrayContainerType.c_str(), fixedArrayContainerDef.name.c_str());
@@ -162,15 +172,12 @@ int main(int argc, const char *const *argv) {
             typeSet.addContainerTemplate(std::unique_ptr<ContainerTemplate<> >(new OptionalContainerTemplate(Generator::safeName(optionalContainerDef.name), optionalContainerDef.api)));
     }
 
-    // STRING TYPE DEFINITION
-    const StringType *stringType = findStringType(typeSet, config.stringType);
-    if (!stringType) {
-        fprintf(stderr, "Error: String type '%s' not found, aborting", config.stringType.c_str());
-        return -1;
-    }
-    if (stringType->name().body() == "std::string" && stringType->name().suffix().empty() && !containsString(config.includes, "<string>")) {
-        puts("Note: Adding <string> to include files");
-        config.includes.push_back("<string>");
+    // TYPE ALIASES
+    std::vector<std::pair<TypeAlias *, std::string> > aliasTypes;
+    for (const std::map<std::string, std::string>::value_type &typeAlias : config.typeAliases) {
+        TypeAlias *aliasType = new TypeAlias(typeAlias.first);
+        typeSet.add(std::unique_ptr<Type>(aliasType));
+        aliasTypes.emplace_back(aliasType, typeAlias.second);
     }
 
     // INPUT SOURCE FILES
@@ -195,9 +202,31 @@ int main(int argc, const char *const *argv) {
         }
         parseNamesOnly = !parseNamesOnly;
     } while (!parseNamesOnly);
-    if (const Type *badType = typeSet.finalizeInheritance()) {
+
+    // TYPE FINALIZATION
+    for (const std::pair<TypeAlias *, std::string> &aliasType : aliasTypes) {
+        if (const Type *type = parseType(typeSet, aliasType.second)) {
+            if (!aliasType.first->finalize(type)) {
+                fprintf(stderr, "Error: Cyclic alias '%s', aborting\n", aliasType.first->name().body().c_str());
+                return -1;
+            }
+        } else
+            fprintf(stderr, "Error: Type '%s' not found, alias '%s' not in effect\n", aliasType.second.c_str(), aliasType.first->name().body().c_str());
+    }
+    if (const Type *badType = typeSet.compile()) {
         fprintf(stderr, "Error: Cyclic inheritance for type '%s', aborting\n", badType->name().body().c_str());
         return -1;
+    }
+
+    // STRING TYPE DEFINITION
+    const StringType *stringType = findStringType(typeSet, config.stringType);
+    if (!stringType) {
+        fprintf(stderr, "Error: String type '%s' not found, aborting", config.stringType.c_str());
+        return -1;
+    }
+    if (stringType->name().body() == "std::string" && stringType->name().suffix().empty() && !containsString(config.includes, "<string>")) {
+        fputs("Note: Adding <string> to include files\n", stderr);
+        config.includes.push_back("<string>");
     }
 
     // OUTPUT PARSERS
@@ -216,12 +245,10 @@ int main(int argc, const char *const *argv) {
         }
         // TODO baseClass
         for (const std::string &typeName : parserDef.types) {
-            const Type *type = parseType(typeSet, typeName);
-            if (!type) {
+            if (const Type *type = parseType(typeSet, typeName))
+                parserGen.generateParserFunction(type);
+            else
                 fprintf(stderr, "Error: Type '%s' not found, will not be parsed by '%s'\n", typeName.c_str(), parserDef.name.c_str());
-                continue;
-            }
-            parserGen.generateParserFunction(type);
         }
         std::string header = parserGen.generateHeader();
         std::string source = parserGen.generateSource(headerPath-sourcePath);
@@ -251,12 +278,10 @@ int main(int argc, const char *const *argv) {
         }
         // TODO baseClass
         for (const std::string &typeName : serializerDef.types) {
-            const Type *type = parseType(typeSet, typeName);
-            if (!type) {
+            if (const Type *type = parseType(typeSet, typeName))
+                serializerGen.generateSerializerFunction(type);
+            else
                 fprintf(stderr, "Error: Type '%s' not found, will not be serialized by '%s'\n", typeName.c_str(), serializerDef.name.c_str());
-                continue;
-            }
-            serializerGen.generateSerializerFunction(type);
         }
         std::string header = serializerGen.generateHeader();
         std::string source = serializerGen.generateSource(headerPath-sourcePath);

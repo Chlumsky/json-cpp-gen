@@ -12,6 +12,7 @@ std::string formatName(const std::string &name, NameFormat format) {
             break;
         case NameFormat::UPPERCASE_UNDERSCORE:
             separator = '_';
+            // fallthrough
         case NameFormat::UPERCASE_DASH:
             for (char c : name) {
                 if (!isalnum(c)) {
@@ -28,6 +29,7 @@ std::string formatName(const std::string &name, NameFormat format) {
             break;
         case NameFormat::LOWERCASE_UNDERSCORE:
             separator = '_';
+            // fallthrough
         case NameFormat::LOWERCASE_DASH:
             for (char c : name) {
                 if (!isalnum(c)) {
@@ -44,6 +46,7 @@ std::string formatName(const std::string &name, NameFormat format) {
             break;
         case NameFormat::CAMELCASE_CAPITAL:
             prevSpace = true;
+            // fallthrough
         case NameFormat::CAMELCASE:
             for (char c : name) {
                 if (!isalnum(c))

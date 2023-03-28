@@ -3,6 +3,7 @@
 
 #include <string>
 #include <vector>
+#include <map>
 
 struct Settings {
     /// Specifies how the JSON data is received / outputted.
@@ -176,6 +177,7 @@ struct Configuration {
     std::vector<GeneratorDef> serializers;
 
     std::string stringType = "std::string";
+    std::map<std::string, std::string> typeAliases;
     std::vector<StringDef> stringTypes;
     std::vector<ConstStringDef> constStringTypes;
     std::vector<ArrayContainerDef> arrayContainerTypes;

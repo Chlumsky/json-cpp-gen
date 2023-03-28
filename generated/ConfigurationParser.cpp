@@ -204,9 +204,9 @@ void ConfigurationParser::parseStdString(std::string &value) {
     value.clear();
     while (*cur != '"') {
         if (*cur == '\\') {
-            char buffer[8];
-            unescape(buffer);
-            value += buffer;
+            char utfBuffer[8];
+            unescape(utfBuffer);
+            value += utfBuffer;
             continue;
         }
         if (!*cur)
@@ -647,6 +647,24 @@ void ConfigurationParser::parseStdVectorConfigurationStringDef(std::vector<Confi
         if (!separatorCheck)
             throw Error::JSON_SYNTAX_ERROR;
         parseConfigurationStringDef((value.resize(value.size()+1), value.back()));
+        separatorCheck = matchSymbol(',');
+    }
+    if (separatorCheck == 1)
+        throw Error::JSON_SYNTAX_ERROR;
+}
+
+void ConfigurationParser::parseStdMapStdStringStdString(std::map<std::string, std::string> &value) {
+    if (!matchSymbol('{'))
+        throw Error::TYPE_MISMATCH;
+    value.clear();
+    int separatorCheck = -1;
+    while (!matchSymbol('}')) {
+        if (!separatorCheck)
+            throw Error::JSON_SYNTAX_ERROR;
+        parseStdString(buffer);
+        if (!matchSymbol(':'))
+            throw Error::JSON_SYNTAX_ERROR;
+        parseStdString(value[buffer]);
         separatorCheck = matchSymbol(',');
     }
     if (separatorCheck == 1)
@@ -1254,6 +1272,12 @@ void ConfigurationParser::parseConfiguration(Configuration &value) {
                     case 't':
                         if (buffer == "stringTypes") {
                             parseStdVectorConfigurationStringDef(value.stringTypes);
+                            continue;
+                        }
+                        break;
+                    case 'y':
+                        if (buffer == "typeAliases") {
+                            parseStdMapStdStringStdString(value.typeAliases);
                             continue;
                         }
                         break;

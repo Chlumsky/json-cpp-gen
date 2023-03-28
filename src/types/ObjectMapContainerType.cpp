@@ -60,7 +60,7 @@ std::string ObjectMapContainerType::generateSerializerFunctionBody(SerializerGen
     std::string iterBody;
     const OptionalContainerType *optionalElemType = nullptr;
     if (generator->settings().skipEmptyFields)
-        optionalElemType = dynamic_cast<const OptionalContainerType *>(elementType());
+        optionalElemType = elementType()->optionalContainerType();
     if (optionalElemType)
         iterBody += "if ("+optionalElemType->generateHasValue("elem")+") { ";
     iterBody += "if (prev) { ";
