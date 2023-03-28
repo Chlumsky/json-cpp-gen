@@ -211,7 +211,7 @@ int main(int argc, const char *const *argv) {
                 return -1;
             }
         } else
-            fprintf(stderr, "Error: Type '%s' not found, alias '%s' not in effect\n", aliasType.second.c_str(), aliasType.first->name().body().c_str());
+            fprintf(stderr, "Warning: Type '%s' not found, alias '%s' not in effect\n", aliasType.second.c_str(), aliasType.first->name().body().c_str());
     }
     if (const Type *badType = typeSet.compile()) {
         fprintf(stderr, "Error: Cyclic inheritance for type '%s', aborting\n", badType->name().body().c_str());

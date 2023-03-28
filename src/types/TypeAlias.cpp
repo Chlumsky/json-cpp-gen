@@ -17,6 +17,10 @@ std::string TypeAlias::generateSerializerFunctionBody(SerializerGenerator *gener
     return type ? type->generateSerializerFunctionBody(generator, indent) : std::string();
 }
 
+bool TypeAlias::isIncomplete() const {
+    return !type;
+}
+
 const Type *TypeAlias::actualType() const {
     return type ? type->actualType() : nullptr;
 }

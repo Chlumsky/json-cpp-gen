@@ -10,6 +10,7 @@ class ContainerType : public Type {
 
 public:
     virtual ~ContainerType() = default;
+    inline virtual bool isIncomplete() const override { return elemType->isIncomplete(); }
     inline const Type *elementType() const { return elemType; }
 
 protected:

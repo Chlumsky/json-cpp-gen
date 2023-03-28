@@ -112,7 +112,7 @@ Type *HeaderParser::parseStruct() {
             fullStructName += structName;
         }
         if (Type *type = typeSet->find(fullStructName)) {
-            if (!(structType = type->structurePrototype()))
+            if (!(structType = type->incompleteStructureType()))
                 throw Error::TYPE_REDEFINITION;
             if (forwardDeclaration)
                 return type;
@@ -239,7 +239,7 @@ Type *HeaderParser::parseStruct() {
                         skipWhitespaceAndComments();
                     }
                     if (cur < end && (*cur == ';' || *cur == ',')) {
-                        if (!structType->addMember(memberName, memberType))
+                        if (!structType->addMember(memberType, memberName))
                             throw Error::DUPLICATE_STRUCT_MEMBER;
                     }
                 }
@@ -252,7 +252,7 @@ Type *HeaderParser::parseStruct() {
     if (!structName.empty())
         curNamespace.pop_back();
     if (!parseNamesOnly)
-        structType->finalizeMembers();
+        structType->completeMembers();
     return structType;
 }
 
@@ -283,7 +283,7 @@ Type *HeaderParser::parseEnum() {
         } else
             fullEnumName = enumNamespace+enumName;
         if (Type *type = typeSet->find(fullEnumName)) {
-            if (!((enumType = type->enumPrototype()) && enumType->isEnumClass() == enumClass))
+            if (!((enumType = type->incompleteEnumType()) && enumType->isEnumClass() == enumClass))
                 throw Error::TYPE_REDEFINITION;
             if (forwardDeclaration)
                 return type;
@@ -323,7 +323,7 @@ Type *HeaderParser::parseEnum() {
         matchSymbol(',');
     }
     if (!parseNamesOnly)
-        enumType->finalize();
+        enumType->completeValues();
     return enumType;
 }
 

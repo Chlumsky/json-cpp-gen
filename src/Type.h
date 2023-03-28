@@ -23,13 +23,14 @@ public:
     inline const TypeName &name() const { return typeName; }
     virtual std::string generateParserFunctionBody(ParserGenerator *generator, const std::string &indent) const = 0;
     virtual std::string generateSerializerFunctionBody(SerializerGenerator *generator, const std::string &indent) const = 0;
+    inline virtual bool isIncomplete() const { return false; }
     inline virtual const Type *actualType() const { return this; }
     inline virtual const StringType *stringType() const { return nullptr; }
     inline virtual const OptionalContainerType *optionalContainerType() const { return nullptr; }
     inline virtual const StructureType *structureType() const { return nullptr; }
     inline virtual const EnumType *enumType() const { return nullptr; }
-    inline virtual StructureType *structurePrototype() { return nullptr; }
-    inline virtual EnumType *enumPrototype() { return nullptr; }
+    inline virtual StructureType *incompleteStructureType() { return nullptr; }
+    inline virtual EnumType *incompleteEnumType() { return nullptr; }
     inline virtual int compile() { return 0; }
 
 protected:

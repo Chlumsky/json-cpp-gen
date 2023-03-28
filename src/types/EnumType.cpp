@@ -1,6 +1,7 @@
 
 #include "EnumType.h"
 
+#include <cassert>
 #include "../ParserGenerator.h"
 #include "../SerializerGenerator.h"
 
@@ -60,12 +61,21 @@ std::string EnumType::generateSerializerFunctionBody(SerializerGenerator *genera
     return body;
 }
 
-EnumType *EnumType::enumPrototype() {
-    return finalized ? nullptr : this;
+bool EnumType::isIncomplete() const {
+    return !complete;
+}
+
+EnumType *EnumType::incompleteEnumType() {
+    return complete ? nullptr : this;
 }
 
 void EnumType::addValue(const std::string &value) {
+    assert(!complete);
     values.push_back(value);
+}
+
+void EnumType::completeValues() {
+    complete = true;
 }
 
 const std::vector<std::string> &EnumType::getValues() const {
@@ -74,12 +84,4 @@ const std::vector<std::string> &EnumType::getValues() const {
 
 bool EnumType::isEnumClass() const {
     return enumClass;
-}
-
-bool EnumType::isFinalized() const {
-    return finalized;
-}
-
-void EnumType::finalize() {
-    finalized = true;
 }

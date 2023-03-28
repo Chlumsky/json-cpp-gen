@@ -1,6 +1,7 @@
 
 #include "StructureType.h"
 
+#include <cassert>
 #include "OptionalContainerType.h"
 #include "../ParserGenerator.h"
 #include "../SerializerGenerator.h"
@@ -79,8 +80,8 @@ std::string StructureType::generateParserFunctionBody(ParserGenerator *generator
     if (!orderedMembers.empty()) {
         std::vector<std::string> labels;
         labels.reserve(orderedMembers.size());
-        for (const std::pair<std::string, const Type *> &member : orderedMembers)
-            labels.push_back(member.first);
+        for (const Member &member : orderedMembers)
+            labels.push_back(member.name);
         ParserSwitchTreeCaseGenerator switchTreeCaseGenerator(this, optionalMembers);
         body += generator->generateSwitchTree(&switchTreeCaseGenerator, StringSwitchTree::build(labels.data(), labels.size()).get(), generator->stringType(), ParserGenerator::COMMON_STRING_BUFFER, indent+INDENT);
     }
@@ -127,12 +128,12 @@ std::string StructureType::generateSerializerFunctionBody(SerializerGenerator *g
     std::string body;
     bool first = true;
     bool maybeFirst = false;
-    for (const std::pair<std::string, const Type *> &member : orderedMembers) {
-        if (member.second->name().substance() == TypeName::VIRTUAL)
-            generator->resolveVirtualTypename(member.second, this, member.first);
+    for (const Member &member : orderedMembers) {
+        if (member.type->name().substance() == TypeName::VIRTUAL)
+            generator->resolveVirtualTypename(member.type, this, member.name);
         const OptionalContainerType *optionalMemberType = nullptr;
         if (generator->settings().skipEmptyFields)
-            optionalMemberType = member.second->optionalContainerType();
+            optionalMemberType = member.type->optionalContainerType();
         std::string memberSerialization;
         std::string subIndent = indent;
         if (optionalMemberType) {
@@ -141,14 +142,14 @@ std::string StructureType::generateSerializerFunctionBody(SerializerGenerator *g
                 body += indent+generator->stringType()->generateAppendChar(SerializerGenerator::OUTPUT_STRING, "'{'")+";\n";
                 maybeFirst = true;
             }
-            body += indent+"if ("+optionalMemberType->generateHasValue(("value."+member.first).c_str())+") {\n";
+            body += indent+"if ("+optionalMemberType->generateHasValue(("value."+member.name).c_str())+") {\n";
             subIndent += INDENT;
-            memberSerialization = generator->generateValueSerialization(optionalMemberType->elementType(), optionalMemberType->generateGetValue(("value."+member.first).c_str()), subIndent);
+            memberSerialization = generator->generateValueSerialization(optionalMemberType->elementType(), optionalMemberType->generateGetValue(("value."+member.name).c_str()), subIndent);
         } else
-            memberSerialization = generator->generateValueSerialization(member.second, "value."+member.first, subIndent);
+            memberSerialization = generator->generateValueSerialization(member.type, "value."+member.name, subIndent);
         if (maybeFirst && !first)
             body += subIndent+"if (prev) { "+generator->stringType()->generateAppendChar(SerializerGenerator::OUTPUT_STRING, "','")+"; }\n";
-        body += subIndent+generator->stringType()->generateAppendStringLiteral(SerializerGenerator::OUTPUT_STRING, (std::string("\"")+(maybeFirst ? "" : first ? "{" : ",")+"\\\"\" "+generator->getJsonMemberNameLiteral(member.first)+" \"\\\":\"").c_str())+";\n"; // TODO merge to one literal
+        body += subIndent+generator->stringType()->generateAppendStringLiteral(SerializerGenerator::OUTPUT_STRING, (std::string("\"")+(maybeFirst ? "" : first ? "{" : ",")+"\\\"\" "+generator->getJsonMemberNameLiteral(member.name)+" \"\\\":\"").c_str())+";\n"; // TODO merge to one literal
         body += memberSerialization;
         if (optionalMemberType) {
             if (maybeFirst)
@@ -162,8 +163,12 @@ std::string StructureType::generateSerializerFunctionBody(SerializerGenerator *g
     return body;
 }
 
-StructureType *StructureType::structurePrototype() {
-    return finalizedMembers ? nullptr : this;
+bool StructureType::isIncomplete() const {
+    return !complete;
+}
+
+StructureType *StructureType::incompleteStructureType() {
+    return complete ? nullptr : this;
 }
 
 void StructureType::inheritFrom(const Type *baseType) {
@@ -172,25 +177,26 @@ void StructureType::inheritFrom(const Type *baseType) {
 
 bool StructureType::absorb(const StructureType *other) {
     if (other) {
-        for (const std::pair<std::string, const Type *> &member : other->orderedMembers) {
-            if (!addMember(member.first, member.second))
+        for (const Member &member : other->orderedMembers) {
+            if (!addMember(member.type, member.name))
                 return false;
         }
     }
     return true;
 }
 
-bool StructureType::addMember(const std::string &name, const Type *type) {
+bool StructureType::addMember(const Type *type, const std::string &name) {
+    assert(!complete);
     std::map<std::string, const Type *>::iterator it = members.find(name);
     if (it != members.end())
         return false;
     members.insert(it, std::make_pair(name, type));
-    orderedMembers.emplace_back(name, type);
+    orderedMembers.emplace_back(type, name);
     return true;
 }
 
-const std::vector<std::pair<std::string, const Type *> > &StructureType::getMembers() const {
-    return orderedMembers;
+void StructureType::completeMembers() {
+    complete = true;
 }
 
 const Type *StructureType::findMember(const std::string &name) const {
@@ -200,40 +206,51 @@ const Type *StructureType::findMember(const std::string &name) const {
     return nullptr;
 }
 
-bool StructureType::membersFinalized() const {
-    return finalizedMembers;
-}
-
-void StructureType::finalizeMembers() {
-    finalizedMembers = true;
-}
-
 int StructureType::compile() {
-    if (baseTypes.empty())
-        return 0;
+    if (baseTypes.empty()) {
+        bool containsIncomplete = false;
+        for (const Member &member : orderedMembers) {
+            if (member.type->isIncomplete()) {
+                containsIncomplete = true;
+                break;
+            }
+        }
+        if (!containsIncomplete)
+            return 0;
+    }
     for (const Type *baseType : baseTypes) {
         if (const StructureType *baseStructType = baseType->structureType()) {
             if (!baseStructType->baseTypes.empty())
                 return BASE_DEPENDENCY_FLAG;
         }
     }
-    std::vector<std::pair<std::string, const Type *> > fullOrderedMembers;
+    // Add members of base types
+    std::vector<Member> fullOrderedMembers;
     for (const Type *baseType : baseTypes) {
         if (const StructureType *baseStructType = baseType->structureType()) {
-            for (const std::pair<std::string, const Type *> &baseMember : baseStructType->orderedMembers) {
-                std::map<std::string, const Type *>::iterator it = members.find(baseMember.first);
-                if (it == members.end()) {
-                    members.insert(it, baseMember);
-                    fullOrderedMembers.push_back(baseMember);
-                } else { // member shadowing
-                    std::string qualifiedName = baseStructType->name().body()+"::"+baseMember.first;
-                    members.insert(std::make_pair(qualifiedName, baseMember.second));
-                    fullOrderedMembers.emplace_back(std::move(qualifiedName), baseMember.second);
+            for (const Member &baseMember : baseStructType->orderedMembers) {
+                if (!baseMember.type->isIncomplete()) {
+                    std::map<std::string, const Type *>::iterator it = members.find(baseMember.name);
+                    if (it == members.end()) {
+                        members.insert(it, std::make_pair(baseMember.name, baseMember.type));
+                        fullOrderedMembers.push_back(baseMember);
+                    } else { // member shadowing
+                        std::string qualifiedName = baseStructType->name().body()+"::"+baseMember.name;
+                        members.insert(std::make_pair(qualifiedName, baseMember.type));
+                        fullOrderedMembers.emplace_back(baseMember.type, std::move(qualifiedName));
+                    }
                 }
             }
         }
     }
-    fullOrderedMembers.insert(fullOrderedMembers.end(), orderedMembers.begin(), orderedMembers.end());
+    // Remove incomplete members
+    for (Member &member : orderedMembers) {
+        if (!member.type->isIncomplete())
+            fullOrderedMembers.push_back(std::move(member));
+    }
+    members.clear();
+    for (const Member &member : fullOrderedMembers)
+        members.insert(std::make_pair(member.name, member.type));
     orderedMembers = std::move(fullOrderedMembers);
     baseTypes.clear();
     return CHANGE_FLAG;

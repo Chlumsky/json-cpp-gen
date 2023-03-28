@@ -80,6 +80,10 @@ std::string ObjectMapContainerType::generateSerializerFunctionBody(SerializerGen
     return body;
 }
 
+bool ObjectMapContainerType::isIncomplete() const {
+    return keyType()->isIncomplete() || elemType->isIncomplete();
+}
+
 std::string ObjectMapContainerType::generateClear(const char *subject) const {
     Replacer r[] = {
         { 'U', keyType()->name().body().c_str() },
