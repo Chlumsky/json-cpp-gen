@@ -2,6 +2,7 @@
 #include "StructureType.h"
 
 #include <cassert>
+#include <set>
 #include "OptionalContainerType.h"
 #include "../ParserGenerator.h"
 #include "../SerializerGenerator.h"
@@ -206,22 +207,39 @@ const Type *StructureType::findMember(const std::string &name) const {
     return nullptr;
 }
 
-int StructureType::compile() {
-    if (baseTypes.empty()) {
-        bool containsIncomplete = false;
-        for (const Member &member : orderedMembers) {
-            if (member.type->isIncomplete()) {
-                containsIncomplete = true;
-                break;
+int StructureType::compile(TemplateInstanceCache *instanceCache) {
+    bool membersFinal = baseTypes.empty();
+    for (Member &member : orderedMembers) {
+        if (member.type->isIncomplete())
+            membersFinal = false;
+        else {
+            const Type *actualMemberType = member.type->actualType(instanceCache);
+            if (actualMemberType != member.type) {
+                membersFinal = false;
+                member.type = actualMemberType;
             }
         }
-        if (!containsIncomplete)
-            return 0;
     }
+    if (membersFinal)
+        return 0;
     for (const Type *baseType : baseTypes) {
         if (const StructureType *baseStructType = baseType->structureType()) {
             if (!baseStructType->baseTypes.empty())
                 return BASE_DEPENDENCY_FLAG;
+        }
+    }
+    // Find members inherited from more than one base
+    if (baseTypes.size() > 1) {
+        std::set<std::string> baseMembers;
+        for (const Type *baseType : baseTypes) {
+            if (const StructureType *baseStructType = baseType->structureType()) {
+                for (const Member &baseMember : baseStructType->orderedMembers) {
+                    size_t namespaceEnd = baseMember.name.find_last_of(':');
+                    std::string unqualifiedName = namespaceEnd == std::string::npos ? baseMember.name : baseMember.name.substr(namespaceEnd+1);
+                    if (!baseMembers.insert(unqualifiedName).second)
+                        members.insert(std::make_pair(unqualifiedName, baseMember.type));
+                }
+            }
         }
     }
     // Add members of base types
@@ -230,15 +248,12 @@ int StructureType::compile() {
         if (const StructureType *baseStructType = baseType->structureType()) {
             for (const Member &baseMember : baseStructType->orderedMembers) {
                 if (!baseMember.type->isIncomplete()) {
-                    std::map<std::string, const Type *>::iterator it = members.find(baseMember.name);
-                    if (it == members.end()) {
-                        members.insert(it, std::make_pair(baseMember.name, baseMember.type));
+                    const Type *actualBaseMemberType = baseMember.type->actualType(instanceCache);
+                    if (findMember(baseMember.name)) {  // member shadowing
+                        if (baseMember.name.find_last_of(':') == std::string::npos) // skip if already inherited from common base
+                            fullOrderedMembers.emplace_back(actualBaseMemberType, baseStructType->name().body()+"::"+baseMember.name);
+                    } else
                         fullOrderedMembers.push_back(baseMember);
-                    } else { // member shadowing
-                        std::string qualifiedName = baseStructType->name().body()+"::"+baseMember.name;
-                        members.insert(std::make_pair(qualifiedName, baseMember.type));
-                        fullOrderedMembers.emplace_back(baseMember.type, std::move(qualifiedName));
-                    }
                 }
             }
         }

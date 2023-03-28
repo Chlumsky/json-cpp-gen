@@ -4,6 +4,7 @@
 #include "../pattern-fill.h"
 #include "../container-templates/ObjectMapContainerTemplate.h"
 #include "../types/OptionalContainerType.h"
+#include "../TemplateInstanceCache.h"
 #include "../ParserGenerator.h"
 #include "../SerializerGenerator.h"
 
@@ -15,6 +16,16 @@ const ObjectMapContainerTemplate *ObjectMapContainerType::objectMapContainerTemp
 
 const Type *ObjectMapContainerType::keyType() const {
     return std::get<0>(templateArgs);
+}
+
+const Type *ObjectMapContainerType::actualType(TemplateInstanceCache *instanceCache) const {
+    if (instanceCache) {
+        const Type *actualElemType = elemType->actualType(instanceCache);
+        const Type *actualKeyType = keyType()->actualType(instanceCache);
+        if (actualElemType != elemType || actualKeyType != keyType())
+            return instanceCache->get(containerTemplate, actualElemType, keyType());
+    }
+    return this;
 }
 
 // TODO: remaining methods are exact duplicates of ObjectContainerType

@@ -252,7 +252,7 @@ void ParserGenerator::generateParserFunction(const Type *type) {
 }
 
 std::string ParserGenerator::generateParserFunctionCall(const Type *type, const std::string &outputArg) {
-    if (!(type && (type = type->actualType())))
+    if (!type)
         return std::string();
     std::string &functionName = functionNames[type->name().fullName()];
     if (functionName.empty()) {

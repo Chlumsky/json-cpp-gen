@@ -21,8 +21,8 @@ bool TypeAlias::isIncomplete() const {
     return !type;
 }
 
-const Type *TypeAlias::actualType() const {
-    return type ? type->actualType() : nullptr;
+const Type *TypeAlias::actualType(TemplateInstanceCache *instanceCache) const {
+    return type ? type->actualType(instanceCache) : nullptr;
 }
 
 const StringType *TypeAlias::stringType() const {
@@ -54,7 +54,7 @@ bool TypeAlias::finalize(const Type *type) {
         inline virtual std::string generateSerializerFunctionBody(SerializerGenerator *, const std::string &) const override { return std::string(); }
     } cycleCanary;
     this->type = &cycleCanary;
-    if (type->actualType() == &cycleCanary) {
+    if (type->actualType(nullptr) == &cycleCanary) {
         this->type = nullptr;
         return false;
     }

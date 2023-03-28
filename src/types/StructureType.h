@@ -22,7 +22,7 @@ public:
     bool addMember(const Type *type, const std::string &name);
     void completeMembers();
     const Type *findMember(const std::string &name) const;
-    virtual int compile() override;
+    virtual int compile(TemplateInstanceCache *instanceCache) override;
 
 private:
     class ParserSwitchTreeCaseGenerator;

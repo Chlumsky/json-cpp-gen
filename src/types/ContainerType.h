@@ -11,6 +11,7 @@ class ContainerType : public Type {
 public:
     virtual ~ContainerType() = default;
     inline virtual bool isIncomplete() const override { return elemType->isIncomplete(); }
+    virtual const Type *actualType(TemplateInstanceCache *instanceCache) const override;
     inline const Type *elementType() const { return elemType; }
 
 protected:

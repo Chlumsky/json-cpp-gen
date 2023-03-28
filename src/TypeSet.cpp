@@ -153,17 +153,17 @@ const Type *TypeSet::compile() {
     do { // Repeat in case of back and forth dependencies
         resultFlags = 0;
         for (const std::map<std::string, std::unique_ptr<Type> >::value_type &type : types)
-            resultFlags |= type.second->compile();
+            resultFlags |= type.second->compile(&templateInstanceCache);
         for (const std::unique_ptr<Type> &type : unnamedTypes)
-            resultFlags |= type->compile();
+            resultFlags |= type->compile(&templateInstanceCache);
     } while (resultFlags&Type::CHANGE_FLAG);
     // Cyclic dependency detected
     if (resultFlags&Type::BASE_DEPENDENCY_FLAG) {
         for (const std::map<std::string, std::unique_ptr<Type> >::value_type &type : types)
-            if (type.second->compile()&Type::BASE_DEPENDENCY_FLAG)
+            if (type.second->compile(&templateInstanceCache)&Type::BASE_DEPENDENCY_FLAG)
                 return type.second.get();
         for (const std::unique_ptr<Type> &type : unnamedTypes)
-            if (type->compile()&Type::BASE_DEPENDENCY_FLAG)
+            if (type->compile(&templateInstanceCache)&Type::BASE_DEPENDENCY_FLAG)
                 return type.get();
     }
     return nullptr;
