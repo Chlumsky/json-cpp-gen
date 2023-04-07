@@ -91,8 +91,14 @@ ContainerTemplate<T...> *HeaderParser::findContainerTemplate(const std::string &
         return nullptr;
     if (name.size() >= 2 && name[0] == ':' && name[1] == ':')
         return typeSet->findContainerTemplate<T...>(name.substr(2));
-    if (ContainerTemplate<T...> *containerTemplate = typeSet->findContainerTemplate<T...>(name))
-        return containerTemplate;
+    for (int i = (int) curNamespace.size(); i >= 0; --i) {
+        std::string fullName;
+        for (int j = 0; j < i; ++j)
+            fullName += curNamespace[j]+"::";
+        fullName += name;
+        if (ContainerTemplate<T...> *containerTemplate = typeSet->findContainerTemplate<T...>(fullName))
+            return containerTemplate;
+    }
     for (const std::string &ns : usingNamespaces)
         if (ContainerTemplate<T...> *containerTemplate = typeSet->findContainerTemplate<T...>(ns+"::"+name))
             return containerTemplate;

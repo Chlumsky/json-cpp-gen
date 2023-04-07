@@ -1,11 +1,13 @@
 
 #include "TypeSet.h"
 
+#include <cctype>
 #include "types/StringType.h"
 #include "container-templates/ArrayContainerTemplate.h"
 #include "container-templates/StaticArrayContainerTemplate.h"
 #include "container-templates/ObjectMapContainerTemplate.h"
 #include "container-templates/OptionalContainerTemplate.h"
+#include "HeaderParser.h"
 
 TypeSet::TypeSet() {
     addBasicType("bool", BasicType::BOOL);
@@ -81,29 +83,57 @@ void TypeSet::addBasicType(const char *name, BasicType::Type type) {
     types.insert(std::make_pair(std::string(name), std::unique_ptr<Type>(new BasicType(type))));
 }
 
+const std::string &TypeSet::resolveAlias(const std::string &alias) const {
+    std::map<std::string, std::string>::const_iterator it = aliases.find(alias), recursiveIt = aliases.end();
+    while (it != aliases.end()) {
+        recursiveIt = it;
+        it = aliases.find(it->second);
+    }
+    if (recursiveIt != aliases.end())
+        return recursiveIt->second;
+    return alias;
+}
+
 Type *TypeSet::find(const std::string &name) {
-    std::map<std::string, std::unique_ptr<Type> >::iterator it = types.find(name);
+    std::map<std::string, std::unique_ptr<Type> >::iterator it = types.find(resolveAlias(name));
     if (it != types.end())
         return it->second.get();
     return nullptr;
 }
 
 const Type *TypeSet::find(const std::string &name) const {
-    std::map<std::string, std::unique_ptr<Type> >::const_iterator it = types.find(name);
+    std::map<std::string, std::unique_ptr<Type> >::const_iterator it = types.find(resolveAlias(name));
     if (it != types.end())
         return it->second.get();
     return nullptr;
 }
 
 void TypeSet::add(std::unique_ptr<Type> &&type) {
-    std::string fullName = type->name().fullName();
-    if (fullName.size() >= 2 && fullName[0] == ':' && fullName[1] == ':')
-        fullName = fullName.substr(2);
-    add((std::string &&) fullName, std::move(type));
+    add(normalizeAbsoluteTypeName(type->name().fullName()), std::move(type));
 }
 
 void TypeSet::add(const std::string &name, std::unique_ptr<Type> &&type) {
     types[name] = std::move(type);
+}
+
+bool TypeSet::addAlias(const std::string &aliasName, const std::string &actualName) {
+    if (aliasName.empty() || actualName.empty())
+        return true;
+    for (char c : actualName) {
+        if (!(isalnum(c) || c == '_' || c == ':')) {
+            // Not a simple lexical alias - create new alias type
+            TypeAlias *aliasType = new TypeAlias(aliasName);
+            add(std::unique_ptr<Type>(aliasType));
+            aliasTypes.emplace_back(aliasType, actualName);
+            return true;
+        }
+    }
+    std::string &aliasValue = aliases[normalizeAbsoluteTypeName(aliasName)];
+    std::string normalizedActualName = normalizeAbsoluteTypeName(actualName);
+    if (&resolveAlias(normalizedActualName) == &aliasValue)
+        return false;
+    aliasValue = normalizedActualName;
+    return true;
 }
 
 StructureType *TypeSet::newUnnamedStruct() {
@@ -149,6 +179,14 @@ const TypeSet::ContainerTemplateMap<const Type *> &TypeSet::containerTemplateMap
 }
 
 const Type *TypeSet::compile() {
+    // Resolve type aliases
+    for (const std::pair<TypeAlias *, std::string> &aliasType : aliasTypes) {
+        if (const Type *type = parseType(*this, aliasType.second)) {
+            if (!aliasType.first->finalize(type))
+                return aliasType.first;
+        } // else bad alias
+    }
+    aliasTypes.clear();
     int resultFlags;
     do { // Repeat in case of back and forth dependencies
         resultFlags = 0;
@@ -167,4 +205,10 @@ const Type *TypeSet::compile() {
                 return type.get();
     }
     return nullptr;
+}
+
+std::string TypeSet::normalizeAbsoluteTypeName(const std::string &name) {
+    if (name.size() > 2 && name[0] == ':' && name[1] == ':')
+        return name.substr(2);
+    return name;
 }

@@ -10,6 +10,7 @@
 #include "types/ContainerType.h"
 #include "types/StructureType.h"
 #include "types/EnumType.h"
+#include "types/TypeAlias.h"
 #include "ContainerTemplate.h"
 #include "TemplateInstanceCache.h"
 
@@ -23,6 +24,7 @@ public:
     const Type *find(const std::string &name) const;
     void add(std::unique_ptr<Type> &&type);
     void add(const std::string &name, std::unique_ptr<Type> &&type);
+    bool addAlias(const std::string &aliasName, const std::string &actualName);
     StructureType *newUnnamedStruct();
     EnumType *newUnnamedEnum(bool enumClass, const std::string &enumNamespace);
 
@@ -48,19 +50,25 @@ private:
     ContainerTemplateMap<> containerTemplates;
     ContainerTemplateMap<int> staticArrayContainerTemplates;
     ContainerTemplateMap<const Type *> objectMapContainerTemplates;
+    std::map<std::string, std::string> aliases;
+
+    std::vector<std::pair<TypeAlias *, std::string> > aliasTypes;
 
     void addBasicType(const char *name, BasicType::Type type);
+    const std::string &resolveAlias(const std::string &alias) const;
     template <typename... T>
     ContainerTemplateMap<T...> &containerTemplateMap();
     template <typename... T>
     const ContainerTemplateMap<T...> &containerTemplateMap() const;
+
+    static std::string normalizeAbsoluteTypeName(const std::string &name);
 
 };
 
 template <typename... T>
 ContainerTemplate<T...> *TypeSet::findContainerTemplate(const std::string &name) {
     ContainerTemplateMap<T...> &map = containerTemplateMap<T...>();
-    typename ContainerTemplateMap<T...>::iterator it = map.find(name);
+    typename ContainerTemplateMap<T...>::iterator it = map.find(resolveAlias(name));
     if (it != map.end())
         return it->second.get();
     return nullptr;
@@ -69,7 +77,7 @@ ContainerTemplate<T...> *TypeSet::findContainerTemplate(const std::string &name)
 template <typename... T>
 const ContainerTemplate<T...> *TypeSet::findContainerTemplate(const std::string &name) const {
     const ContainerTemplateMap<T...> &map = containerTemplateMap<T...>();
-    typename ContainerTemplateMap<T...>::const_iterator it = map.find(name);
+    typename ContainerTemplateMap<T...>::const_iterator it = map.find(resolveAlias(name));
     if (it != map.end())
         return it->second.get();
     return nullptr;

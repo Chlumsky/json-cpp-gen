@@ -173,11 +173,11 @@ int main(int argc, const char *const *argv) {
     }
 
     // TYPE ALIASES
-    std::vector<std::pair<TypeAlias *, std::string> > aliasTypes;
     for (const std::map<std::string, std::string>::value_type &typeAlias : config.typeAliases) {
-        TypeAlias *aliasType = new TypeAlias(typeAlias.first);
-        typeSet.add(std::unique_ptr<Type>(aliasType));
-        aliasTypes.emplace_back(aliasType, typeAlias.second);
+        if (!typeSet.addAlias(typeAlias.first, typeAlias.second)) {
+            fprintf(stderr, "Error: Cyclic alias '%s', aborting\n", typeAlias.first.c_str());
+            return -1;
+        }
     }
 
     // INPUT SOURCE FILES
@@ -204,17 +204,8 @@ int main(int argc, const char *const *argv) {
     } while (!parseNamesOnly);
 
     // TYPE FINALIZATION
-    for (const std::pair<TypeAlias *, std::string> &aliasType : aliasTypes) {
-        if (const Type *type = parseType(typeSet, aliasType.second)) {
-            if (!aliasType.first->finalize(type)) {
-                fprintf(stderr, "Error: Cyclic alias '%s', aborting\n", aliasType.first->name().body().c_str());
-                return -1;
-            }
-        } else
-            fprintf(stderr, "Warning: Type '%s' not found, alias '%s' not in effect\n", aliasType.second.c_str(), aliasType.first->name().body().c_str());
-    }
     if (const Type *badType = typeSet.compile()) {
-        fprintf(stderr, "Error: Cyclic inheritance for type '%s', aborting\n", badType->name().body().c_str());
+        fprintf(stderr, "Error: Cyclic definition of type '%s', aborting\n", badType->name().body().c_str());
         return -1;
     }
 
