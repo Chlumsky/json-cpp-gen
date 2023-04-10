@@ -3,7 +3,6 @@
 
 #include <string>
 #include <vector>
-#include <stack>
 #include "TypeSet.h"
 
 #define FOR_HEADER_PARSER_ERROR_TYPES(M) \
@@ -16,6 +15,7 @@
     M(INVALID_ARRAY_SYNTAX) \
     M(INVALID_NAMESPACE_SYNTAX) \
     M(DUPLICATE_STRUCT_MEMBER) \
+    M(CYCLIC_TYPE_ALIAS) \
     M(NOT_IMPLEMENTED) \
 
 // Parses structures from a C++ header file.
@@ -40,7 +40,7 @@ public:
     HeaderParser(TypeSet *outputTypeSet, const char *headerStart, size_t headerLength, bool parseNamesOnly = false);
     const char *currentChar() const;
     void parse();
-    const Type *parseType();
+    const Type *tryParseType();
 
 private:
     TypeSet *typeSet;
@@ -57,13 +57,17 @@ private:
     Type *findType(const std::string &name);
     template <typename... T>
     ContainerTemplate<T...> *findContainerTemplate(const std::string &name);
+    std::string fullTypeName(const std::string &baseName) const;
 
     void parseSection();
     void parseNamespace();
+    void parseUsing();
+    void parseTypedef();
     Type *parseStruct();
     Type *parseEnum();
+    const Type *parseType();
+    const Type *tryParseArrayTypeSuffix(const Type *elemType);
     int parseArrayLength();
-    std::stack<int> parseArrayDimensions();
     std::string readNamespacedIdentifier();
     std::string readIdentifier();
     void skipLine();

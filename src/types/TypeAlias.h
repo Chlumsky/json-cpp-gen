@@ -19,6 +19,7 @@ public:
     virtual const OptionalContainerType *optionalContainerType() const override;
     virtual const StructureType *structureType() const override;
     virtual const EnumType *enumType() const override;
+    inline virtual TypeAlias *typeAlias() override { return this; }
     bool isFinalized() const;
     bool finalize(const Type *type);
 

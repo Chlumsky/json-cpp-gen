@@ -9,6 +9,7 @@ class StringType;
 class StructureType;
 class EnumType;
 class OptionalContainerType;
+class TypeAlias;
 
 class TemplateInstanceCache;
 class ParserGenerator;
@@ -22,6 +23,8 @@ public:
 
     virtual ~Type() = default;
     inline const TypeName &name() const { return typeName; }
+    inline void rename(const TypeName &name) { typeName = name; }
+    inline void rename(TypeName &&name) { typeName = (TypeName &&) name; }
     virtual std::string generateParserFunctionBody(ParserGenerator *generator, const std::string &indent) const = 0;
     virtual std::string generateSerializerFunctionBody(SerializerGenerator *generator, const std::string &indent) const = 0;
     inline virtual bool isIncomplete() const { return false; }
@@ -32,6 +35,7 @@ public:
     inline virtual const EnumType *enumType() const { return nullptr; }
     inline virtual StructureType *incompleteStructureType() { return nullptr; }
     inline virtual EnumType *incompleteEnumType() { return nullptr; }
+    inline virtual TypeAlias *typeAlias() { return nullptr; }
     inline virtual int compile(TemplateInstanceCache *) { return 0; }
 
 protected:

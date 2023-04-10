@@ -3,9 +3,11 @@
 
 #include <cstring>
 #include <cctype>
+#include <stack>
 #include <memory>
 #include "types/StructureType.h"
 #include "types/EnumType.h"
+#include "types/TypeAlias.h"
 #include "types/StaticArrayType.h"
 #include "Generator.h"
 
@@ -57,9 +59,22 @@ Type *HeaderParser::findType(const std::string &name) {
     return nullptr;
 }
 
+std::string HeaderParser::fullTypeName(const std::string &baseName) const {
+    if (baseName.size() >= 2 && baseName[0] == ':' && baseName[1] == ':')
+        return baseName.substr(2);
+    std::string prefix;
+    for (const std::string &ns : curNamespace)
+        prefix += ns+"::";
+    return prefix+baseName;
+}
+
 void HeaderParser::parseSection() {
     if (matchKeyword("namespace"))
         return parseNamespace();
+    if (matchKeyword("using"))
+        return parseUsing();
+    if (matchKeyword("typedef"))
+        return parseTypedef();
     if (matchKeyword("struct"))
         parseStruct();
     else if (matchKeyword("enum"))
@@ -86,6 +101,104 @@ void HeaderParser::parseNamespace() {
     curNamespace.pop_back();
 }
 
+void HeaderParser::parseUsing() {
+    skipWhitespaceAndComments();
+    if (matchKeyword("namespace")) {
+        // TODO using namespace
+        return skipSection();
+    }
+    std::string aliasName = readNamespacedIdentifier();
+    if (aliasName.empty())
+        return skipSection();
+    skipWhitespaceAndComments();
+    if (!matchSymbol('=')) {
+        // TODO using ns::type;
+        return skipSection();
+    }
+    TypeAlias *typeAlias = nullptr;
+    std::string fullAliasName = fullTypeName(aliasName);
+    if (Type *type = typeSet->find(fullAliasName)) {
+        if (!(typeAlias = type->typeAlias()))
+            throw Error::TYPE_REDEFINITION;
+    } else {
+        std::unique_ptr<TypeAlias> newType(new TypeAlias(Generator::safeName(fullAliasName)));
+        typeAlias = newType.get();
+        typeSet->add(fullAliasName, std::move(newType));
+    }
+    skipWhitespaceAndComments();
+    const Type *aliasedType = nullptr;
+    if (matchKeyword("struct"))
+        aliasedType = parseStruct();
+    else if (matchKeyword("enum"))
+        aliasedType = parseEnum();
+    else if (!parseNamesOnly)
+        aliasedType = tryParseType();
+    if (aliasedType && (aliasedType = tryParseArrayTypeSuffix(aliasedType))) {
+        skipWhitespaceAndComments();
+        if (matchSymbol(';')) {
+            if (!typeAlias->finalize(aliasedType))
+                throw Error::CYCLIC_TYPE_ALIAS;
+            return;
+        }
+    }
+    skipSection();
+}
+
+void HeaderParser::parseTypedef() {
+    skipWhitespaceAndComments();
+    const Type *baseAliasedType = nullptr;
+    Type *unnamedType = nullptr;
+    if (matchKeyword("struct"))
+        baseAliasedType = unnamedType = parseStruct();
+    else if (matchKeyword("enum"))
+        baseAliasedType = unnamedType = parseEnum();
+    else {
+        const char *orig = cur;
+        try {
+            baseAliasedType = parseType();
+        } catch (Error::Type) {
+            cur = orig;
+            return skipSection();
+        }
+    }
+    do {
+        skipWhitespaceAndComments();
+        if (matchSymbol('*') || matchSymbol('&')) {
+            skipExpression();
+            continue;
+        }
+        std::string aliasName = readNamespacedIdentifier();
+        if (!aliasName.empty()) {
+            TypeAlias *typeAlias = nullptr;
+            std::string fullAliasName = fullTypeName(aliasName);
+            if (Type *type = typeSet->find(fullAliasName)) {
+                if (!(typeAlias = type->typeAlias()) && type != baseAliasedType)
+                    throw Error::TYPE_REDEFINITION;
+            } else {
+                std::unique_ptr<TypeAlias> newType(new TypeAlias(Generator::safeName(fullAliasName)));
+                typeAlias = newType.get();
+                typeSet->add(fullAliasName, std::move(newType));
+            }
+            if (const Type *aliasedType = tryParseArrayTypeSuffix(baseAliasedType)) {
+                if (!typeAlias) { // typeAlias is null only if baseAliasedType == type (typedef struct X { } X)
+                    if (aliasedType != baseAliasedType)
+                        throw Error::TYPE_REDEFINITION; // redefinition of X from struct X to struct X[]
+                } else if (!parseNamesOnly) {
+                    if (aliasedType == baseAliasedType && unnamedType) {
+                        unnamedType->rename(typeAlias->name());
+                        unnamedType = nullptr;
+                    }
+                    if (!typeAlias->finalize(aliasedType))
+                        throw Error::CYCLIC_TYPE_ALIAS;
+                }
+            }
+            skipWhitespaceAndComments();
+        }
+    } while (matchSymbol(','));
+    if (!matchSymbol(';'))
+        skipSection();
+}
+
 Type *HeaderParser::parseStruct() {
     skipWhitespaceAndComments();
     std::string structName = readNamespacedIdentifier();
@@ -103,14 +216,7 @@ Type *HeaderParser::parseStruct() {
     StructureType *structType = nullptr;
     bool forwardDeclaration = cur < end && *cur == ';';
     if (!structName.empty()) {
-        std::string fullStructName;
-        if (structName.size() >= 2 && structName[0] == ':' && structName[1] == ':')
-            fullStructName = structName.substr(2);
-        else {
-            for (std::vector<std::string>::const_iterator it = curNamespace.begin(); it != curNamespace.end(); ++it)
-                fullStructName += *it+"::";
-            fullStructName += structName;
-        }
+        std::string fullStructName = fullTypeName(structName);
         if (Type *type = typeSet->find(fullStructName)) {
             if (!(structType = type->incompleteStructureType()))
                 throw Error::TYPE_REDEFINITION;
@@ -140,7 +246,7 @@ Type *HeaderParser::parseStruct() {
                 skipWhitespaceAndComments();
             }
             matchKeyword("virtual");
-            if (const Type *baseType = parseType()) {
+            if (const Type *baseType = tryParseType()) {
                 if (!nonPublic && !parseNamesOnly)
                     structType->inheritFrom(baseType);
             } else {
@@ -175,7 +281,7 @@ Type *HeaderParser::parseStruct() {
             matchKeyword("void") || matchKeyword("union") || matchKeyword("class") ||
             matchKeyword("const") || matchKeyword("constexpr") || 
             matchKeyword("virtual") || matchKeyword("inline") || matchKeyword("extern") || matchKeyword("explicit") ||
-            matchKeyword("typedef") || matchKeyword("operator") || matchKeyword("template") || matchKeyword("friend")
+            matchKeyword("operator") || matchKeyword("template") || matchKeyword("friend")
         ) {
             skipSection();
             continue;
@@ -190,7 +296,13 @@ Type *HeaderParser::parseStruct() {
 
         const Type *memberBaseType = nullptr;
         bool nestedType = true;
-        if (matchKeyword("struct")) {
+        if (matchKeyword("using")) {
+            parseUsing();
+            continue;
+        } else if (matchKeyword("typedef")) {
+            parseTypedef();
+            continue;
+        } else if (matchKeyword("struct")) {
             memberBaseType = parseStruct();
             skipWhitespaceAndComments();
             if (matchSymbol(';')) {
@@ -215,30 +327,23 @@ Type *HeaderParser::parseStruct() {
         }
 
         if (!nestedType)
-            memberBaseType = parseType();
+            memberBaseType = tryParseType();
         if (memberBaseType) {
             do {
                 skipWhitespaceAndComments();
+                if (matchSymbol('*') || matchSymbol('&')) {
+                    skipExpression();
+                    continue;
+                }
                 std::string memberName = readIdentifier();
-                if (!memberName.empty()) {
-                    std::stack<int> arrayDimensions = parseArrayDimensions();
-                    const Type *memberType = memberBaseType;
-                    while (!arrayDimensions.empty()) {
-                        std::string arrayTypeName = memberBaseType->name().body()+'['+std::to_string(arrayDimensions.top())+']'+memberBaseType->name().suffix();
-                        if (const Type *arrayType = typeSet->find(arrayTypeName))
-                            memberType = arrayType;
-                        else {
-                            std::unique_ptr<StaticArrayType> newArrayType(new StaticArrayType(memberType, arrayDimensions.top()));
-                            memberType = newArrayType.get();
-                            typeSet->add(std::move(newArrayType));
-                        }
-                        arrayDimensions.pop();
-                    }
+                if (!memberName.empty() && memberName != "operator") {
+                    const Type *memberType = tryParseArrayTypeSuffix(memberBaseType);
+                    skipWhitespaceAndComments();
                     if (matchSymbol('=')) {
                         skipExpression();
                         skipWhitespaceAndComments();
                     }
-                    if (cur < end && (*cur == ';' || *cur == ',')) {
+                    if (memberType && cur < end && (*cur == ';' || *cur == ',')) {
                         if (!structType->addMember(memberType, memberName))
                             throw Error::DUPLICATE_STRUCT_MEMBER;
                     }
@@ -282,6 +387,7 @@ Type *HeaderParser::parseEnum() {
             enumNamespace.clear();
         } else
             fullEnumName = enumNamespace+enumName;
+        // fullEnumName must equal fullTypeName(enumName)
         if (Type *type = typeSet->find(fullEnumName)) {
             if (!((enumType = type->incompleteEnumType()) && enumType->isEnumClass() == enumClass))
                 throw Error::TYPE_REDEFINITION;
@@ -327,120 +433,163 @@ Type *HeaderParser::parseEnum() {
     return enumType;
 }
 
+const Type *HeaderParser::tryParseType() {
+    const char *orig = cur;
+    try {
+        return parseType();
+    } catch (Error::Type) {
+        cur = orig;
+        return nullptr;
+    }
+}
+
 const Type *HeaderParser::parseType() {
     const char *orig = cur;
     skipWhitespaceAndComments();
-    try {
-        if (cur < end && ((isWordChar(*cur) && !isdigit(*cur)) || *cur == ':')) {
-            std::string typeName = readNamespacedIdentifier();
-            if (typeName.empty())
-                return nullptr;
-            const char *prev = cur;
-            skipWhitespaceAndComments();
-            // Special case: multi-word fundamental types
-            if (typeName == "signed" || typeName == "unsigned" || typeName == "short" || typeName == "long") {
-                const char *kwStart = cur;
-                if (matchKeyword("short") || matchKeyword("long")) { // Possible 3 word type?
-                    typeName += " "+std::string(kwStart, cur);
-                    prev = cur;
-                    skipWhitespaceAndComments();
-                    kwStart = cur;
-                }
-                if (matchKeyword("short") || matchKeyword("long")) { // 4 word type??? (unsigned long long int)
-                    typeName += " "+std::string(kwStart, cur);
-                    prev = cur;
-                    skipWhitespaceAndComments();
-                    kwStart = cur;
-                }
-                if (matchKeyword("int") || matchKeyword("char") || matchKeyword("double") || matchKeyword("float")) {
-                    typeName += " "+std::string(kwStart, cur);
-                    prev = cur;
-                }
-                cur = prev;
-                if (Type *type = findType(typeName))
-                    return type;
-            } else if (matchSymbol('<')) { // Template type
+    if (cur < end && ((isWordChar(*cur) && !isdigit(*cur)) || *cur == ':')) {
+        std::string typeName = readNamespacedIdentifier();
+        if (typeName.empty())
+            return nullptr;
+        const char *prev = cur;
+        skipWhitespaceAndComments();
+        // Special case: multi-word fundamental types
+        if (typeName == "signed" || typeName == "unsigned" || typeName == "short" || typeName == "long") {
+            const char *kwStart = cur;
+            if (matchKeyword("short") || matchKeyword("long")) { // Possible 3 word type?
+                typeName += " "+std::string(kwStart, cur);
+                prev = cur;
                 skipWhitespaceAndComments();
-                const Type *elementType = nullptr;
-                // regular container
-                if (ContainerTemplate<> *containerTemplate = findContainerTemplate<>(typeName)) {
-                    int elementTypeIndex = containerTemplate->templateArgIndex('T');
-                    for (int index = 0; !matchSymbol('>'); ++index) {
-                        if (cur >= end)
-                            throw Error::UNEXPECTED_EOF;
-                        if (index && !matchSymbol(','))
-                            throw Error::INVALID_TYPENAME_SYNTAX;
-                        if (index == elementTypeIndex) {
-                            if (!(elementType = parseType()))
-                                throw Error::INVALID_TYPENAME_SYNTAX;
-                        } else
-                            skipTemplateArgument();
-                        skipWhitespaceAndComments();
-                    }
-                    if (elementType) {
-                        if (const Type *type = typeSet->getContainerType(containerTemplate, elementType))
-                            return type;
-                    }
-                }
-                // static array container
-                else if (ContainerTemplate<int> *containerTemplate = findContainerTemplate<int>(typeName)) {
-                    int arrayLength = -1;
-                    int elementTypeIndex = containerTemplate->templateArgIndex('T');
-                    int arrayLengthIndex = containerTemplate->templateArgIndex('N');
-                    for (int index = 0; !matchSymbol('>'); ++index) {
-                        if (cur >= end)
-                            throw Error::UNEXPECTED_EOF;
-                        if (index && !matchSymbol(','))
-                            throw Error::INVALID_TYPENAME_SYNTAX;
-                        if (index == elementTypeIndex) {
-                            if (!(elementType = parseType()))
-                                throw Error::INVALID_TYPENAME_SYNTAX;
-                        } else if (index == arrayLengthIndex)
-                            arrayLength = parseArrayLength();
-                        else
-                            skipTemplateArgument();
-                        skipWhitespaceAndComments();
-                    }
-                    if (elementType && arrayLength >= 0) {
-                        if (const Type *type = typeSet->getContainerType(containerTemplate, elementType, arrayLength))
-                            return type;
-                    }
-                }
-                // object map container
-                else if (ContainerTemplate<const Type *> *containerTemplate = findContainerTemplate<const Type *>(typeName)) {
-                    const Type *keyType = nullptr;
-                    int keyTypeIndex = containerTemplate->templateArgIndex('K');
-                    int elementTypeIndex = containerTemplate->templateArgIndex('T');
-                    for (int index = 0; !matchSymbol('>'); ++index) {
-                        if (cur >= end)
-                            throw Error::UNEXPECTED_EOF;
-                        if (index && !matchSymbol(','))
-                            throw Error::INVALID_TYPENAME_SYNTAX;
-                        if (index == keyTypeIndex) {
-                            if (!(keyType = parseType()))
-                                throw Error::UNSUPPORTED_TYPE;
-                        } else if (index == elementTypeIndex) {
-                            if (!(elementType = parseType()))
-                                throw Error::INVALID_TYPENAME_SYNTAX;
-                        } else
-                            skipTemplateArgument();
-                        skipWhitespaceAndComments();
-                    }
-                    if (keyType && elementType) {
-                        if (const Type *type = typeSet->getContainerType(containerTemplate, elementType, keyType))
-                            return type;
-                    }
-                }
-            } else {
-                cur = prev;
-                if (Type *type = findType(typeName))
-                    return type;
+                kwStart = cur;
             }
+            if (matchKeyword("short") || matchKeyword("long")) { // 4 word type??? (unsigned long long int)
+                typeName += " "+std::string(kwStart, cur);
+                prev = cur;
+                skipWhitespaceAndComments();
+                kwStart = cur;
+            }
+            if (matchKeyword("int") || matchKeyword("char") || matchKeyword("double") || matchKeyword("float")) {
+                typeName += " "+std::string(kwStart, cur);
+                prev = cur;
+            }
+            cur = prev;
+            return findType(typeName);
+        } else if (matchSymbol('<')) { // Template type
+            skipWhitespaceAndComments();
+            const Type *elementType = nullptr;
+            // regular container
+            if (ContainerTemplate<> *containerTemplate = findContainerTemplate<>(typeName)) {
+                int elementTypeIndex = containerTemplate->templateArgIndex('T');
+                for (int index = 0; !matchSymbol('>'); ++index) {
+                    if (cur >= end)
+                        throw Error::UNEXPECTED_EOF;
+                    if (index && !matchSymbol(','))
+                        throw Error::INVALID_TYPENAME_SYNTAX;
+                    if (index == elementTypeIndex)
+                        elementType = parseType();
+                    else
+                        skipTemplateArgument();
+                    skipWhitespaceAndComments();
+                }
+                if (elementType) {
+                    if (const Type *type = typeSet->getContainerType(containerTemplate, elementType))
+                        return type;
+                }
+                return nullptr;
+            }
+            // static array container
+            else if (ContainerTemplate<int> *containerTemplate = findContainerTemplate<int>(typeName)) {
+                int arrayLength = -1;
+                int elementTypeIndex = containerTemplate->templateArgIndex('T');
+                int arrayLengthIndex = containerTemplate->templateArgIndex('N');
+                for (int index = 0; !matchSymbol('>'); ++index) {
+                    if (cur >= end)
+                        throw Error::UNEXPECTED_EOF;
+                    if (index && !matchSymbol(','))
+                        throw Error::INVALID_TYPENAME_SYNTAX;
+                    if (index == elementTypeIndex)
+                        elementType = parseType();
+                    else if (index == arrayLengthIndex)
+                        arrayLength = parseArrayLength();
+                    else
+                        skipTemplateArgument();
+                    skipWhitespaceAndComments();
+                }
+                if (elementType && arrayLength >= 0) {
+                    if (const Type *type = typeSet->getContainerType(containerTemplate, elementType, arrayLength))
+                        return type;
+                }
+                return nullptr;
+            }
+            // object map container
+            else if (ContainerTemplate<const Type *> *containerTemplate = findContainerTemplate<const Type *>(typeName)) {
+                const Type *keyType = nullptr;
+                int keyTypeIndex = containerTemplate->templateArgIndex('K');
+                int elementTypeIndex = containerTemplate->templateArgIndex('T');
+                for (int index = 0; !matchSymbol('>'); ++index) {
+                    if (cur >= end)
+                        throw Error::UNEXPECTED_EOF;
+                    if (index && !matchSymbol(','))
+                        throw Error::INVALID_TYPENAME_SYNTAX;
+                    if (index == keyTypeIndex)
+                        keyType = parseType();
+                    else if (index == elementTypeIndex)
+                        elementType = parseType();
+                    else
+                        skipTemplateArgument();
+                    skipWhitespaceAndComments();
+                }
+                if (keyType && elementType) {
+                    if (const Type *type = typeSet->getContainerType(containerTemplate, elementType, keyType))
+                        return type;
+                }
+                return nullptr;
+            }
+        } else {
+            cur = prev;
+            return findType(typeName);
         }
-    } catch (Error::Type) {
-        // Ignore - rewind cur and return null
     }
     cur = orig;
+    return nullptr;
+}
+
+const Type *HeaderParser::tryParseArrayTypeSuffix(const Type *elemType) {
+    skipWhitespaceAndComments();
+    if (elemType) {
+        const char *orig = cur;
+        try {
+            std::stack<int> arrayDimensions;
+            while (matchSymbol('[')) {
+                arrayDimensions.push(parseArrayLength());
+                skipWhitespaceAndComments();
+                if (!matchSymbol(']'))
+                    throw Error::INVALID_ARRAY_SYNTAX;
+                skipWhitespaceAndComments();
+            }
+            const Type *type = elemType;
+            while (!arrayDimensions.empty()) {
+                std::string arrayTypeName = elemType->name().body()+'['+std::to_string(arrayDimensions.top())+']'+elemType->name().suffix();
+                if (const Type *arrayType = typeSet->find(arrayTypeName))
+                    type = arrayType;
+                else {
+                    std::unique_ptr<StaticArrayType> newArrayType(new StaticArrayType(type, arrayDimensions.top()));
+                    type = newArrayType.get();
+                    typeSet->add(std::move(newArrayType));
+                }
+                arrayDimensions.pop();
+            }
+            return type;
+        } catch (Error::Type) {
+            cur = orig;
+        }
+    }
+    // Skip array dimensions
+    while (matchSymbol('[')) {
+        skipExpression();
+        skipWhitespaceAndComments();
+        if (!matchSymbol(']'))
+            throw Error::INVALID_ARRAY_SYNTAX;
+    }
     return nullptr;
 }
 
@@ -457,19 +606,6 @@ int HeaderParser::parseArrayLength() {
             return arrayLength;
     }
     throw Error::INVALID_ARRAY_SYNTAX;
-}
-
-std::stack<int> HeaderParser::parseArrayDimensions() {
-    std::stack<int> arrayDimensions;
-    skipWhitespaceAndComments();
-    while (matchSymbol('[')) { // TODO
-        arrayDimensions.push(parseArrayLength());
-        skipWhitespaceAndComments();
-        if (!matchSymbol(']'))
-            throw Error::INVALID_ARRAY_SYNTAX;
-        skipWhitespaceAndComments();
-    }
-    return arrayDimensions;
 }
 
 std::string HeaderParser::readNamespacedIdentifier() {
@@ -744,9 +880,5 @@ HeaderParser::Error parseHeader(TypeSet &outputTypeSet, const std::string &heade
 }
 
 const Type *parseType(TypeSet &typeSet, const std::string &typeString) {
-    try {
-        return HeaderParser(&typeSet, typeString.c_str(), typeString.size()).parseType();
-    } catch (HeaderParser::Error::Type) {
-        return nullptr;
-    }
+    return HeaderParser(&typeSet, typeString.c_str(), typeString.size()).tryParseType();
 }
