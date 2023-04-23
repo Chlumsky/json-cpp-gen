@@ -30,6 +30,57 @@ StringType::StringType(std::string &&name, const StringAPI &api) : Type(TypeName
         this->api.appendStringLiteral = this->api.appendCStr;
 }
 
+std::string StringType::generateUnescapeBody(ParserGenerator *generator, const char *outputName, const std::string &indent) const {
+    std::string body;
+    body += indent+"++cur;\n";
+    body += indent+"switch (*cur++) {\n";
+    body += indent+INDENT "case '\\0':\n";
+    body += indent+INDENT INDENT "--cur;\n";
+    body += indent+INDENT INDENT+generator->generateErrorStatement(ParserGenerator::Error::UNEXPECTED_END_OF_FILE)+";\n";
+    body += indent+INDENT "case 'B': case 'b': "+generateAppendChar(outputName, "'\\b'")+"; break;\n";
+    body += indent+INDENT "case 'F': case 'f': "+generateAppendChar(outputName, "'\\f'")+"; break;\n";
+    body += indent+INDENT "case 'N': case 'n': "+generateAppendChar(outputName, "'\\n'")+"; break;\n";
+    body += indent+INDENT "case 'R': case 'r': "+generateAppendChar(outputName, "'\\r'")+"; break;\n";
+    body += indent+INDENT "case 'T': case 't': "+generateAppendChar(outputName, "'\\t'")+"; break;\n";
+    body += indent+INDENT "case 'U': case 'u': {\n";
+    body += indent+INDENT INDENT+"unsigned long cp;\n";
+    body += indent+INDENT INDENT+"int wc;\n";
+    if (generator->settings().noThrow) {
+        body += indent+INDENT INDENT+"if (!readHexQuad(wc))\n";
+        body += indent+INDENT INDENT INDENT+generator->generateErrorStatement(ParserGenerator::Error::JSON_SYNTAX_ERROR)+";\n";
+    } else
+        body += indent+INDENT INDENT+"readHexQuad(wc);\n";
+    body += indent+INDENT INDENT+"if ((wc&0xfc00) == 0xd800) {\n";
+    body += indent+INDENT INDENT INDENT+"if (!(cur[0] == '\\\\' && (cur[1] == 'u' || cur[1] == 'U')))\n";
+    body += indent+INDENT INDENT INDENT INDENT+generator->generateErrorStatement(ParserGenerator::Error::UTF16_ENCODING_ERROR)+";\n";
+    body += indent+INDENT INDENT INDENT+"cp = (unsigned long) ((wc&0x03ff)<<10);\n";
+    body += indent+INDENT INDENT INDENT+"cur += 2;\n";
+    if (generator->settings().noThrow) {
+        body += indent+INDENT INDENT INDENT+"if (!readHexQuad(wc))\n";
+        body += indent+INDENT INDENT INDENT INDENT+generator->generateErrorStatement(ParserGenerator::Error::JSON_SYNTAX_ERROR)+";\n";
+    } else
+        body += indent+INDENT INDENT INDENT+"readHexQuad(wc);\n";
+    body += indent+INDENT INDENT INDENT+"if ((wc&0xfc00) != 0xdc00)\n";
+    body += indent+INDENT INDENT INDENT INDENT+generator->generateErrorStatement(ParserGenerator::Error::UTF16_ENCODING_ERROR)+";\n";
+    body += indent+INDENT INDENT INDENT+"cp = 0x010000+(cp|(unsigned long) (wc&0x03ff));\n";
+    body += indent+INDENT INDENT+"} else\n";
+    body += indent+INDENT INDENT INDENT+"cp = (unsigned long) wc;\n";
+    body += indent+INDENT INDENT+"if (cp&0xffffff80) {\n";
+    body += indent+INDENT INDENT INDENT+"int len;\n";
+    body += indent+INDENT INDENT INDENT+"for (len = 1; cp>>(5*len+1) && len < 6; ++len);\n";
+    body += indent+INDENT INDENT INDENT+generateAppendChar(outputName, "(char) (0xff<<(8-len)|cp>>6*(len-1))")+";\n";
+    body += indent+INDENT INDENT INDENT+"for (int i = 1; i < len; ++i)\n";
+    body += indent+INDENT INDENT INDENT INDENT+generateAppendChar(outputName, "(char) (0x80|(cp>>6*(len-i-1)&0x3f))")+";\n";
+    body += indent+INDENT INDENT+"} else\n";
+    body += indent+INDENT INDENT INDENT+generateAppendChar(outputName, "(char) cp")+";\n";
+    body += indent+INDENT INDENT+"break;\n";
+    body += indent+INDENT "}\n";
+    body += indent+INDENT "default:\n";
+    body += indent+INDENT INDENT+generateAppendChar(outputName, "cur[-1]")+";\n";
+    body += indent+"}\n";
+    return body;
+}
+
 std::string StringType::generateParserFunctionBody(ParserGenerator *generator, const std::string &indent) const {
     std::string body;
     body += indent+"if (!matchSymbol('\"'))\n";
@@ -37,13 +88,7 @@ std::string StringType::generateParserFunctionBody(ParserGenerator *generator, c
     body += indent+generateClear("value")+";\n";
     body += indent+"while (*cur != '\"') {\n";
     body += indent+INDENT "if (*cur == '\\\\') {\n";
-    body += indent+INDENT INDENT "char utfBuffer[8];\n";
-    if (generator->settings().noThrow) {
-        body += indent+INDENT INDENT "if (Error error = unescape(utfBuffer))\n";
-        body += indent+INDENT INDENT INDENT "return error;\n";
-    } else
-        body += indent+INDENT INDENT "unescape(utfBuffer);\n";
-    body += indent+INDENT INDENT+generateAppendCStr("value", "utfBuffer")+";\n";
+    body += generateUnescapeBody(generator, "value", indent+INDENT INDENT);
     body += indent+INDENT INDENT "continue;\n";
     body += indent+INDENT "}\n";
     body += indent+INDENT "if (!*cur)\n";

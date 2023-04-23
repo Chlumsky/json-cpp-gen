@@ -75,50 +75,6 @@ bool $::readHexQuad(int &value) {
         (cur += 4, true)
     );
 }
-
-$::Error::Type $::unescape(char *codepoints) {
-    switch (++cur, *cur++) {
-        case '\0':
-            --cur;
-            return Error::UNEXPECTED_END_OF_FILE;
-        case 'B': case 'b': codepoints[0] = '\b'; break;
-        case 'F': case 'f': codepoints[0] = '\f'; break;
-        case 'N': case 'n': codepoints[0] = '\n'; break;
-        case 'R': case 'r': codepoints[0] = '\r'; break;
-        case 'T': case 't': codepoints[0] = '\t'; break;
-        case 'U': case 'u': {
-            unsigned long cp;
-            int wc;
-            if (!readHexQuad(wc))
-                return Error::JSON_SYNTAX_ERROR;
-            if ((wc&0xfc00) == 0xd800) {
-                if (!(cur[0] == '\\' && (cur[1] == 'u' || cur[1] == 'U')))
-                    return Error::UTF16_ENCODING_ERROR;
-                cp = (unsigned long) ((wc&0x03ff)<<10);
-                cur += 2;
-                if (!readHexQuad(wc))
-                    return Error::JSON_SYNTAX_ERROR;
-                if ((wc&0xfc00) != 0xdc00)
-                    return Error::UTF16_ENCODING_ERROR;
-                cp = 0x010000+(cp|(unsigned long) (wc&0x03ff));
-            } else
-                cp = (unsigned long) wc;
-            if (cp&0xffffff80) {
-                int len;
-                for (len = 1; cp>>(5*len+1) && len < 6; ++len);
-                codepoints[0] = (char) (0xff<<(8-len)|cp>>6*(len-1));
-                for (int i = 1; i < len; ++i)
-                    *++codepoints = (char) (0x80|(cp>>6*(len-i-1)&0x3f));
-            } else
-                codepoints[0] = (char) cp;
-            break;
-        }
-        default:
-            codepoints[0] = cur[-1];
-    }
-    codepoints[1] = '\0';
-    return Error::OK;
-}
 )";
 
 static constexpr const char *const COMMON_FUNCTION_IMPL_THROW =
@@ -188,47 +144,6 @@ void $::readHexQuad(int &value) {
     ))
         throw Error::JSON_SYNTAX_ERROR;
     cur += 4;
-}
-
-void $::unescape(char *codepoints) {
-    switch (++cur, *cur++) {
-        case '\0':
-            --cur;
-            throw Error::UNEXPECTED_END_OF_FILE;
-        case 'B': case 'b': codepoints[0] = '\b'; break;
-        case 'F': case 'f': codepoints[0] = '\f'; break;
-        case 'N': case 'n': codepoints[0] = '\n'; break;
-        case 'R': case 'r': codepoints[0] = '\r'; break;
-        case 'T': case 't': codepoints[0] = '\t'; break;
-        case 'U': case 'u': {
-            unsigned long cp;
-            int wc;
-            readHexQuad(wc);
-            if ((wc&0xfc00) == 0xd800) {
-                if (!(cur[0] == '\\' && (cur[1] == 'u' || cur[1] == 'U')))
-                    throw Error::UTF16_ENCODING_ERROR;
-                cp = (unsigned long) ((wc&0x03ff)<<10);
-                cur += 2;
-                readHexQuad(wc);
-                if ((wc&0xfc00) != 0xdc00)
-                    throw Error::UTF16_ENCODING_ERROR;
-                cp = 0x010000+(cp|(unsigned long) (wc&0x03ff));
-            } else
-                cp = (unsigned long) wc;
-            if (cp&0xffffff80) {
-                int len;
-                for (len = 1; cp>>(5*len+1) && len < 6; ++len);
-                codepoints[0] = (char) (0xff<<(8-len)|cp>>6*(len-1));
-                for (int i = 1; i < len; ++i)
-                    *++codepoints = (char) (0x80|(cp>>6*(len-i-1)&0x3f));
-            } else
-                codepoints[0] = (char) cp;
-            break;
-        }
-        default:
-            codepoints[0] = cur[-1];
-    }
-    codepoints[1] = '\0';
 }
 )";
 

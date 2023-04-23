@@ -26,4 +26,6 @@ public:
 private:
     StringAPI api;
 
+    std::string generateUnescapeBody(ParserGenerator *generator, const char *outputName, const std::string &indent) const;
+
 };
