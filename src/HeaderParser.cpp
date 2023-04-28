@@ -101,6 +101,19 @@ void HeaderParser::parseNamespace() {
     curNamespace.pop_back();
 }
 
+static TypeAlias *createTypeAlias(TypeSet &typeSet, const std::string &fullAliasName) {
+    TypeAlias *typeAlias = nullptr;
+    if (Type *type = typeSet.find(fullAliasName)) {
+        if (!(typeAlias = type->typeAlias()))
+            throw HeaderParser::Error::TYPE_REDEFINITION;
+    } else {
+        std::unique_ptr<TypeAlias> newType(new TypeAlias(Generator::safeName(fullAliasName)));
+        typeAlias = newType.get();
+        typeSet.add(fullAliasName, std::move(newType));
+    }
+    return typeAlias;
+}
+
 void HeaderParser::parseUsing() {
     skipWhitespaceAndComments();
     if (matchKeyword("namespace")) {
@@ -111,34 +124,36 @@ void HeaderParser::parseUsing() {
     if (aliasName.empty())
         return skipSection();
     skipWhitespaceAndComments();
-    if (!matchSymbol('=')) {
-        // TODO using ns::type;
-        return skipSection();
+    if (matchSymbol(';')) {
+        // using ns::type;
+        size_t lastSepPos = aliasName.rfind("::");
+        if (lastSepPos != std::string::npos && lastSepPos > 0) {
+            if (const Type *aliasedType = findType(aliasName)) {
+                TypeAlias *typeAlias = createTypeAlias(*typeSet, fullTypeName(aliasName.substr(lastSepPos+2)));
+                if (!typeAlias->finalize(aliasedType))
+                    throw Error::CYCLIC_TYPE_ALIAS;
+            }
+        }
+        return;
     }
-    TypeAlias *typeAlias = nullptr;
-    std::string fullAliasName = fullTypeName(aliasName);
-    if (Type *type = typeSet->find(fullAliasName)) {
-        if (!(typeAlias = type->typeAlias()))
-            throw Error::TYPE_REDEFINITION;
-    } else {
-        std::unique_ptr<TypeAlias> newType(new TypeAlias(Generator::safeName(fullAliasName)));
-        typeAlias = newType.get();
-        typeSet->add(fullAliasName, std::move(newType));
-    }
-    skipWhitespaceAndComments();
-    const Type *aliasedType = nullptr;
-    if (matchKeyword("struct"))
-        aliasedType = parseStruct();
-    else if (matchKeyword("enum"))
-        aliasedType = parseEnum();
-    else if (!parseNamesOnly)
-        aliasedType = tryParseType();
-    if (aliasedType && (aliasedType = tryParseArrayTypeSuffix(aliasedType))) {
+    if (matchSymbol('=')) {
+        // using x = y;
+        TypeAlias *typeAlias = createTypeAlias(*typeSet, fullTypeName(aliasName));
         skipWhitespaceAndComments();
-        if (matchSymbol(';')) {
-            if (!typeAlias->finalize(aliasedType))
-                throw Error::CYCLIC_TYPE_ALIAS;
-            return;
+        const Type *aliasedType = nullptr;
+        if (matchKeyword("struct"))
+            aliasedType = parseStruct();
+        else if (matchKeyword("enum"))
+            aliasedType = parseEnum();
+        else if (!parseNamesOnly)
+            aliasedType = tryParseType();
+        if (aliasedType && (aliasedType = tryParseArrayTypeSuffix(aliasedType))) {
+            skipWhitespaceAndComments();
+            if (matchSymbol(';')) {
+                if (!typeAlias->finalize(aliasedType))
+                    throw Error::CYCLIC_TYPE_ALIAS;
+                return;
+            }
         }
     }
     skipSection();
