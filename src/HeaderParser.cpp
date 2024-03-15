@@ -29,7 +29,35 @@ const char *HeaderParser::Error::typeString() const {
     return "";
 }
 
-HeaderParser::HeaderParser(TypeSet *outputTypeSet, const char *headerStart, size_t headerLength, bool parseNamesOnly) : typeSet(outputTypeSet), cur(headerStart), end(headerStart+headerLength), parseNamesOnly(parseNamesOnly) { }
+HeaderParser::NamespaceBlockGuard::NamespaceBlockGuard(HeaderParser &parent, const std::string &namespacedName) : parent(parent), outerNamespaceLength(parent.curNamespace.size()), outerActualNamespaceDepth(parent.actualNamespaceDepth), outerUsingNamespacesCount(parent.usingNamespaces.size()) {
+    if (namespacedName.empty())
+        return;
+    size_t pos = 0;
+    if (namespacedName[0] == ':') {
+        // Stash curNamespace if entering root namespace
+        std::swap(outerNamespace, parent.curNamespace);
+        pos += 2;
+    }
+    // Split namespacedName into namespaces and name
+    while (pos < namespacedName.size()) {
+        size_t start = pos;
+        while (pos < namespacedName.size() && namespacedName[pos] != ':')
+            ++pos;
+        parent.curNamespace.push_back(namespacedName.substr(start, pos-start));
+        pos += 2;
+    }
+}
+
+HeaderParser::NamespaceBlockGuard::~NamespaceBlockGuard() {
+    if (outerNamespace.empty())
+        parent.curNamespace.resize(outerNamespaceLength);
+    else
+        parent.curNamespace = std::move(outerNamespace);
+    parent.actualNamespaceDepth = outerActualNamespaceDepth;
+    parent.usingNamespaces.resize(outerUsingNamespacesCount);
+}
+
+HeaderParser::HeaderParser(TypeSet *outputTypeSet, const char *headerStart, size_t headerLength, bool parseNamesOnly) : typeSet(outputTypeSet), cur(headerStart), end(headerStart+headerLength), actualNamespaceDepth(0), parseNamesOnly(parseNamesOnly) { }
 
 const char *HeaderParser::currentChar() const {
     return cur;
@@ -84,21 +112,19 @@ void HeaderParser::parseSection() {
 
 void HeaderParser::parseNamespace() {
     skipWhitespaceAndComments();
-    std::string namespaceName = readIdentifier();
-    if (namespaceName.empty())
-        throw Error::INVALID_NAMESPACE_SYNTAX;
+    std::string namespaceName = readNamespacedIdentifier();
     skipWhitespaceAndComments();
     if (matchSymbol(';'))
         return;
     if (!matchSymbol('{'))
         throw Error::INVALID_NAMESPACE_SYNTAX;
-    curNamespace.push_back(namespaceName);
+    NamespaceBlockGuard namespaceBlockGuard(*this, namespaceName);
+    actualNamespaceDepth = curNamespace.size();
     for (skipWhitespaceAndComments(); !matchSymbol('}'); skipWhitespaceAndComments()) {
         if (cur >= end)
             throw Error::UNEXPECTED_EOF;
         parseSection();
     }
-    curNamespace.pop_back();
 }
 
 static TypeAlias *createTypeAlias(TypeSet &typeSet, const std::string &fullAliasName) {
@@ -117,7 +143,21 @@ static TypeAlias *createTypeAlias(TypeSet &typeSet, const std::string &fullAlias
 void HeaderParser::parseUsing() {
     skipWhitespaceAndComments();
     if (matchKeyword("namespace")) {
-        // TODO using namespace
+        skipWhitespaceAndComments();
+        std::string namespaceName = readNamespacedIdentifier();
+        if (!namespaceName.empty()) {
+            if (namespaceName.size() > 2 && namespaceName[0] == ':' && namespaceName[1] == ':')
+                usingNamespaces.push_back(namespaceName.substr(2));
+            else {
+                for (int i = (int) actualNamespaceDepth; i >= 0; --i) {
+                    std::string fullNamespaceName;
+                    for (int j = 0; j < i; ++j)
+                        fullNamespaceName += curNamespace[j]+"::";
+                    fullNamespaceName += namespaceName;
+                    usingNamespaces.push_back(std::move(fullNamespaceName));
+                }
+            }
+        }
         return skipSection();
     }
     std::string aliasName = readNamespacedIdentifier();
@@ -281,8 +321,7 @@ Type *HeaderParser::parseStruct() {
 
     if (!matchSymbol('{'))
         throw Error::INVALID_STRUCTURE_SYNTAX;
-    if (!structName.empty())
-        curNamespace.push_back(structName);
+    NamespaceBlockGuard namespaceBlockGuard(*this, structName);
     for (skipWhitespaceAndComments(); !matchSymbol('}'); skipWhitespaceAndComments()) {
         if (cur >= end)
             throw Error::UNEXPECTED_EOF;
@@ -369,8 +408,6 @@ Type *HeaderParser::parseStruct() {
         }
         skipSection();
     }
-    if (!structName.empty())
-        curNamespace.pop_back();
     if (!parseNamesOnly)
         structType->completeMembers();
     return structType;

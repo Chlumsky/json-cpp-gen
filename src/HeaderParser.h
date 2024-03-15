@@ -46,12 +46,24 @@ private:
     TypeSet *typeSet;
     const char *cur, *end;
     std::vector<std::string> curNamespace;
+    size_t actualNamespaceDepth; // curNamespace includes nested structure names, this variable only counts actual namespaces
     std::vector<std::string> usingNamespaces;
     bool parseNamesOnly; // prepass in case input files are in the wrong order
 
     enum BraceTypes {
         ANY_BRACES_EXCEPT_ANGLED,
         ANY_BRACES_INCLUDING_ANGLED
+    };
+
+    class NamespaceBlockGuard {
+        HeaderParser &parent;
+        size_t outerNamespaceLength;
+        size_t outerActualNamespaceDepth;
+        size_t outerUsingNamespacesCount;
+        std::vector<std::string> outerNamespace;
+    public:
+        NamespaceBlockGuard(HeaderParser &parent, const std::string &namespacedName);
+        ~NamespaceBlockGuard();
     };
 
     Type *findType(const std::string &name);
