@@ -185,6 +185,8 @@ void HeaderParser::parseUsing() {
             aliasedType = parseStruct();
         else if (matchKeyword("enum"))
             aliasedType = parseEnum();
+        else if (matchKeyword("const") || matchKeyword("volatile"))
+            return skipSection();
         else if (!parseNamesOnly)
             aliasedType = tryParseType();
         if (aliasedType && (aliasedType = tryParseArrayTypeSuffix(aliasedType))) {
@@ -207,6 +209,8 @@ void HeaderParser::parseTypedef() {
         baseAliasedType = unnamedType = parseStruct();
     else if (matchKeyword("enum"))
         baseAliasedType = unnamedType = parseEnum();
+    else if (matchKeyword("const") || matchKeyword("volatile"))
+        return skipSection();
     else {
         const char *orig = cur;
         try {
@@ -216,6 +220,9 @@ void HeaderParser::parseTypedef() {
             return skipSection();
         }
     }
+    skipWhitespaceAndComments();
+    if (matchKeyword("const") || matchKeyword("volatile"))
+        return skipSection();
     do {
         skipWhitespaceAndComments();
         if (matchSymbol('*') || matchSymbol('&')) {
@@ -247,8 +254,8 @@ void HeaderParser::parseTypedef() {
                         throw Error::CYCLIC_TYPE_ALIAS;
                 }
             }
-            skipWhitespaceAndComments();
         }
+        skipWhitespaceAndComments();
     } while (matchSymbol(','));
     if (!matchSymbol(';'))
         skipSection();
@@ -333,9 +340,10 @@ Type *HeaderParser::parseStruct() {
         }
         if (
             matchKeyword("void") || matchKeyword("union") || matchKeyword("class") ||
-            matchKeyword("const") || matchKeyword("constexpr") || 
-            matchKeyword("virtual") || matchKeyword("inline") || matchKeyword("extern") || matchKeyword("explicit") ||
-            matchKeyword("operator") || matchKeyword("template") || matchKeyword("friend")
+            matchKeyword("const") || matchKeyword("volatile") || matchKeyword("extern") ||
+            matchKeyword("explicit") || matchKeyword("inline") || matchKeyword("constexpr") ||
+            matchKeyword("virtual") || matchKeyword("friend") ||
+            matchKeyword("template") || matchKeyword("operator")
         ) {
             skipSection();
             continue;
@@ -382,7 +390,8 @@ Type *HeaderParser::parseStruct() {
 
         if (!nestedType)
             memberBaseType = tryParseType();
-        if (memberBaseType) {
+        skipWhitespaceAndComments();
+        if (memberBaseType && !(matchKeyword("const") || matchKeyword("volatile") || matchKeyword("operator"))) {
             do {
                 skipWhitespaceAndComments();
                 if (matchSymbol('*') || matchSymbol('&')) {
@@ -390,7 +399,7 @@ Type *HeaderParser::parseStruct() {
                     continue;
                 }
                 std::string memberName = readIdentifier();
-                if (!memberName.empty() && memberName != "operator") {
+                if (!memberName.empty()) {
                     const Type *memberType = tryParseArrayTypeSuffix(memberBaseType);
                     skipWhitespaceAndComments();
                     if (matchSymbol('=')) {
