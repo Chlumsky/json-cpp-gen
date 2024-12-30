@@ -79,13 +79,9 @@ static std::string normalizePath(const std::string &path) {
 
 static int commonPathPrefix(const std::string &a, const std::string &b) {
     int commonLen = 0, i = 0;
-    for (const char *ac = a.c_str(), *bc = b.c_str(); *ac && *bc; ++ac, ++bc, ++i) {
-        if (IS_PATH_SEPARATOR(*ac) || IS_PATH_SEPARATOR(*bc)) {
-            if (IS_PATH_SEPARATOR(*ac) && IS_PATH_SEPARATOR(*bc))
-                commonLen = i+1;
-            else
-                break;
-        }
+    for (const char *ac = a.c_str(), *bc = b.c_str(); *ac && (*ac == *bc || (IS_PATH_SEPARATOR(*ac) && IS_PATH_SEPARATOR(*bc))); ++ac, ++bc, ++i) {
+        if (IS_PATH_SEPARATOR(*ac))
+            commonLen = i+1;
     }
     return commonLen;
 }
