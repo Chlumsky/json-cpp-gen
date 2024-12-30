@@ -104,7 +104,9 @@ void HeaderParser::parseSection() {
     if (matchKeyword("typedef"))
         return parseTypedef();
     if (matchKeyword("struct"))
-        parseStruct();
+        parseStruct(false);
+    else if (matchKeyword("class"))
+        parseStruct(true);
     else if (matchKeyword("enum"))
         parseEnum();
     skipSection();
@@ -182,8 +184,11 @@ void HeaderParser::parseUsing() {
         skipWhitespaceAndComments();
         const Type *aliasedType = nullptr;
         if (matchKeyword("struct"))
-            aliasedType = parseStruct();
-        else if (matchKeyword("enum"))
+            aliasedType = parseStruct(false);
+        else if (matchKeyword("class")) {
+            parseStruct(true);
+            return skipSection();
+        } else if (matchKeyword("enum"))
             aliasedType = parseEnum();
         else if (matchKeyword("const") || matchKeyword("volatile"))
             return skipSection();
@@ -206,8 +211,11 @@ void HeaderParser::parseTypedef() {
     const Type *baseAliasedType = nullptr;
     Type *unnamedType = nullptr;
     if (matchKeyword("struct"))
-        baseAliasedType = unnamedType = parseStruct();
-    else if (matchKeyword("enum"))
+        baseAliasedType = unnamedType = parseStruct(false);
+    else if (matchKeyword("class")) {
+        parseStruct(true);
+        return skipSection();
+    } else if (matchKeyword("enum"))
         baseAliasedType = unnamedType = parseEnum();
     else if (matchKeyword("const") || matchKeyword("volatile"))
         return skipSection();
@@ -261,7 +269,7 @@ void HeaderParser::parseTypedef() {
         skipSection();
 }
 
-Type *HeaderParser::parseStruct() {
+Type *HeaderParser::parseStruct(bool isClass) {
     skipWhitespaceAndComments();
     std::string structName = readNamespacedIdentifier();
     skipWhitespaceAndComments();
@@ -277,39 +285,43 @@ Type *HeaderParser::parseStruct() {
 
     StructureType *structType = nullptr;
     bool forwardDeclaration = cur < end && *cur == ';';
-    if (!structName.empty()) {
-        std::string fullStructName = fullTypeName(structName);
-        if (Type *type = typeSet->find(fullStructName)) {
-            if (!(structType = type->incompleteStructureType()))
-                throw Error::TYPE_REDEFINITION;
-            if (forwardDeclaration)
-                return type;
-        } else {
-            std::unique_ptr<StructureType> newType(new StructureType(Generator::safeName(fullStructName)));
-            structType = newType.get();
-            typeSet->add(fullStructName, std::move(newType));
+    if (!isClass) {
+        if (!structName.empty()) {
+            std::string fullStructName = fullTypeName(structName);
+            if (Type *type = typeSet->find(fullStructName)) {
+                if (!(structType = type->incompleteStructureType()))
+                    throw Error::TYPE_REDEFINITION;
+                if (forwardDeclaration)
+                    return type;
+            } else {
+                std::unique_ptr<StructureType> newType(new StructureType(Generator::safeName(fullStructName)));
+                structType = newType.get();
+                typeSet->add(fullStructName, std::move(newType));
+            }
         }
-    }
-    if (forwardDeclaration)
-        return structType;
-    if (structName.empty() && !parseNamesOnly)
-        structType = typeSet->newUnnamedStruct();
+        if (forwardDeclaration)
+            return structType;
+        if (structName.empty() && !parseNamesOnly)
+            structType = typeSet->newUnnamedStruct();
+    } else if (forwardDeclaration)
+        return nullptr;
 
     if (matchSymbol(':')) {
         skipWhitespaceAndComments();
         do {
-            bool nonPublic = false;
+            bool nonPublic = isClass;
             if (matchKeyword("virtual"))
                 skipWhitespaceAndComments();
-            if (matchKeyword("public"))
+            if (matchKeyword("public")) {
+                nonPublic = false;
                 skipWhitespaceAndComments();
-            else if (matchKeyword("private") || matchKeyword("protected")) {
+            } else if (matchKeyword("private") || matchKeyword("protected")) {
                 nonPublic = true;
                 skipWhitespaceAndComments();
             }
             matchKeyword("virtual");
             if (const Type *baseType = tryParseType()) {
-                if (!nonPublic && !parseNamesOnly)
+                if (!nonPublic && !parseNamesOnly && !isClass)
                     structType->inheritFrom(baseType);
             } else {
                 // Skip unrecognized type name - modified skipExpression()
@@ -339,7 +351,7 @@ Type *HeaderParser::parseStruct() {
             continue;
         }
         if (
-            matchKeyword("void") || matchKeyword("union") || matchKeyword("class") ||
+            matchKeyword("void") || matchKeyword("union") ||
             matchKeyword("const") || matchKeyword("volatile") || matchKeyword("extern") ||
             matchKeyword("explicit") || matchKeyword("inline") || matchKeyword("constexpr") ||
             matchKeyword("virtual") || matchKeyword("friend") ||
@@ -365,16 +377,20 @@ Type *HeaderParser::parseStruct() {
             parseTypedef();
             continue;
         } else if (matchKeyword("struct")) {
-            memberBaseType = parseStruct();
+            memberBaseType = parseStruct(false);
             skipWhitespaceAndComments();
             if (matchSymbol(';')) {
-                if (!parseNamesOnly && !staticMember && memberBaseType && memberBaseType->name().substance() == TypeName::VIRTUAL) {
+                if (!parseNamesOnly && !isClass && !staticMember && memberBaseType && memberBaseType->name().substance() == TypeName::VIRTUAL) {
                     // Special case - non-variable anonymous structure is considered part of parent structure
                     if (!structType->absorb(memberBaseType->structureType()))
                         throw Error::DUPLICATE_STRUCT_MEMBER;
                 }
                 continue;
             }
+        } else if (matchKeyword("class")) {
+            parseStruct(true);
+            skipSection();
+            continue;
         } else if (matchKeyword("enum")) {
             memberBaseType = parseEnum();
             skipWhitespaceAndComments();
@@ -383,7 +399,7 @@ Type *HeaderParser::parseStruct() {
         } else
             nestedType = false;
 
-        if (parseNamesOnly || staticMember) {
+        if (parseNamesOnly || isClass || staticMember) {
             skipSection();
             continue;
         }
@@ -417,7 +433,7 @@ Type *HeaderParser::parseStruct() {
         }
         skipSection();
     }
-    if (!parseNamesOnly)
+    if (!parseNamesOnly && !isClass)
         structType->completeMembers();
     return structType;
 }

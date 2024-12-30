@@ -75,7 +75,7 @@ private:
     void parseNamespace();
     void parseUsing();
     void parseTypedef();
-    Type *parseStruct();
+    Type *parseStruct(bool isClass);
     Type *parseEnum();
     const Type *parseType();
     const Type *tryParseArrayTypeSuffix(const Type *elemType);
