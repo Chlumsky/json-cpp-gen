@@ -6,11 +6,12 @@
 #include <map>
 #include <memory>
 #include "Type.h"
+#include "Symbol.h"
+#include "Namespace.h"
 #include "types/BasicType.h"
 #include "types/ContainerType.h"
 #include "types/StructureType.h"
 #include "types/EnumType.h"
-#include "types/TypeAlias.h"
 #include "ContainerTemplate.h"
 #include "TemplateInstanceCache.h"
 
@@ -20,13 +21,12 @@ class TypeSet {
 
 public:
     TypeSet();
-    Type *find(const std::string &name);
+    Namespace &root();
     const Type *find(const std::string &name) const;
-    void add(std::unique_ptr<Type> &&type);
-    void add(const std::string &name, std::unique_ptr<Type> &&type);
     bool addAlias(const std::string &aliasName, const std::string &actualName);
-    StructureType *newUnnamedStruct();
-    EnumType *newUnnamedEnum(bool enumClass, const std::string &enumNamespace);
+    SymbolPtr newUnnamedStruct();
+    SymbolPtr newUnnamedEnum(bool enumClass, const std::string &enumNamespace);
+    SymbolPtr getStaticArray(const Type *elementType, int arrayLength);
 
     template <typename... T>
     ContainerTemplate<T...> *findContainerTemplate(const std::string &name);
@@ -35,7 +35,7 @@ public:
     template <typename... T>
     void addContainerTemplate(std::unique_ptr<ContainerTemplate<T...> > &&containerTemplate);
     template <typename... T>
-    const ContainerType<T...> *getContainerType(const ContainerTemplate<T...> *containerTemplate, const Type *elementType, T... templateArgs);
+    SymbolPtr getContainerType(const ContainerTemplate<T...> *containerTemplate, const Type *elementType, T... templateArgs);
 
     // Returns null on success, otherwise the type that failed
     const Type *compile();
@@ -44,17 +44,17 @@ private:
     template <typename... T>
     using ContainerTemplateMap = std::map<std::string, std::unique_ptr<ContainerTemplate<T...> > >;
 
-    std::map<std::string, std::unique_ptr<Type> > types;
-    std::vector<std::unique_ptr<Type> > unnamedTypes;
+    std::unique_ptr<Namespace> rootNamespace;
+    std::vector<SymbolPtr> unnamedTypes;
+    std::map<std::pair<const Type *, int>, SymbolPtr> staticArrayTypeCache;
     TemplateInstanceCache templateInstanceCache;
     ContainerTemplateMap<> containerTemplates;
     ContainerTemplateMap<int> staticArrayContainerTemplates;
     ContainerTemplateMap<const Type *> objectMapContainerTemplates;
     std::map<std::string, std::string> aliases;
 
-    std::vector<std::pair<TypeAlias *, std::string> > aliasTypes;
-
     void addBasicType(const char *name, BasicType::Type type);
+    void addStdBasicType(const char *name, BasicType::Type type);
     const std::string &resolveAlias(const std::string &alias) const;
     template <typename... T>
     ContainerTemplateMap<T...> &containerTemplateMap();
@@ -91,7 +91,7 @@ void TypeSet::addContainerTemplate(std::unique_ptr<ContainerTemplate<T...> > &&c
 }
 
 template <typename... T>
-const ContainerType<T...> *TypeSet::getContainerType(const ContainerTemplate<T...> *containerTemplate, const Type *elementType, T... templateArgs) {
+SymbolPtr TypeSet::getContainerType(const ContainerTemplate<T...> *containerTemplate, const Type *elementType, T... templateArgs) {
     if (containerTemplate)
         return templateInstanceCache.get(containerTemplate, elementType, templateArgs...);
     return nullptr;

@@ -2,14 +2,17 @@
 #include "TypeSet.h"
 
 #include <cctype>
+#include "types/TypeAlias.h"
 #include "types/StringType.h"
+#include "types/StaticArrayType.h"
 #include "container-templates/ArrayContainerTemplate.h"
 #include "container-templates/StaticArrayContainerTemplate.h"
 #include "container-templates/ObjectMapContainerTemplate.h"
 #include "container-templates/OptionalContainerTemplate.h"
 #include "HeaderParser.h"
 
-TypeSet::TypeSet() {
+TypeSet::TypeSet() : rootNamespace(new Namespace(nullptr)) {
+    rootNamespace->establishSymbol("std", true);
     addBasicType("bool", BasicType::BOOL);
     addBasicType("char", BasicType::CHAR);
     addBasicType("signed char", BasicType::SIGNED_CHAR);
@@ -39,35 +42,23 @@ TypeSet::TypeSet() {
     addBasicType("float", BasicType::FLOAT);
     addBasicType("double", BasicType::DOUBLE);
     addBasicType("long double", BasicType::LONG_DOUBLE);
-    addBasicType("size_t", BasicType::SIZE_T);
-    addBasicType("std::size_t", BasicType::SIZE_T);
-    addBasicType("ptrdiff_t", BasicType::PTRDIFF_T);
-    addBasicType("std::ptrdiff_t", BasicType::PTRDIFF_T);
-    addBasicType("intptr_t", BasicType::INTPTR_T);
-    addBasicType("std::intptr_t", BasicType::INTPTR_T);
-    addBasicType("uintptr_t", BasicType::UINTPTR_T);
-    addBasicType("std::uintptr_t", BasicType::UINTPTR_T);
-    addBasicType("wchar_t", BasicType::WCHAR_T);
-    addBasicType("char8_t", BasicType::CHAR8_T);
-    addBasicType("char16_t", BasicType::CHAR16_T);
-    addBasicType("char32_t", BasicType::CHAR32_T);
-    addBasicType("int8_t", BasicType::INT8_T);
-    addBasicType("std::int8_t", BasicType::INT8_T);
-    addBasicType("uint8_t", BasicType::UINT8_T);
-    addBasicType("std::uint8_t", BasicType::UINT8_T);
-    addBasicType("int16_t", BasicType::INT16_T);
-    addBasicType("std::int16_t", BasicType::INT16_T);
-    addBasicType("uint16_t", BasicType::UINT16_T);
-    addBasicType("std::uint16_t", BasicType::UINT16_T);
-    addBasicType("int32_t", BasicType::INT32_T);
-    addBasicType("std::int32_t", BasicType::INT32_T);
-    addBasicType("uint32_t", BasicType::UINT32_T);
-    addBasicType("std::uint32_t", BasicType::UINT32_T);
-    addBasicType("int64_t", BasicType::INT64_T);
-    addBasicType("std::int64_t", BasicType::INT64_T);
-    addBasicType("uint64_t", BasicType::UINT64_T);
-    addBasicType("std::uint64_t", BasicType::UINT64_T);
-    add(std::unique_ptr<Type>(new StringType(StringType::STD_STRING)));
+    addStdBasicType("size_t", BasicType::SIZE_T);
+    addStdBasicType("ptrdiff_t", BasicType::PTRDIFF_T);
+    addStdBasicType("intptr_t", BasicType::INTPTR_T);
+    addStdBasicType("uintptr_t", BasicType::UINTPTR_T);
+    addStdBasicType("wchar_t", BasicType::WCHAR_T);
+    addStdBasicType("char8_t", BasicType::CHAR8_T);
+    addStdBasicType("char16_t", BasicType::CHAR16_T);
+    addStdBasicType("char32_t", BasicType::CHAR32_T);
+    addStdBasicType("int8_t", BasicType::INT8_T);
+    addStdBasicType("uint8_t", BasicType::UINT8_T);
+    addStdBasicType("int16_t", BasicType::INT16_T);
+    addStdBasicType("uint16_t", BasicType::UINT16_T);
+    addStdBasicType("int32_t", BasicType::INT32_T);
+    addStdBasicType("uint32_t", BasicType::UINT32_T);
+    addStdBasicType("int64_t", BasicType::INT64_T);
+    addStdBasicType("uint64_t", BasicType::UINT64_T);
+    rootNamespace->establishSymbol(StringType::STD_STRING.name().body(), false)->type = std::unique_ptr<Type>(new StringType(StringType::STD_STRING));
     addContainerTemplate(std::unique_ptr<ContainerTemplate<> >(new ArrayContainerTemplate(ArrayContainerTemplate::STD_VECTOR)));
     addContainerTemplate(std::unique_ptr<ContainerTemplate<> >(new ArrayContainerTemplate(ArrayContainerTemplate::STD_DEQUE)));
     addContainerTemplate(std::unique_ptr<ContainerTemplate<> >(new ArrayContainerTemplate(ArrayContainerTemplate::STD_LIST)));
@@ -80,7 +71,12 @@ TypeSet::TypeSet() {
 }
 
 void TypeSet::addBasicType(const char *name, BasicType::Type type) {
-    types.insert(std::make_pair(std::string(name), std::unique_ptr<Type>(new BasicType(type))));
+    rootNamespace->establishSymbol(name, false)->type = std::unique_ptr<Type>(new BasicType(type));
+}
+
+void TypeSet::addStdBasicType(const char *name, BasicType::Type type) {
+    addBasicType(name, type);
+    rootNamespace->findSymbol("std", false)->ns->establishSymbol(name, false)->type = std::unique_ptr<Type>(new BasicType(type));
 }
 
 const std::string &TypeSet::resolveAlias(const std::string &alias) const {
@@ -94,26 +90,12 @@ const std::string &TypeSet::resolveAlias(const std::string &alias) const {
     return alias;
 }
 
-Type *TypeSet::find(const std::string &name) {
-    std::map<std::string, std::unique_ptr<Type> >::iterator it = types.find(resolveAlias(name));
-    if (it != types.end())
-        return it->second.get();
-    return nullptr;
+Namespace &TypeSet::root() {
+    return *rootNamespace;
 }
 
 const Type *TypeSet::find(const std::string &name) const {
-    std::map<std::string, std::unique_ptr<Type> >::const_iterator it = types.find(resolveAlias(name));
-    if (it != types.end())
-        return it->second.get();
-    return nullptr;
-}
-
-void TypeSet::add(std::unique_ptr<Type> &&type) {
-    add(normalizeAbsoluteTypeName(type->name().fullName()), std::move(type));
-}
-
-void TypeSet::add(const std::string &name, std::unique_ptr<Type> &&type) {
-    types[name] = std::move(type);
+    return symbolType(rootNamespace->findSymbol(name, false));
 }
 
 bool TypeSet::addAlias(const std::string &aliasName, const std::string &actualName) {
@@ -122,10 +104,11 @@ bool TypeSet::addAlias(const std::string &aliasName, const std::string &actualNa
     for (char c : actualName) {
         if (!(isalnum(c) || c == '_' || c == ':')) {
             // Not a simple lexical alias - create new alias type
-            TypeAlias *aliasType = new TypeAlias(aliasName);
-            add(std::unique_ptr<Type>(aliasType));
-            aliasTypes.emplace_back(aliasType, actualName);
-            return true;
+            if (SymbolPtr symbol = rootNamespace->establishSymbol(aliasName, false)) {
+                symbol->type = std::unique_ptr<Type>(new TypeAlias(aliasName));
+                return true;
+            } else
+                return false;
         }
     }
     std::string &aliasValue = aliases[normalizeAbsoluteTypeName(aliasName)];
@@ -136,16 +119,27 @@ bool TypeSet::addAlias(const std::string &aliasName, const std::string &actualNa
     return true;
 }
 
-StructureType *TypeSet::newUnnamedStruct() {
-    StructureType *structType = new StructureType(UNNAMED_PREFIX+std::to_string(unnamedTypes.size()), TypeName::VIRTUAL);
-    unnamedTypes.push_back(std::unique_ptr<Type>(structType));
-    return structType;
+SymbolPtr TypeSet::newUnnamedStruct() {
+    SymbolPtr symbol(new Symbol);
+    symbol->type = std::unique_ptr<Type>(new StructureType(UNNAMED_PREFIX+std::to_string(unnamedTypes.size()), TypeName::VIRTUAL));
+    unnamedTypes.push_back(symbol);
+    return symbol;
 }
 
-EnumType *TypeSet::newUnnamedEnum(bool enumClass, const std::string &enumNamespace) {
-    EnumType *enumType = new EnumType(enumClass, enumNamespace, UNNAMED_PREFIX+std::to_string(unnamedTypes.size()), TypeName::VIRTUAL);
-    unnamedTypes.push_back(std::unique_ptr<Type>(enumType));
-    return enumType;
+SymbolPtr TypeSet::newUnnamedEnum(bool enumClass, const std::string &enumNamespace) {
+    SymbolPtr symbol(new Symbol);
+    symbol->type = std::unique_ptr<Type>(new EnumType(enumClass, enumNamespace, UNNAMED_PREFIX+std::to_string(unnamedTypes.size()), TypeName::VIRTUAL));
+    unnamedTypes.push_back(symbol);
+    return symbol;
+}
+
+SymbolPtr TypeSet::getStaticArray(const Type *elementType, int arrayLength) {
+    SymbolPtr &symbol = staticArrayTypeCache[std::make_pair(elementType, arrayLength)];
+    if (!symbol)
+        symbol = SymbolPtr(new Symbol);
+    if (!symbol->type)
+        symbol->type = std::unique_ptr<Type>(new StaticArrayType(elementType, arrayLength));
+    return symbol;
 }
 
 template <>
@@ -179,30 +173,20 @@ const TypeSet::ContainerTemplateMap<const Type *> &TypeSet::containerTemplateMap
 }
 
 const Type *TypeSet::compile() {
-    // Resolve type aliases
-    for (const std::pair<TypeAlias *, std::string> &aliasType : aliasTypes) {
-        if (const Type *type = parseType(*this, aliasType.second)) {
-            if (!aliasType.first->finalize(type))
-                return aliasType.first;
-        } // else bad alias
-    }
-    aliasTypes.clear();
     int resultFlags;
     do { // Repeat in case of back and forth dependencies
-        resultFlags = 0;
-        for (const std::map<std::string, std::unique_ptr<Type> >::value_type &type : types)
-            resultFlags |= type.second->compile(&templateInstanceCache);
-        for (const std::unique_ptr<Type> &type : unnamedTypes)
-            resultFlags |= type->compile(&templateInstanceCache);
+        resultFlags = rootNamespace->compileTypes(&templateInstanceCache);
+        for (const SymbolPtr &symbol : unnamedTypes)
+            resultFlags |= symbol->type->compile(&templateInstanceCache);
     } while (resultFlags&Type::CHANGE_FLAG);
     // Cyclic dependency detected
     if (resultFlags&Type::BASE_DEPENDENCY_FLAG) {
-        for (const std::map<std::string, std::unique_ptr<Type> >::value_type &type : types)
-            if (type.second->compile(&templateInstanceCache)&Type::BASE_DEPENDENCY_FLAG)
-                return type.second.get();
-        for (const std::unique_ptr<Type> &type : unnamedTypes)
-            if (type->compile(&templateInstanceCache)&Type::BASE_DEPENDENCY_FLAG)
-                return type.get();
+        const Type *dependentType = nullptr;
+        if (rootNamespace->compileTypes(&templateInstanceCache, Type::BASE_DEPENDENCY_FLAG, &dependentType)&Type::BASE_DEPENDENCY_FLAG)
+            return dependentType;
+        for (const SymbolPtr &symbol : unnamedTypes)
+            if (symbol->type->compile(&templateInstanceCache)&Type::BASE_DEPENDENCY_FLAG)
+                return symbol->type.get();
     }
     return nullptr;
 }

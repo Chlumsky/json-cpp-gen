@@ -3,6 +3,7 @@
 
 #include <string>
 #include <vector>
+#include "Namespace.h"
 #include "TypeSet.h"
 
 #define FOR_HEADER_PARSER_ERROR_TYPES(M) \
@@ -16,10 +17,14 @@
     M(INVALID_NAMESPACE_SYNTAX) \
     M(DUPLICATE_STRUCT_MEMBER) \
     M(CYCLIC_TYPE_ALIAS) \
+    M(UNEXPECTED_CODE_PATH) \
     M(NOT_IMPLEMENTED) \
+
+const Type *parseType(TypeSet &typeSet, const std::string &typeString);
 
 // Parses structures from a C++ header file.
 class HeaderParser {
+    friend const Type *parseType(TypeSet &typeSet, const std::string &typeString);
 
 public:
     struct Error {
@@ -40,13 +45,12 @@ public:
     HeaderParser(TypeSet *outputTypeSet, const char *headerStart, size_t headerLength, bool parseNamesOnly = false);
     const char *currentChar() const;
     void parse();
-    const Type *tryParseType();
 
 private:
     TypeSet *typeSet;
     const char *cur, *end;
-    std::vector<std::string> curNamespace;
-    size_t actualNamespaceDepth; // curNamespace includes nested structure names, this variable only counts actual namespaces
+    Namespace *curNamespace;
+    std::vector<std::string> namespaceNames;
     std::vector<std::string> usingNamespaces;
     bool parseNamesOnly; // prepass in case input files are in the wrong order
 
@@ -57,16 +61,15 @@ private:
 
     class NamespaceBlockGuard {
         HeaderParser &parent;
-        size_t outerNamespaceLength;
-        size_t outerActualNamespaceDepth;
+        Namespace *outerNamespace;
+        size_t outerNamespaceNamesLength;
         size_t outerUsingNamespacesCount;
-        std::vector<std::string> outerNamespace;
+        std::vector<std::string> outerNamespaceNames;
     public:
         NamespaceBlockGuard(HeaderParser &parent, const std::string &namespacedName);
         ~NamespaceBlockGuard();
     };
 
-    Type *findType(const std::string &name);
     template <typename... T>
     ContainerTemplate<T...> *findContainerTemplate(const std::string &name);
     std::string fullTypeName(const std::string &baseName) const;
@@ -75,10 +78,11 @@ private:
     void parseNamespace();
     void parseUsing();
     void parseTypedef();
-    Type *parseStruct(bool isClass);
-    Type *parseEnum();
-    const Type *parseType();
-    const Type *tryParseArrayTypeSuffix(const Type *elemType);
+    SymbolPtr parseStruct(bool isClass);
+    SymbolPtr parseEnum();
+    SymbolPtr parseType();
+    SymbolPtr tryParseType();
+    SymbolPtr tryParseArrayTypeSuffix(SymbolPtr symbol);
     int parseArrayLength();
     std::string readNamespacedIdentifier();
     std::string readIdentifier();
@@ -99,7 +103,7 @@ private:
 
 HeaderParser::Error preparseHeader(TypeSet &outputTypeSet, const std::string &headerString);
 HeaderParser::Error parseHeader(TypeSet &outputTypeSet, const std::string &headerString, bool parseNamesOnly = false);
-const Type *parseType(TypeSet &typeSet, const std::string &typeString);
+
 
 template <typename... T>
 ContainerTemplate<T...> *HeaderParser::findContainerTemplate(const std::string &name) {
@@ -107,10 +111,10 @@ ContainerTemplate<T...> *HeaderParser::findContainerTemplate(const std::string &
         return nullptr;
     if (name.size() >= 2 && name[0] == ':' && name[1] == ':')
         return typeSet->findContainerTemplate<T...>(name.substr(2));
-    for (int i = (int) curNamespace.size(); i >= 0; --i) {
+    for (int i = (int) namespaceNames.size(); i >= 0; --i) {
         std::string fullName;
         for (int j = 0; j < i; ++j)
-            fullName += curNamespace[j]+"::";
+            fullName += namespaceNames[j]+"::";
         fullName += name;
         if (ContainerTemplate<T...> *containerTemplate = typeSet->findContainerTemplate<T...>(fullName))
             return containerTemplate;

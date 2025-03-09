@@ -137,10 +137,10 @@ int main(int argc, const char *const *argv) {
     TypeSet typeSet;
     { // CUSTOM TYPE DEFINITIONS
         for (const Configuration::StringDef &stringDef : config.stringTypes)
-            typeSet.add(std::unique_ptr<Type>(new StringType(Generator::safeName(stringDef.name), stringDef.api)));
+            typeSet.root().establishSymbol(stringDef.name, false)->type = std::unique_ptr<Type>(new StringType(Generator::safeName(stringDef.name), stringDef.api));
         for (const Configuration::ConstStringDef &fixedStringDef : config.constStringTypes) {
             if (const StringType *dynamicStringType = findStringType(typeSet, fixedStringDef.stringType))
-                typeSet.add(std::unique_ptr<Type>(new ConstStringType(Generator::safeName(fixedStringDef.name), dynamicStringType, fixedStringDef.api)));
+                typeSet.root().establishSymbol(fixedStringDef.name, false)->type = std::unique_ptr<Type>(new ConstStringType(Generator::safeName(fixedStringDef.name), dynamicStringType, fixedStringDef.api));
             else {
                 fprintf(stderr, "Error: String type '%s' not found, skipping fixed string type '%s'\n", fixedStringDef.stringType.c_str(), fixedStringDef.name.c_str());
                 continue;

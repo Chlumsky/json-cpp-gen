@@ -23,7 +23,7 @@ const Type *ObjectMapContainerType::actualType(TemplateInstanceCache *instanceCa
         const Type *actualElemType = elemType->actualType(instanceCache);
         const Type *actualKeyType = keyType()->actualType(instanceCache);
         if (actualElemType != elemType || actualKeyType != keyType())
-            return instanceCache->get(containerTemplate, actualElemType, keyType());
+            return symbolType(instanceCache->get(containerTemplate, actualElemType, keyType()));
     }
     return this;
 }
