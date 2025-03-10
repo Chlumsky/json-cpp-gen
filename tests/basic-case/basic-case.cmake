@@ -1,0 +1,5 @@
+set(INPUTS_PATH ${CMAKE_CURRENT_LIST_DIR}/)
+set(GEN_OUT_PATH ${GEN_ROOT}/basic-case/)
+set(INPUTS_LIST ${INPUTS_PATH}structures.h)
+list(APPEND TEST_FILES ${INPUTS_PATH}basic-case.cpp)
+include(${CMAKE_CURRENT_LIST_DIR}/../setup-case.cmake)

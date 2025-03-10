@@ -1,0 +1,34 @@
+{
+    "inputs": [
+        "@INPUTS_PATH@structures.h"
+    ],
+    "settings": {
+        "jsonIOMode": "NULL_TERMINATED_STRING",
+        "noThrow": false,
+        "strictSyntaxCheck": true,
+        "checkMissingKeys": true,
+        "checkRepeatingKeys": true,
+        "ignoreExtraKeys": false,
+        "checkIntegerOverflow": true,
+        "escapeForwardSlash": false,
+        "skipEmptyFields": true,
+        "nanPolicy": "SERIALIZER_ERROR",
+        "infPolicy": "EXPONENT_OVERFLOW"
+    },
+    "parsers": [ {
+        "name": "basic_case::Parser",
+        "types": [
+            "basic_case::BigStruct"
+        ],
+        "headerOutput": "@GEN_OUT_PATH@Parser.h",
+        "sourceOutput": "@GEN_OUT_PATH@Parser.cpp"
+    } ],
+    "serializers": [ {
+        "name": "basic_case::Serializer",
+        "types": [
+            "basic_case::BigStruct"
+        ],
+        "headerOutput": "@GEN_OUT_PATH@Serializer.h",
+        "sourceOutput": "@GEN_OUT_PATH@Serializer.cpp"
+    } ]
+}

@@ -1,8 +1,6 @@
-/build/
-/linux_build/
-/test/
+build/
+linux_build/
+cmake-gen.bat
+install.bat
+cmake-gen.sh
 /generate-configuration-parser.bat
-/cmake-gen.bat
-/install.bat
-/cmake-gen.sh
-/build.sh
