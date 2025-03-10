@@ -42,17 +42,42 @@ public:
         const char *typeString() const;
     };
 
-    HeaderParser(TypeSet *outputTypeSet, const char *headerStart, size_t headerLength, bool parseNamesOnly = false);
+    class Pass {
+        friend class HeaderParser;
+    public:
+        enum Stage {
+            INITIAL,
+            NAMES_ONLY,
+            /// In this pass, nested structures and enums with unrecognized parent namespaces will be taken as-is.
+            NAMES_ONLY_FALLBACK,
+            FINAL,
+            NONE
+        };
+
+        explicit Pass(Stage initialStage = INITIAL);
+        void operator++();
+        explicit operator bool() const;
+
+    private:
+        Stage stage;
+        int unresolvedTypes;
+        int prevUnresolvedTypes;
+
+        bool namesOnly() const;
+    };
+
+    HeaderParser(Pass &pass, TypeSet &outputTypeSet, const char *headerStart, size_t headerLength);
     const char *currentChar() const;
     void parse();
 
 private:
+    Pass &pass;
     TypeSet *typeSet;
     const char *cur, *end;
     Namespace *curNamespace;
     std::vector<std::string> namespaceNames;
     std::vector<std::string> usingNamespaces;
-    bool parseNamesOnly; // prepass in case input files are in the wrong order
+    bool withinStruct;
 
     enum BraceTypes {
         ANY_BRACES_EXCEPT_ANGLED,
@@ -65,6 +90,7 @@ private:
         size_t outerNamespaceNamesLength;
         size_t outerUsingNamespacesCount;
         std::vector<std::string> outerNamespaceNames;
+        bool outerWithinStruct;
     public:
         NamespaceBlockGuard(HeaderParser &parent, const std::string &namespacedName);
         ~NamespaceBlockGuard();
@@ -73,6 +99,7 @@ private:
     template <typename... T>
     ContainerTemplate<T...> *findContainerTemplate(const std::string &name);
     std::string fullTypeName(const std::string &baseName) const;
+    SymbolPtr newTypeSymbol(std::string qualifiedNewTypeName);
 
     void parseSection();
     void parseNamespace();
@@ -101,9 +128,7 @@ private:
 
 };
 
-HeaderParser::Error preparseHeader(TypeSet &outputTypeSet, const std::string &headerString);
-HeaderParser::Error parseHeader(TypeSet &outputTypeSet, const std::string &headerString, bool parseNamesOnly = false);
-
+HeaderParser::Error parseHeader(HeaderParser::Pass &pass, TypeSet &outputTypeSet, const std::string &headerString);
 
 template <typename... T>
 ContainerTemplate<T...> *HeaderParser::findContainerTemplate(const std::string &name) {

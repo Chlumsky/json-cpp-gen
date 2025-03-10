@@ -181,15 +181,15 @@ int main(int argc, const char *const *argv) {
     }
 
     // INPUT SOURCE FILES
-    bool parseNamesOnly = true;
-    do {
+    int totalParserPasses = 0;
+    for (HeaderParser::Pass parserPass; parserPass; ++parserPass, ++totalParserPasses) {
         for (const std::string &input : config.inputs) {
             std::string inputString;
             if (!readTextFile(inputString, (basePath+input).cStr())) {
                 fprintf(stderr, "Error: Failed to open input file '%s', aborting\n", input.c_str());
                 return -1;
             }
-            if (HeaderParser::Error parseError = parseHeader(typeSet, inputString, parseNamesOnly)) {
+            if (HeaderParser::Error parseError = parseHeader(parserPass, typeSet, inputString)) {
                 fprintf(stderr,
                     "Error: Failed to parse input file '%s', aborting\n"
                     "       %s at position %d (line %d)\n"
@@ -197,11 +197,13 @@ int main(int argc, const char *const *argv) {
                     input.c_str(), parseError.typeString(), parseError.position, lineAtPosition(inputString, parseError.position),
                     visualizeErrorPosition(inputString, parseError.position, "       ").c_str()
                 );
+            #if !defined(NDEBUG) && defined(DUMP_TYPESET)
+                fprintf(stderr, "\nROOT NAMESPACE DUMP:\n%s\n", typeSet.root().dump().c_str());
+            #endif
                 return -1;
             }
         }
-        parseNamesOnly = !parseNamesOnly;
-    } while (!parseNamesOnly);
+    }
 
     // TYPE FINALIZATION
     if (const Type *badType = typeSet.compile()) {

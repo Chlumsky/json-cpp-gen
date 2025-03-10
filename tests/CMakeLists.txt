@@ -9,6 +9,7 @@ set(GEN_ROOT ${CMAKE_CURRENT_BINARY_DIR}/generated)
 list(APPEND TEST_FILES ${CMAKE_CURRENT_SOURCE_DIR}/common.h)
 
 include(basic-case/basic-case.cmake)
+include(nested-type-alias/nested-type-alias.cmake)
 
 list(APPEND TEST_FILES ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp)
 

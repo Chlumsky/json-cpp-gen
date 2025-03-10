@@ -12,7 +12,7 @@
 #include "HeaderParser.h"
 
 TypeSet::TypeSet() : rootNamespace(new Namespace(nullptr)) {
-    rootNamespace->establishSymbol("std", true);
+    rootNamespace->establishNamespace("std");
     addBasicType("bool", BasicType::BOOL);
     addBasicType("char", BasicType::CHAR);
     addBasicType("signed char", BasicType::SIGNED_CHAR);

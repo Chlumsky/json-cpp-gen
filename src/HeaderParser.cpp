@@ -12,7 +12,8 @@
 #include "Generator.h"
 
 const Type *parseType(TypeSet &typeSet, const std::string &typeString) {
-    return symbolType(HeaderParser(&typeSet, typeString.c_str(), typeString.size()).tryParseType());
+    HeaderParser::Pass parserPass(HeaderParser::Pass::FINAL);
+    return symbolType(HeaderParser(parserPass, typeSet, typeString.c_str(), typeString.size()).tryParseType());
 }
 
 HeaderParser::Error::operator HeaderParser::Error::Type() const {
@@ -33,7 +34,30 @@ const char *HeaderParser::Error::typeString() const {
     return "";
 }
 
-HeaderParser::NamespaceBlockGuard::NamespaceBlockGuard(HeaderParser &parent, const std::string &namespacedName) : parent(parent), outerNamespace(parent.curNamespace), outerNamespaceNamesLength(parent.namespaceNames.size()), outerUsingNamespacesCount(parent.usingNamespaces.size()) {
+HeaderParser::Pass::Pass(Stage initialStage) : stage(initialStage), unresolvedTypes(0), prevUnresolvedTypes(0) { }
+
+void HeaderParser::Pass::operator++() {
+    if (stage >= FINAL)
+        stage = NONE;
+    else if (stage == NAMES_ONLY_FALLBACK || unresolvedTypes == 0)
+        stage = FINAL;
+    else if (stage == INITIAL)
+        stage = NAMES_ONLY;
+    else if (unresolvedTypes >= prevUnresolvedTypes)
+        stage = NAMES_ONLY_FALLBACK;
+    prevUnresolvedTypes = unresolvedTypes;
+    unresolvedTypes = 0;
+}
+
+HeaderParser::Pass::operator bool() const {
+    return stage != NONE;
+}
+
+bool HeaderParser::Pass::namesOnly() const {
+    return stage <= NAMES_ONLY_FALLBACK;
+}
+
+HeaderParser::NamespaceBlockGuard::NamespaceBlockGuard(HeaderParser &parent, const std::string &namespacedName) : parent(parent), outerNamespace(parent.curNamespace), outerNamespaceNamesLength(parent.namespaceNames.size()), outerUsingNamespacesCount(parent.usingNamespaces.size()), outerWithinStruct(parent.withinStruct) {
     if (namespacedName.empty())
         return;
     size_t pos = 0;
@@ -49,7 +73,7 @@ HeaderParser::NamespaceBlockGuard::NamespaceBlockGuard(HeaderParser &parent, con
         while (pos < namespacedName.size() && namespacedName[pos] != ':')
             ++pos;
         std::string namespaceSubname = namespacedName.substr(start, pos-start);
-        if (SymbolPtr symbol = parent.curNamespace->establishSymbol(namespaceSubname, true)) {
+        if (SymbolPtr symbol = parent.curNamespace->establishNamespace(namespaceSubname)) {
             parent.curNamespace = symbol->ns.get();
             parent.namespaceNames.push_back(namespaceSubname);
         } else
@@ -59,6 +83,7 @@ HeaderParser::NamespaceBlockGuard::NamespaceBlockGuard(HeaderParser &parent, con
 }
 
 HeaderParser::NamespaceBlockGuard::~NamespaceBlockGuard() {
+    parent.withinStruct = outerWithinStruct;
     if (outerNamespaceNames.empty())
         parent.namespaceNames.resize(outerNamespaceNamesLength);
     else
@@ -67,7 +92,7 @@ HeaderParser::NamespaceBlockGuard::~NamespaceBlockGuard() {
     parent.curNamespace = outerNamespace;
 }
 
-HeaderParser::HeaderParser(TypeSet *outputTypeSet, const char *headerStart, size_t headerLength, bool parseNamesOnly) : typeSet(outputTypeSet), cur(headerStart), end(headerStart+headerLength), curNamespace(&outputTypeSet->root()), parseNamesOnly(parseNamesOnly) { }
+HeaderParser::HeaderParser(Pass &pass, TypeSet &outputTypeSet, const char *headerStart, size_t headerLength) : pass(pass), typeSet(&outputTypeSet), cur(headerStart), end(headerStart+headerLength), curNamespace(&outputTypeSet.root()), withinStruct(false) { }
 
 const char *HeaderParser::currentChar() const {
     return cur;
@@ -85,6 +110,40 @@ std::string HeaderParser::fullTypeName(const std::string &baseName) const {
     for (const std::string &ns : namespaceNames)
         prefix += ns+"::";
     return prefix+baseName;
+}
+
+SymbolPtr HeaderParser::newTypeSymbol(std::string qualifiedNewTypeName) {
+    if (qualifiedNewTypeName.empty())
+        return nullptr;
+    Namespace *targetNamespace = curNamespace;
+    std::string prefix = (std::string &&) qualifiedNewTypeName;
+    Namespace::splitPrefix(prefix, qualifiedNewTypeName);
+    if (prefix.empty()) { // :: at beginning (root namespace)
+        if (withinStruct) // struct X { struct ::Y { } }; is invalid
+            return nullptr;
+        targetNamespace = &typeSet->root();
+        prefix = (std::string &&) qualifiedNewTypeName;
+        Namespace::splitPrefix(prefix, qualifiedNewTypeName);
+    }
+    while (!qualifiedNewTypeName.empty()) {
+        assert(!prefix.empty());
+        SymbolPtr symbol = (
+            withinStruct || pass.stage >= Pass::NAMES_ONLY_FALLBACK ?
+            targetNamespace->requireLocalSymbol(prefix) :
+            targetNamespace->findLocalSymbol(prefix)
+        );
+        if (!symbol) {
+            ++pass.unresolvedTypes;
+            return nullptr;
+        }
+        if (!symbol->ns)
+            symbol->ns = std::unique_ptr<Namespace>(new Namespace(targetNamespace));
+        targetNamespace = symbol->ns.get();
+        prefix = (std::string &&) qualifiedNewTypeName;
+        Namespace::splitPrefix(prefix, qualifiedNewTypeName);
+    }
+    assert(!prefix.empty());
+    return targetNamespace->requireLocalSymbol(prefix);
 }
 
 void HeaderParser::parseSection() {
@@ -148,13 +207,13 @@ void HeaderParser::parseUsing() {
         size_t lastSepPos = aliasName.rfind("::");
         if (lastSepPos != std::string::npos && lastSepPos > 0) {
             if (SymbolPtr aliasedSymbol = curNamespace->findSymbol(aliasName, true)) {
-                if (!curNamespace->makeSymbolAlias(aliasName.substr(lastSepPos+2), aliasedSymbol))
+                if (!curNamespace->makeLocalAlias(aliasName.substr(lastSepPos+2), aliasedSymbol))
                     throw Error::TYPE_REDEFINITION;
             }
         }
         return;
     }
-    if (matchSymbol('=')) {
+    if (matchSymbol('=') && aliasName.find("::") == std::string::npos) {
         // using x = y;
         skipWhitespaceAndComments();
         SymbolPtr aliasedSymbol;
@@ -167,12 +226,12 @@ void HeaderParser::parseUsing() {
             aliasedSymbol = parseEnum();
         else if (matchKeyword("const") || matchKeyword("volatile"))
             return skipSection();
-        else if (!parseNamesOnly)
+        else
             aliasedSymbol = tryParseType();
         if (aliasedSymbol && (aliasedSymbol = tryParseArrayTypeSuffix(aliasedSymbol))) {
             skipWhitespaceAndComments();
             if (matchSymbol(';')) {
-                if (!curNamespace->makeSymbolAlias(aliasName, aliasedSymbol))
+                if (!curNamespace->makeLocalAlias(aliasName, aliasedSymbol))
                     throw Error::TYPE_REDEFINITION;
                 return;
             }
@@ -212,10 +271,10 @@ void HeaderParser::parseTypedef() {
             continue;
         }
         std::string aliasName = readNamespacedIdentifier();
-        if (!aliasName.empty()) {
+        if (!aliasName.empty() && aliasName.find("::") == std::string::npos) {
             if (SymbolPtr aliasedArrayType = tryParseArrayTypeSuffix(aliasedType))
                 aliasedType = aliasedArrayType;
-            if (!curNamespace->makeSymbolAlias(aliasName, aliasedType))
+            if (!curNamespace->makeLocalAlias(aliasName, aliasedType))
                 throw Error::TYPE_REDEFINITION;
         }
         skipWhitespaceAndComments();
@@ -243,24 +302,29 @@ SymbolPtr HeaderParser::parseStruct(bool isClass) {
     bool forwardDeclaration = cur < end && *cur == ';';
     if (!isClass) {
         if (!structName.empty()) {
-            if ((symbol = curNamespace->establishSymbol(structName, false))) {
+            if ((symbol = newTypeSymbol(structName))) {
                 if (symbol->type) {
-                    if (!(structType = symbol->type->incompleteStructureType()))
+                    if (!((structType = symbol->type->incompleteStructureType()) || (forwardDeclaration && symbol->type->structureType())))
                         throw Error::TYPE_REDEFINITION;
                 } else
                     symbol->type = std::unique_ptr<StructureType>(structType = new StructureType(Generator::safeName(fullTypeName(structName))));
             }
         }
-        if (structName.empty() && !forwardDeclaration && !parseNamesOnly) {
+        if (structName.empty() && !forwardDeclaration && !pass.namesOnly()) {
             symbol = typeSet->newUnnamedStruct();
             assert(symbol->type);
             structType = static_cast<StructureType *>(symbol->type.get());
             assert(structType == symbol->type->incompleteStructureType());
         }
+    } else if (!structName.empty())
+        symbol = newTypeSymbol(structName); // Establish symbol for class's potential public nested types
+    if (!symbol) { // Structure cannot be parsed at this time because its real name could not be deduced
+        skipSection();
+        return nullptr;
     }
-    assert(parseNamesOnly || isClass || structType);
     if (forwardDeclaration)
         return symbol;
+    assert(pass.namesOnly() || isClass || structType);
 
     if (matchSymbol(':')) {
         skipWhitespaceAndComments();
@@ -277,7 +341,7 @@ SymbolPtr HeaderParser::parseStruct(bool isClass) {
             }
             matchKeyword("virtual");
             if (const Type *baseType = symbolType(tryParseType())) {
-                if (!nonPublic && !parseNamesOnly && !isClass)
+                if (!nonPublic && !pass.namesOnly() && !isClass)
                     structType->inheritFrom(baseType);
             } else {
                 // Skip unrecognized type name - modified skipExpression()
@@ -297,6 +361,7 @@ SymbolPtr HeaderParser::parseStruct(bool isClass) {
     if (!matchSymbol('{'))
         throw Error::INVALID_STRUCTURE_SYNTAX;
     NamespaceBlockGuard namespaceBlockGuard(*this, structName);
+    withinStruct = true;
     for (skipWhitespaceAndComments(); !matchSymbol('}'); skipWhitespaceAndComments()) {
         if (cur >= end)
             throw Error::UNEXPECTED_EOF;
@@ -337,7 +402,7 @@ SymbolPtr HeaderParser::parseStruct(bool isClass) {
             memberBaseType = symbolType(memberBaseTypeSymbol = parseStruct(false));
             skipWhitespaceAndComments();
             if (matchSymbol(';')) {
-                if (!parseNamesOnly && !isClass && !staticMember && memberBaseType && memberBaseType->name().substance() == TypeName::VIRTUAL) {
+                if (!pass.namesOnly() && !isClass && !staticMember && memberBaseType && memberBaseType->name().substance() == TypeName::VIRTUAL) {
                     // Special case - non-variable anonymous structure is considered part of parent structure
                     if (!structType->absorb(memberBaseType->structureType()))
                         throw Error::DUPLICATE_STRUCT_MEMBER;
@@ -356,7 +421,7 @@ SymbolPtr HeaderParser::parseStruct(bool isClass) {
         } else
             nestedType = false;
 
-        if (parseNamesOnly || isClass || staticMember) {
+        if (pass.namesOnly() || isClass || staticMember) {
             skipSection();
             continue;
         }
@@ -390,7 +455,7 @@ SymbolPtr HeaderParser::parseStruct(bool isClass) {
         }
         skipSection();
     }
-    if (!parseNamesOnly && !isClass)
+    if (!pass.namesOnly() && !isClass)
         structType->completeMembers();
     assert(structType == (symbol ? symbol->type.get() : nullptr));
     return symbol;
@@ -409,6 +474,13 @@ SymbolPtr HeaderParser::parseEnum() {
         // Actually not an enum declaration/definition but a variable
         return curNamespace->findSymbol(enumName, true);
     }
+    if (matchSymbol(':')) {
+        while ((skipWhitespaceAndComments(), cur < end) && !(*cur == ';' || *cur == '{')) {
+            const char *prev = cur;
+            skipStringLiteral();
+            cur += cur == prev;
+        }
+    }
 
     SymbolPtr symbol;
     EnumType *enumType = nullptr;
@@ -424,9 +496,9 @@ SymbolPtr HeaderParser::parseEnum() {
         } else
             fullEnumName = enumNamespace+enumName;
         assert(fullEnumName == fullTypeName(enumName));
-        if ((symbol = curNamespace->establishSymbol(enumName, false))) {
+        if ((symbol = newTypeSymbol(enumName))) {
             if (symbol->type) {
-                if (!((enumType = symbol->type->incompleteEnumType()) && enumType->isEnumClass() == enumClass))
+                if (!(((enumType = symbol->type->incompleteEnumType()) && enumType->isEnumClass() == enumClass) || (forwardDeclaration && symbol->type->enumType() && symbol->type->enumType()->isEnumClass() == enumClass)))
                     throw Error::TYPE_REDEFINITION;
             } else
                 symbol->type = std::unique_ptr<EnumType>(enumType = new EnumType(enumClass, enumNamespace, Generator::safeName(fullEnumName)));
@@ -434,21 +506,13 @@ SymbolPtr HeaderParser::parseEnum() {
     }
     if (forwardDeclaration)
         return symbol;
-    if (enumName.empty() && !parseNamesOnly) {
+    if (enumName.empty() && !pass.namesOnly()) {
         symbol = typeSet->newUnnamedEnum(enumClass, enumNamespace);
         assert(symbol->type);
         enumType = static_cast<EnumType *>(symbol->type.get());
         assert(enumType == symbol->type->enumType());
     }
-    assert(!parseNamesOnly || enumType);
 
-    if (matchSymbol(':')) {
-        while ((skipWhitespaceAndComments(), cur < end) && !(*cur == ';' || *cur == '{')) {
-            const char *prev = cur;
-            skipStringLiteral();
-            cur += cur == prev;
-        }
-    }
     if (!matchSymbol('{'))
         throw Error::INVALID_ENUM_SYNTAX;
     for (skipWhitespaceAndComments(); !matchSymbol('}'); skipWhitespaceAndComments()) {
@@ -457,7 +521,7 @@ SymbolPtr HeaderParser::parseEnum() {
         std::string enumValue = readIdentifier();
         if (enumValue.empty())
             throw Error::INVALID_ENUM_SYNTAX;
-        if (!parseNamesOnly)
+        if (!pass.namesOnly() && enumType)
             enumType->addValue(std::move(enumValue));
         skipWhitespaceAndComments();
         if (matchSymbol('=')) {
@@ -466,7 +530,7 @@ SymbolPtr HeaderParser::parseEnum() {
         }
         matchSymbol(',');
     }
-    if (!parseNamesOnly)
+    if (!pass.namesOnly() && enumType)
         enumType->completeValues();
     assert(enumType == (symbol ? symbol->type.get() : nullptr));
     return symbol;
@@ -885,16 +949,12 @@ bool HeaderParser::matchKeyword(const char *keyword) {
 }
 
 bool HeaderParser::isWordChar(char c) {
-    return isalnum(c) || c == '_' || c&0x80;
+    return c&0x80 || c == '_' || isalnum(c);
 }
 
-HeaderParser::Error preparseHeader(TypeSet &outputTypeSet, const std::string &headerString) {
-    return parseHeader(outputTypeSet, headerString, true);
-}
-
-HeaderParser::Error parseHeader(TypeSet &outputTypeSet, const std::string &headerString, bool parseNamesOnly) {
+HeaderParser::Error parseHeader(HeaderParser::Pass &pass, TypeSet &outputTypeSet, const std::string &headerString) {
     const char *headerStart = headerString.c_str();
-    HeaderParser parser(&outputTypeSet, headerStart, headerString.size(), parseNamesOnly);
+    HeaderParser parser(pass, outputTypeSet, headerStart, headerString.size());
     HeaderParser::Error::Type parseErrorType = HeaderParser::Error::OK;
     try {
         parser.parse();

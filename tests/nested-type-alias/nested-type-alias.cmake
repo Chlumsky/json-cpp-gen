@@ -1,0 +1,5 @@
+set(INPUTS_PATH ${CMAKE_CURRENT_LIST_DIR}/)
+set(GEN_OUT_PATH ${GEN_ROOT}/nested-type-alias/)
+set(INPUTS_LIST ${INPUTS_PATH}root.h ${INPUTS_PATH}components.h)
+list(APPEND TEST_FILES ${INPUTS_PATH}nested-type-alias.cpp)
+include(${CMAKE_CURRENT_LIST_DIR}/../setup-case.cmake)

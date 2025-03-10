@@ -101,7 +101,7 @@ std::string Generator::endNamespace() const {
 }
 
 static bool isWordChar(char c) {
-    return isalnum(c) || c == '_' || c&0x80;
+    return c&0x80 || c == '_' || isalnum(c);
 }
 
 static bool matchSubstr(const std::string &str, size_t pos, const char *needle) {

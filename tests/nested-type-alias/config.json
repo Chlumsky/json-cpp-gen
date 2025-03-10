@@ -1,0 +1,35 @@
+{
+    "inputs": [
+        "@INPUTS_PATH@root.h",
+        "@INPUTS_PATH@components.h"
+    ],
+    "settings": {
+        "jsonIOMode": "NULL_TERMINATED_STRING",
+        "noThrow": false,
+        "strictSyntaxCheck": true,
+        "checkMissingKeys": true,
+        "checkRepeatingKeys": true,
+        "ignoreExtraKeys": false,
+        "checkIntegerOverflow": true,
+        "escapeForwardSlash": false,
+        "skipEmptyFields": true,
+        "nanPolicy": "SERIALIZER_ERROR",
+        "infPolicy": "EXPONENT_OVERFLOW"
+    },
+    "parsers": [ {
+        "name": "nested_type_alias::Parser",
+        "types": [
+            "nested_type_alias::Root"
+        ],
+        "headerOutput": "@GEN_OUT_PATH@Parser.h",
+        "sourceOutput": "@GEN_OUT_PATH@Parser.cpp"
+    } ],
+    "serializers": [ {
+        "name": "nested_type_alias::Serializer",
+        "types": [
+            "nested_type_alias::Root"
+        ],
+        "headerOutput": "@GEN_OUT_PATH@Serializer.h",
+        "sourceOutput": "@GEN_OUT_PATH@Serializer.cpp"
+    } ]
+}
