@@ -60,8 +60,10 @@ public:
 
     private:
         Stage stage;
-        int unresolvedTypes;
-        int prevUnresolvedTypes;
+        struct {
+            int unresolvedNestedTypes;
+            int unresolvedTypeAliases;
+        } cur, prev;
 
         bool namesOnly() const;
     };

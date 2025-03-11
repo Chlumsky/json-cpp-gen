@@ -10,6 +10,7 @@ list(APPEND TEST_FILES ${CMAKE_CURRENT_SOURCE_DIR}/common.h)
 
 include(basic-case/basic-case.cmake)
 include(nested-type-alias/nested-type-alias.cmake)
+include(reverse-order-inputs/reverse-order-inputs.cmake)
 
 list(APPEND TEST_FILES ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp)
 

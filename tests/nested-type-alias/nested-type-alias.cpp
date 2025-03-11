@@ -10,7 +10,7 @@ using namespace nested_type_alias;
 #define NESTED_ALIAS
 
 void test_nested_type_alias() {
-    Root o, i = {
+    Root o = { }, i = {
         "#ha",
         -713,
         Lares::AEGISTHUS,

@@ -1,0 +1,45 @@
+{
+    "inputs": [
+        "@INPUTS_PATH@5.h",
+        "@INPUTS_PATH@4.h",
+        "@INPUTS_PATH@3.h",
+        "@INPUTS_PATH@2.h",
+        "@INPUTS_PATH@1.h"
+    ],
+    "includes": [
+        "@INPUTS_PATH@../common.h",
+        "@INPUTS_PATH@1.h",
+        "@INPUTS_PATH@2.h",
+        "@INPUTS_PATH@3.h",
+        "@INPUTS_PATH@4.h"
+    ],
+    "settings": {
+        "jsonIOMode": "NULL_TERMINATED_STRING",
+        "noThrow": false,
+        "strictSyntaxCheck": true,
+        "checkMissingKeys": true,
+        "checkRepeatingKeys": true,
+        "ignoreExtraKeys": false,
+        "checkIntegerOverflow": true,
+        "escapeForwardSlash": false,
+        "skipEmptyFields": true,
+        "nanPolicy": "SERIALIZER_ERROR",
+        "infPolicy": "EXPONENT_OVERFLOW"
+    },
+    "parsers": [ {
+        "name": "reverse_order_inputs::Parser",
+        "types": [
+            "reverse_order_inputs::Five"
+        ],
+        "headerOutput": "@GEN_OUT_PATH@Parser.h",
+        "sourceOutput": "@GEN_OUT_PATH@Parser.cpp"
+    } ],
+    "serializers": [ {
+        "name": "reverse_order_inputs::Serializer",
+        "types": [
+            "reverse_order_inputs::Five"
+        ],
+        "headerOutput": "@GEN_OUT_PATH@Serializer.h",
+        "sourceOutput": "@GEN_OUT_PATH@Serializer.cpp"
+    } ]
+}

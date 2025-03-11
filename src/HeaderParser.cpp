@@ -34,19 +34,20 @@ const char *HeaderParser::Error::typeString() const {
     return "";
 }
 
-HeaderParser::Pass::Pass(Stage initialStage) : stage(initialStage), unresolvedTypes(0), prevUnresolvedTypes(0) { }
+HeaderParser::Pass::Pass(Stage initialStage) : stage(initialStage), cur(), prev() { }
 
 void HeaderParser::Pass::operator++() {
     if (stage >= FINAL)
         stage = NONE;
-    else if (stage == NAMES_ONLY_FALLBACK || unresolvedTypes == 0)
+    else if ((stage == NAMES_ONLY_FALLBACK && cur.unresolvedTypeAliases >= prev.unresolvedTypeAliases) || (cur.unresolvedNestedTypes == 0 && cur.unresolvedTypeAliases == 0))
         stage = FINAL;
     else if (stage == INITIAL)
         stage = NAMES_ONLY;
-    else if (unresolvedTypes >= prevUnresolvedTypes)
+    else if (cur.unresolvedNestedTypes >= prev.unresolvedNestedTypes)
         stage = NAMES_ONLY_FALLBACK;
-    prevUnresolvedTypes = unresolvedTypes;
-    unresolvedTypes = 0;
+    prev = cur;
+    cur.unresolvedNestedTypes = 0;
+    cur.unresolvedTypeAliases = 0;
 }
 
 HeaderParser::Pass::operator bool() const {
@@ -133,7 +134,7 @@ SymbolPtr HeaderParser::newTypeSymbol(std::string qualifiedNewTypeName) {
             targetNamespace->findLocalSymbol(prefix)
         );
         if (!symbol) {
-            ++pass.unresolvedTypes;
+            ++pass.cur.unresolvedNestedTypes;
             return nullptr;
         }
         if (!symbol->ns)
@@ -209,7 +210,8 @@ void HeaderParser::parseUsing() {
             if (SymbolPtr aliasedSymbol = curNamespace->findSymbol(aliasName, true)) {
                 if (!curNamespace->makeLocalAlias(aliasName.substr(lastSepPos+2), aliasedSymbol))
                     throw Error::TYPE_REDEFINITION;
-            }
+            } else
+                ++pass.cur.unresolvedTypeAliases;
         }
         return;
     }
@@ -235,7 +237,8 @@ void HeaderParser::parseUsing() {
                     throw Error::TYPE_REDEFINITION;
                 return;
             }
-        }
+        } else
+            ++pass.cur.unresolvedTypeAliases;
     }
     skipSection();
 }
@@ -272,10 +275,13 @@ void HeaderParser::parseTypedef() {
         }
         std::string aliasName = readNamespacedIdentifier();
         if (!aliasName.empty() && aliasName.find("::") == std::string::npos) {
-            if (SymbolPtr aliasedArrayType = tryParseArrayTypeSuffix(aliasedType))
-                aliasedType = aliasedArrayType;
-            if (!curNamespace->makeLocalAlias(aliasName, aliasedType))
-                throw Error::TYPE_REDEFINITION;
+            if (aliasedType) {
+                if (SymbolPtr aliasedArrayType = tryParseArrayTypeSuffix(aliasedType))
+                    aliasedType = aliasedArrayType;
+                if (!curNamespace->makeLocalAlias(aliasName, aliasedType))
+                    throw Error::TYPE_REDEFINITION;
+            } else
+                ++pass.cur.unresolvedTypeAliases;
         }
         skipWhitespaceAndComments();
     } while (matchSymbol(','));
