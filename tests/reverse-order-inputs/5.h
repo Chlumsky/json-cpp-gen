@@ -18,10 +18,10 @@ struct Five : Vier {
         AUTO_EQ(PreviousNumbers);
     };
     struct Singletons {
-        Eins::Singular::Unique u1;
-        Ichi::Singular::Unique u2;
-        Jedna::Singular::Unique u3;
-        One::Singular::Unique u5;
+        Jedna::Singular::Unique u1;
+        Duo::Singular::Unique u2;
+        Three::Singular::Unique u3;
+        Singular::Unique u5;
         AUTO_EQ(Singletons);
     } stons;
 

@@ -2,6 +2,7 @@
 #pragma once
 
 #include <string>
+#include <vector>
 #include <map>
 #include <memory>
 #include "Type.h"
@@ -12,6 +13,7 @@ class Namespace {
 
 public:
     explicit Namespace(Namespace *parentNamespace);
+    void inheritFrom(Namespace *baseNamespace);
     Namespace *parentNamespace();
     bool makeLocalAlias(const UnqualifiedName &name, const SymbolPtr &originalSymbol);
     SymbolPtr findLocalSymbol(const UnqualifiedName &name) const;
@@ -25,6 +27,7 @@ public:
 
 private:
     Namespace *parent;
+    std::vector<Namespace *> inheritedNamespaces;
     std::map<std::string, SymbolPtr> symbols;
 
 };

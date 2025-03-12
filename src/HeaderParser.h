@@ -102,7 +102,7 @@ private:
     template <typename... T>
     ContainerTemplate<T...> *findContainerTemplate(const std::string &name);
     std::string fullTypeName(QualifiedName::Ref baseName) const;
-    SymbolPtr newTypeSymbol(QualifiedName::Ref newTypeName);
+    SymbolPtr newTypeSymbol(QualifiedName::Ref newTypeName, Namespace **newTypeNamespace = nullptr);
 
     void parseSection();
     void parseNamespace();

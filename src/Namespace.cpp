@@ -3,6 +3,16 @@
 
 Namespace::Namespace(Namespace *parentNamespace) : parent(parentNamespace) { }
 
+void Namespace::inheritFrom(Namespace *baseNamespace) {
+    if (baseNamespace && baseNamespace != this) {
+        for (Namespace *preexistingBase : inheritedNamespaces) {
+            if (preexistingBase == baseNamespace)
+                return;
+        }
+        inheritedNamespaces.push_back(baseNamespace);
+    }
+}
+
 Namespace *Namespace::parentNamespace() {
     return parent;
 }
@@ -66,14 +76,20 @@ SymbolPtr Namespace::findSymbol(QualifiedName::Ref name, bool parentFallback) co
         parentFallback = false;
     }
     std::map<std::string, SymbolPtr>::const_iterator it = symbols.find(name.prefix());
-    QualifiedName::Ref innerName = name.exceptPrefix();
     if (it != symbols.end() && it->second) {
+        QualifiedName::Ref innerName = name.exceptPrefix();
         if (!innerName)
             return it->second;
         else if (it->second->ns)
             return it->second->ns->findSymbol(innerName, false);
-    } else if (parent && parentFallback)
-        return parent->findSymbol(name, true);
+    } else {
+        for (Namespace *baseNamespace : inheritedNamespaces) {
+            if (SymbolPtr symbol = baseNamespace->findSymbol(name, false))
+                return symbol;
+        }
+        if (parent && parentFallback)
+            return parent->findSymbol(name, true);
+    }
     return nullptr;
 }
 

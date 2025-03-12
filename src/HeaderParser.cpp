@@ -109,7 +109,7 @@ std::string HeaderParser::fullTypeName(QualifiedName::Ref baseName) const {
     return prefix+baseName.string();
 }
 
-SymbolPtr HeaderParser::newTypeSymbol(QualifiedName::Ref newTypeName) {
+SymbolPtr HeaderParser::newTypeSymbol(QualifiedName::Ref newTypeName, Namespace **newTypeNamespace) {
     if (!newTypeName)
         return nullptr;
     Namespace *targetNamespace = curNamespace;
@@ -120,11 +120,10 @@ SymbolPtr HeaderParser::newTypeSymbol(QualifiedName::Ref newTypeName) {
         newTypeName = newTypeName.exceptAbsolute();
     }
     while (!newTypeName.isUnqualified()) {
-        const UnqualifiedName &prefix = newTypeName.prefix();
         SymbolPtr symbol = (
             withinStruct || pass.stage >= Pass::NAMES_ONLY_FALLBACK ?
-            targetNamespace->requireLocalSymbol(prefix) :
-            targetNamespace->findLocalSymbol(prefix)
+            targetNamespace->requireLocalSymbol(newTypeName.prefix()) :
+            targetNamespace->findLocalSymbol(newTypeName.prefix())
         );
         if (!symbol) {
             ++pass.cur.unresolvedNestedTypes;
@@ -135,7 +134,13 @@ SymbolPtr HeaderParser::newTypeSymbol(QualifiedName::Ref newTypeName) {
         targetNamespace = symbol->ns.get();
         newTypeName = newTypeName.exceptPrefix();
     }
-    return targetNamespace->requireLocalSymbol(newTypeName.prefix());
+    SymbolPtr symbol = targetNamespace->requireLocalSymbol(newTypeName.prefix());
+    if (newTypeNamespace) {
+        if (!symbol->ns)
+            symbol->ns = std::unique_ptr<Namespace>(new Namespace(targetNamespace));
+        *newTypeNamespace = symbol->ns.get();
+    }
+    return symbol;
 }
 
 void HeaderParser::parseSection() {
@@ -296,10 +301,11 @@ SymbolPtr HeaderParser::parseStruct(bool isClass) {
 
     SymbolPtr symbol;
     StructureType *structType = nullptr;
+    Namespace *structNamespace = nullptr;
     bool forwardDeclaration = cur < end && *cur == ';';
     if (!isClass) {
         if (structName) {
-            if ((symbol = newTypeSymbol(structName))) {
+            if ((symbol = newTypeSymbol(structName, &structNamespace))) {
                 if (symbol->type) {
                     if (!((structType = symbol->type->incompleteStructureType()) || (forwardDeclaration && symbol->type->structureType())))
                         throw Error::TYPE_REDEFINITION;
@@ -314,7 +320,7 @@ SymbolPtr HeaderParser::parseStruct(bool isClass) {
             assert(structType == symbol->type->incompleteStructureType());
         }
     } else if (structName)
-        symbol = newTypeSymbol(structName); // Establish symbol for class's potential public nested types
+        symbol = newTypeSymbol(structName, &structNamespace); // Establish symbol for class's potential public nested types
     if (!symbol) { // Structure cannot be parsed at this time because its real name could not be deduced
         skipSection();
         return nullptr;
@@ -337,9 +343,12 @@ SymbolPtr HeaderParser::parseStruct(bool isClass) {
                 skipWhitespaceAndComments();
             }
             matchKeyword("virtual");
-            if (const Type *baseType = symbolType(tryParseType())) {
-                if (!nonPublic && !pass.namesOnly() && !isClass)
+            SymbolPtr baseSymbol = tryParseType();
+            if (const Type *baseType = symbolType(baseSymbol)) {
+                if (!nonPublic && !pass.namesOnly() && structType)
                     structType->inheritFrom(baseType);
+                if (structNamespace)
+                    structNamespace->inheritFrom(baseSymbol->ns.get());
             } else {
                 // Skip unrecognized type name - modified skipExpression()
                 while (skipWhitespaceAndComments(), cur < end) {
