@@ -1,0 +1,4 @@
+{
+    "inputs": [ "basic-inheritance-cycle.h" ],
+    "parsers": [ { } ]
+}

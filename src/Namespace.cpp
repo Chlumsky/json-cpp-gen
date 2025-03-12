@@ -4,7 +4,7 @@
 Namespace::Namespace(Namespace *parentNamespace) : parent(parentNamespace) { }
 
 void Namespace::inheritFrom(Namespace *baseNamespace) {
-    if (baseNamespace && baseNamespace != this) {
+    if (baseNamespace && baseNamespace != this && !baseNamespace->inheritsRecursively(this)) {
         for (Namespace *preexistingBase : inheritedNamespaces) {
             if (preexistingBase == baseNamespace)
                 return;
@@ -107,6 +107,14 @@ int Namespace::compileTypes(TemplateInstanceCache *templateInstanceCache, int st
         }
     }
     return result;
+}
+
+bool Namespace::inheritsRecursively(const Namespace *ns) const {
+    for (Namespace *baseNs : inheritedNamespaces) {
+        if (baseNs == ns || baseNs->inheritsRecursively(ns))
+            return true;
+    }
+    return false;
 }
 
 std::string Namespace::dump(int indent) const {

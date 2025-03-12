@@ -30,4 +30,6 @@ private:
     std::vector<Namespace *> inheritedNamespaces;
     std::map<std::string, SymbolPtr> symbols;
 
+    bool inheritsRecursively(const Namespace *ns) const;
+
 };

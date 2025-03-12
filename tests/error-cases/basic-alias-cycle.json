@@ -1,0 +1,9 @@
+{
+    "inputs": [ "basic-alias-cycle.h" ],
+    "parsers": [ {
+        "name": "EmptyParser",
+        "types": [ "All" ],
+        "headerOutput": "EmptyParser.h",
+        "sourceOutput": "EmptyParser.cpp"
+    } ]
+}
