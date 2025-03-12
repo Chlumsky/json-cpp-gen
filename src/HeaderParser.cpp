@@ -39,15 +39,19 @@ HeaderParser::Pass::Pass(Stage initialStage) : stage(initialStage), cur(), prev(
 void HeaderParser::Pass::operator++() {
     if (stage >= FINAL)
         stage = NONE;
-    else if ((stage == NAMES_ONLY_FALLBACK && cur.unresolvedTypeAliases >= prev.unresolvedTypeAliases) || (cur.unresolvedNestedTypes == 0 && cur.unresolvedTypeAliases == 0))
+    else if (cur.unresolvedNestedTypes == 0 && cur.unresolvedNamespacibleTypes == 0)
         stage = FINAL;
     else if (stage == INITIAL)
         stage = NAMES_ONLY;
-    else if (cur.unresolvedNestedTypes >= prev.unresolvedNestedTypes)
-        stage = NAMES_ONLY_FALLBACK;
+    else if (cur.unresolvedNestedTypes >= prev.unresolvedNestedTypes && cur.unresolvedNamespacibleTypes >= prev.unresolvedNamespacibleTypes) {
+        if (cur.unresolvedNestedTypes == 0 || stage == NAMES_ONLY_FALLBACK)
+            stage = FINAL;
+        else
+            stage = NAMES_ONLY_FALLBACK;
+    }
     prev = cur;
     cur.unresolvedNestedTypes = 0;
-    cur.unresolvedTypeAliases = 0;
+    cur.unresolvedNamespacibleTypes = 0;
 }
 
 HeaderParser::Pass::operator bool() const {
@@ -56,6 +60,18 @@ HeaderParser::Pass::operator bool() const {
 
 bool HeaderParser::Pass::namesOnly() const {
     return stage <= NAMES_ONLY_FALLBACK;
+}
+
+void HeaderParser::Pass::unresolvedNestedTypeEncountered() {
+    ++cur.unresolvedNestedTypes;
+}
+
+void HeaderParser::Pass::unresolvedTypeAliasEncountered() {
+    ++cur.unresolvedNamespacibleTypes;
+}
+
+void HeaderParser::Pass::unresolvedBaseTypeEncountered() {
+    ++cur.unresolvedNamespacibleTypes;
 }
 
 HeaderParser::NamespaceBlockGuard::NamespaceBlockGuard(HeaderParser &parent, QualifiedName::Ref namespaceName) : parent(parent), outerNamespace(parent.curNamespace), outerNamespaceNamesLength(parent.namespaceNames.size()), outerUsingNamespacesCount(parent.usingNamespaces.size()), outerWithinStruct(parent.withinStruct) {
@@ -96,8 +112,11 @@ const char *HeaderParser::currentChar() const {
 }
 
 void HeaderParser::parse() {
-    while (skipWhitespaceAndComments(), cur < end)
+    while (skipWhitespaceAndComments(), cur < end) {
+        const char *prev = cur;
         parseSection();
+        cur += cur == prev;
+    }
 }
 
 std::string HeaderParser::fullTypeName(QualifiedName::Ref baseName) const {
@@ -126,7 +145,7 @@ SymbolPtr HeaderParser::newTypeSymbol(QualifiedName::Ref newTypeName, Namespace 
             targetNamespace->findLocalSymbol(newTypeName.prefix())
         );
         if (!symbol) {
-            ++pass.cur.unresolvedNestedTypes;
+            pass.unresolvedNestedTypeEncountered();
             return nullptr;
         }
         if (!symbol->ns)
@@ -206,7 +225,7 @@ void HeaderParser::parseUsing() {
                 if (!curNamespace->makeLocalAlias(aliasName.suffix(), aliasedSymbol))
                     throw Error::TYPE_REDEFINITION;
             } else
-                ++pass.cur.unresolvedTypeAliases;
+                pass.unresolvedTypeAliasEncountered();
         }
         return;
     }
@@ -233,7 +252,7 @@ void HeaderParser::parseUsing() {
                 return;
             }
         } else
-            ++pass.cur.unresolvedTypeAliases;
+            pass.unresolvedTypeAliasEncountered();
     }
     skipSection();
 }
@@ -276,7 +295,7 @@ void HeaderParser::parseTypedef() {
                 if (!curNamespace->makeLocalAlias(aliasName.prefix(), aliasedType))
                     throw Error::TYPE_REDEFINITION;
             } else
-                ++pass.cur.unresolvedTypeAliases;
+                pass.unresolvedTypeAliasEncountered();
         }
         skipWhitespaceAndComments();
     } while (matchSymbol(','));
@@ -329,6 +348,7 @@ SymbolPtr HeaderParser::parseStruct(bool isClass) {
         return symbol;
     assert(pass.namesOnly() || isClass || structType);
 
+    NamespaceBlockGuard namespaceBlockGuard(*this, structName);
     if (matchSymbol(':')) {
         skipWhitespaceAndComments();
         do {
@@ -345,11 +365,17 @@ SymbolPtr HeaderParser::parseStruct(bool isClass) {
             matchKeyword("virtual");
             SymbolPtr baseSymbol = tryParseType();
             if (const Type *baseType = symbolType(baseSymbol)) {
+                skipWhitespaceAndComments();
+                if (cur < end && *cur == '<') {
+                    skipBlock(ANY_BRACES_INCLUDING_ANGLED);
+                    continue;
+                }
                 if (!nonPublic && !pass.namesOnly() && structType)
                     structType->inheritFrom(baseType);
                 if (structNamespace)
                     structNamespace->inheritFrom(baseSymbol->ns.get());
             } else {
+                pass.unresolvedBaseTypeEncountered();
                 // Skip unrecognized type name - modified skipExpression()
                 while (skipWhitespaceAndComments(), cur < end) {
                     if (*cur == '{' || *cur == ';' || *cur == ',')
@@ -366,7 +392,6 @@ SymbolPtr HeaderParser::parseStruct(bool isClass) {
 
     if (!matchSymbol('{'))
         throw Error::INVALID_STRUCTURE_SYNTAX;
-    NamespaceBlockGuard namespaceBlockGuard(*this, structName);
     withinStruct = true;
     for (skipWhitespaceAndComments(); !matchSymbol('}'); skipWhitespaceAndComments()) {
         if (cur >= end)
@@ -745,7 +770,7 @@ std::string HeaderParser::readIdentifier() {
     return std::string();
 }
 
-void HeaderParser::skipLine() {
+void HeaderParser::skipLine(bool ignoreComments) {
     bool escaped = false;
     while (cur < end) {
         switch (*cur++) {
@@ -757,6 +782,13 @@ void HeaderParser::skipLine() {
                 escaped = false;
                 // fallthrough
             case ' ': case '\t': case '\r':
+                break;
+            case '/':
+                if (!ignoreComments && cur < end && *cur == '*') {
+                    --cur;
+                    skipComment();
+                }
+                escaped = false;
                 break;
             case '\\':
                 escaped = true;
@@ -772,10 +804,7 @@ void HeaderParser::skipWhitespaceAndComments() {
                 continue;
             case '#':
                 // Skip directive - TODO parse #define
-                skipLine();
-                // TODO does not correctly handle the following edge case:
-                //     #define PI /*
-                //         */ 3.14
+                skipLine(false);
                 continue;
             case '/':
                 if (skipComment())
@@ -791,7 +820,7 @@ bool HeaderParser::skipComment() {
     if (cur+1 < end && *cur == '/') {
         switch (*(cur+1)) {
             case '/': // Single-line comment
-                skipLine();
+                skipLine(true);
                 return true;
             case '*': // Multi-line comment
                 ++cur;
@@ -874,12 +903,15 @@ void HeaderParser::skipBlock(BraceTypes braceTypes) {
         switch (*cur) {
             case '(':
                 endSymbol = ')';
+                braceTypes = ANY_BRACES_EXCEPT_ANGLED;
                 break;
             case '[':
                 endSymbol = ']';
+                braceTypes = ANY_BRACES_EXCEPT_ANGLED;
                 break;
             case '{':
                 endSymbol = '}';
+                braceTypes = ANY_BRACES_EXCEPT_ANGLED;
                 break;
             case '<':
                 if (braceTypes != ANY_BRACES_INCLUDING_ANGLED)
@@ -893,6 +925,8 @@ void HeaderParser::skipBlock(BraceTypes braceTypes) {
         while (!matchSymbol(endSymbol)) {
             if (cur >= end)
                 throw Error::UNEXPECTED_EOF;
+            if (*cur == ')' || *cur == ']' || *cur == '}')
+                throw Error::BRACE_MISMATCH;
             const char *prev = cur;
             skipWhitespaceAndComments();
             skipBlock(braceTypes);
@@ -904,7 +938,7 @@ void HeaderParser::skipBlock(BraceTypes braceTypes) {
 
 void HeaderParser::skipSection() {
     while (skipWhitespaceAndComments(), cur < end) {
-        if (matchSymbol(';'))
+        if (matchSymbol(';') || *cur == '}')
             return;
         if (*cur == '{') {
             skipBlock(ANY_BRACES_EXCEPT_ANGLED);

@@ -11,6 +11,7 @@
     M(TYPE_REDEFINITION) \
     M(UNSUPPORTED_TYPE) \
     M(UNEXPECTED_EOF) \
+    M(BRACE_MISMATCH) \
     M(INVALID_STRUCTURE_SYNTAX) \
     M(INVALID_ENUM_SYNTAX) \
     M(INVALID_TYPENAME_SYNTAX) \
@@ -62,11 +63,16 @@ public:
     private:
         Stage stage;
         struct {
+            /// Unresolved nested types are a separate category because they are handled differently in the NAMES_ONLY_FALLBACK stage
             int unresolvedNestedTypes;
-            int unresolvedTypeAliases;
+            /// Unresolved type aliases and class base types can prevent nested types from being recognized
+            int unresolvedNamespacibleTypes;
         } cur, prev;
 
         bool namesOnly() const;
+        void unresolvedNestedTypeEncountered();
+        void unresolvedTypeAliasEncountered();
+        void unresolvedBaseTypeEncountered();
     };
 
     HeaderParser(Pass &pass, TypeSet &outputTypeSet, const char *headerStart, size_t headerLength);
@@ -116,7 +122,7 @@ private:
     int parseArrayLength();
     QualifiedName readNamespacedIdentifier();
     std::string readIdentifier();
-    void skipLine();
+    void skipLine(bool ignoreComments);
     void skipWhitespaceAndComments();
     bool skipComment();
     bool skipStringLiteral();

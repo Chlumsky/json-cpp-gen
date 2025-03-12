@@ -7,5 +7,5 @@ list(APPEND TEST_FILES ${INPUTS_LIST})
 add_custom_command(
     OUTPUT ${CASE_GENERATED_FILES}
     COMMAND json-cpp-gen ${GEN_OUT_PATH}config.json
-    DEPENDS json-cpp-gen ${INPUTS_PATH}config.json ${INPUTS_LIST}
+    DEPENDS json-cpp-gen ${GEN_OUT_PATH}config.json ${INPUTS_PATH}config.json ${INPUTS_LIST}
 )

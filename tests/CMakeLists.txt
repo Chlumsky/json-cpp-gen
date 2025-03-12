@@ -11,6 +11,9 @@ list(APPEND TEST_FILES ${CMAKE_CURRENT_SOURCE_DIR}/common.h)
 include(basic-case/basic-case.cmake)
 include(nested-type-alias/nested-type-alias.cmake)
 include(reverse-order-inputs/reverse-order-inputs.cmake)
+include(multipass-1/multipass-1.cmake)
+include(multipass-2/multipass-2.cmake)
+include(multipass-3/multipass-3.cmake)
 
 list(APPEND TEST_FILES ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp)
 

@@ -1,0 +1,37 @@
+{
+    "inputs": [
+        "@INPUTS_PATH@D.h",
+        "@INPUTS_PATH@C.h",
+        "@INPUTS_PATH@B.h",
+        "@INPUTS_PATH@A.h"
+    ],
+    "settings": {
+        "jsonIOMode": "NULL_TERMINATED_STRING",
+        "noThrow": false,
+        "strictSyntaxCheck": true,
+        "checkMissingKeys": true,
+        "checkRepeatingKeys": true,
+        "ignoreExtraKeys": false,
+        "checkIntegerOverflow": true,
+        "escapeForwardSlash": false,
+        "skipEmptyFields": true,
+        "nanPolicy": "SERIALIZER_ERROR",
+        "infPolicy": "EXPONENT_OVERFLOW"
+    },
+    "parsers": [ {
+        "name": "multipass_2::Parser",
+        "types": [
+            "multipass_2::Wrapper"
+        ],
+        "headerOutput": "@GEN_OUT_PATH@Parser.h",
+        "sourceOutput": "@GEN_OUT_PATH@Parser.cpp"
+    } ],
+    "serializers": [ {
+        "name": "multipass_2::Serializer",
+        "types": [
+            "multipass_2::Wrapper"
+        ],
+        "headerOutput": "@GEN_OUT_PATH@Serializer.h",
+        "sourceOutput": "@GEN_OUT_PATH@Serializer.cpp"
+    } ]
+}
