@@ -58,28 +58,24 @@ bool HeaderParser::Pass::namesOnly() const {
     return stage <= NAMES_ONLY_FALLBACK;
 }
 
-HeaderParser::NamespaceBlockGuard::NamespaceBlockGuard(HeaderParser &parent, const std::string &namespacedName) : parent(parent), outerNamespace(parent.curNamespace), outerNamespaceNamesLength(parent.namespaceNames.size()), outerUsingNamespacesCount(parent.usingNamespaces.size()), outerWithinStruct(parent.withinStruct) {
-    if (namespacedName.empty())
+HeaderParser::NamespaceBlockGuard::NamespaceBlockGuard(HeaderParser &parent, QualifiedName::Ref namespaceName) : parent(parent), outerNamespace(parent.curNamespace), outerNamespaceNamesLength(parent.namespaceNames.size()), outerUsingNamespacesCount(parent.usingNamespaces.size()), outerWithinStruct(parent.withinStruct) {
+    if (!namespaceName)
         return;
     size_t pos = 0;
-    if (namespacedName[0] == ':') {
+    if (namespaceName.isAbsolute()) {
         parent.curNamespace = &parent.typeSet->root();
         // Stash namespaceNames if entering root namespace
         std::swap(outerNamespaceNames, parent.namespaceNames);
         pos += 2;
     }
-    // Split namespacedName into namespaces and name
-    while (pos < namespacedName.size()) {
-        size_t start = pos;
-        while (pos < namespacedName.size() && namespacedName[pos] != ':')
-            ++pos;
-        std::string namespaceSubname = namespacedName.substr(start, pos-start);
-        if (SymbolPtr symbol = parent.curNamespace->establishNamespace(namespaceSubname)) {
+    // Iterate over namespaceName's sub-names (this is only done because of parent.namespaceNames which is planned to be removed)
+    while (namespaceName) {
+        if (SymbolPtr symbol = parent.curNamespace->establishNamespace(QualifiedName::Ref(namespaceName.prefix()))) {
             parent.curNamespace = symbol->ns.get();
-            parent.namespaceNames.push_back(namespaceSubname);
+            parent.namespaceNames.push_back(namespaceName.prefix().string());
+            namespaceName = namespaceName.exceptPrefix();
         } else
             throw Error::UNEXPECTED_CODE_PATH;
-        pos += 2;
     }
 }
 
@@ -104,30 +100,27 @@ void HeaderParser::parse() {
         parseSection();
 }
 
-std::string HeaderParser::fullTypeName(const std::string &baseName) const {
-    if (baseName.size() >= 2 && baseName[0] == ':' && baseName[1] == ':')
-        return baseName.substr(2);
+std::string HeaderParser::fullTypeName(QualifiedName::Ref baseName) const {
+    if (baseName.isAbsolute())
+        return baseName.exceptAbsolute().string();
     std::string prefix;
     for (const std::string &ns : namespaceNames)
         prefix += ns+"::";
-    return prefix+baseName;
+    return prefix+baseName.string();
 }
 
-SymbolPtr HeaderParser::newTypeSymbol(std::string qualifiedNewTypeName) {
-    if (qualifiedNewTypeName.empty())
+SymbolPtr HeaderParser::newTypeSymbol(QualifiedName::Ref newTypeName) {
+    if (!newTypeName)
         return nullptr;
     Namespace *targetNamespace = curNamespace;
-    std::string prefix = (std::string &&) qualifiedNewTypeName;
-    Namespace::splitPrefix(prefix, qualifiedNewTypeName);
-    if (prefix.empty()) { // :: at beginning (root namespace)
-        if (withinStruct) // struct X { struct ::Y { } }; is invalid
+    if (newTypeName.isAbsolute()) {
+        if (withinStruct) // struct X { struct ::Y::Z { } }; is invalid
             return nullptr;
         targetNamespace = &typeSet->root();
-        prefix = (std::string &&) qualifiedNewTypeName;
-        Namespace::splitPrefix(prefix, qualifiedNewTypeName);
+        newTypeName = newTypeName.exceptAbsolute();
     }
-    while (!qualifiedNewTypeName.empty()) {
-        assert(!prefix.empty());
+    while (!newTypeName.isUnqualified()) {
+        const UnqualifiedName &prefix = newTypeName.prefix();
         SymbolPtr symbol = (
             withinStruct || pass.stage >= Pass::NAMES_ONLY_FALLBACK ?
             targetNamespace->requireLocalSymbol(prefix) :
@@ -140,11 +133,9 @@ SymbolPtr HeaderParser::newTypeSymbol(std::string qualifiedNewTypeName) {
         if (!symbol->ns)
             symbol->ns = std::unique_ptr<Namespace>(new Namespace(targetNamespace));
         targetNamespace = symbol->ns.get();
-        prefix = (std::string &&) qualifiedNewTypeName;
-        Namespace::splitPrefix(prefix, qualifiedNewTypeName);
+        newTypeName = newTypeName.exceptPrefix();
     }
-    assert(!prefix.empty());
-    return targetNamespace->requireLocalSymbol(prefix);
+    return targetNamespace->requireLocalSymbol(newTypeName.prefix());
 }
 
 void HeaderParser::parseSection() {
@@ -165,7 +156,7 @@ void HeaderParser::parseSection() {
 
 void HeaderParser::parseNamespace() {
     skipWhitespaceAndComments();
-    std::string namespaceName = readNamespacedIdentifier();
+    QualifiedName namespaceName = readNamespacedIdentifier();
     skipWhitespaceAndComments();
     if (matchSymbol(';'))
         return;
@@ -183,39 +174,38 @@ void HeaderParser::parseUsing() {
     skipWhitespaceAndComments();
     if (matchKeyword("namespace")) {
         skipWhitespaceAndComments();
-        std::string namespaceName = readNamespacedIdentifier();
-        if (!namespaceName.empty()) {
-            if (namespaceName.size() > 2 && namespaceName[0] == ':' && namespaceName[1] == ':')
-                usingNamespaces.push_back(namespaceName.substr(2));
+        if (QualifiedName namespaceName = readNamespacedIdentifier()) {
+            if (namespaceName.isAbsolute())
+                usingNamespaces.push_back(namespaceName.exceptAbsolute().string());
             else {
+                std::string namespaceNameString = namespaceName.string();
                 for (int i = (int) namespaceNames.size(); i >= 0; --i) {
                     std::string fullNamespaceName;
                     for (int j = 0; j < i; ++j)
                         fullNamespaceName += namespaceNames[j]+"::";
-                    fullNamespaceName += namespaceName;
-                    usingNamespaces.push_back(std::move(fullNamespaceName));
+                    fullNamespaceName += namespaceNameString;
+                    usingNamespaces.push_back((std::string &&) fullNamespaceName);
                 }
             }
         }
         return skipSection();
     }
-    std::string aliasName = readNamespacedIdentifier();
-    if (aliasName.empty())
+    QualifiedName aliasName = readNamespacedIdentifier();
+    if (!aliasName)
         return skipSection();
     skipWhitespaceAndComments();
     if (matchSymbol(';')) {
         // using ns::type;
-        size_t lastSepPos = aliasName.rfind("::");
-        if (lastSepPos != std::string::npos && lastSepPos > 0) {
+        if (aliasName.exceptSuffix()) {
             if (SymbolPtr aliasedSymbol = curNamespace->findSymbol(aliasName, true)) {
-                if (!curNamespace->makeLocalAlias(aliasName.substr(lastSepPos+2), aliasedSymbol))
+                if (!curNamespace->makeLocalAlias(aliasName.suffix(), aliasedSymbol))
                     throw Error::TYPE_REDEFINITION;
             } else
                 ++pass.cur.unresolvedTypeAliases;
         }
         return;
     }
-    if (matchSymbol('=') && aliasName.find("::") == std::string::npos) {
+    if (matchSymbol('=') && aliasName.isUnqualified()) {
         // using x = y;
         skipWhitespaceAndComments();
         SymbolPtr aliasedSymbol;
@@ -233,7 +223,7 @@ void HeaderParser::parseUsing() {
         if (aliasedSymbol && (aliasedSymbol = tryParseArrayTypeSuffix(aliasedSymbol))) {
             skipWhitespaceAndComments();
             if (matchSymbol(';')) {
-                if (!curNamespace->makeLocalAlias(aliasName, aliasedSymbol))
+                if (!curNamespace->makeLocalAlias(aliasName.prefix(), aliasedSymbol))
                     throw Error::TYPE_REDEFINITION;
                 return;
             }
@@ -273,12 +263,12 @@ void HeaderParser::parseTypedef() {
             skipExpression();
             continue;
         }
-        std::string aliasName = readNamespacedIdentifier();
-        if (!aliasName.empty() && aliasName.find("::") == std::string::npos) {
+        QualifiedName aliasName = readNamespacedIdentifier();
+        if (aliasName.isUnqualified()) {
             if (aliasedType) {
                 if (SymbolPtr aliasedArrayType = tryParseArrayTypeSuffix(aliasedType))
                     aliasedType = aliasedArrayType;
-                if (!curNamespace->makeLocalAlias(aliasName, aliasedType))
+                if (!curNamespace->makeLocalAlias(aliasName.prefix(), aliasedType))
                     throw Error::TYPE_REDEFINITION;
             } else
                 ++pass.cur.unresolvedTypeAliases;
@@ -291,8 +281,9 @@ void HeaderParser::parseTypedef() {
 
 SymbolPtr HeaderParser::parseStruct(bool isClass) {
     skipWhitespaceAndComments();
-    std::string structName = readNamespacedIdentifier();
+    QualifiedName structName = readNamespacedIdentifier();
     skipWhitespaceAndComments();
+    // TODO struct STRUCT_API StructName { };
     const char *possibleDeclarationEnd = cur;
     if (matchKeyword("final"))
         skipWhitespaceAndComments();
@@ -307,7 +298,7 @@ SymbolPtr HeaderParser::parseStruct(bool isClass) {
     StructureType *structType = nullptr;
     bool forwardDeclaration = cur < end && *cur == ';';
     if (!isClass) {
-        if (!structName.empty()) {
+        if (structName) {
             if ((symbol = newTypeSymbol(structName))) {
                 if (symbol->type) {
                     if (!((structType = symbol->type->incompleteStructureType()) || (forwardDeclaration && symbol->type->structureType())))
@@ -316,13 +307,13 @@ SymbolPtr HeaderParser::parseStruct(bool isClass) {
                     symbol->type = std::unique_ptr<StructureType>(structType = new StructureType(Generator::safeName(fullTypeName(structName))));
             }
         }
-        if (structName.empty() && !forwardDeclaration && !pass.namesOnly()) {
+        if (!structName && !forwardDeclaration && !pass.namesOnly()) {
             symbol = typeSet->newUnnamedStruct();
             assert(symbol->type);
             structType = static_cast<StructureType *>(symbol->type.get());
             assert(structType == symbol->type->incompleteStructureType());
         }
-    } else if (!structName.empty())
+    } else if (structName)
         symbol = newTypeSymbol(structName); // Establish symbol for class's potential public nested types
     if (!symbol) { // Structure cannot be parsed at this time because its real name could not be deduced
         skipSection();
@@ -474,7 +465,7 @@ SymbolPtr HeaderParser::parseEnum() {
         enumClass = true;
         skipWhitespaceAndComments();
     }
-    std::string enumName = readNamespacedIdentifier();
+    QualifiedName enumName = readNamespacedIdentifier();
     skipWhitespaceAndComments();
     if (!(cur < end && (*cur == ';' || *cur == ':' || *cur == '{'))) {
         // Actually not an enum declaration/definition but a variable
@@ -494,13 +485,13 @@ SymbolPtr HeaderParser::parseEnum() {
     std::string enumNamespace;
     for (const std::string &namespaceSubName : namespaceNames)
         enumNamespace += namespaceSubName+"::";
-    if (!enumName.empty()) {
+    if (enumName) {
         std::string fullEnumName;
-        if (enumName.size() >= 2 && enumName[0] == ':' && enumName[1] == ':') {
-            fullEnumName = enumName.substr(2);
+        if (enumName.isAbsolute()) {
+            fullEnumName = enumName.exceptAbsolute().string();
             enumNamespace.clear();
         } else
-            fullEnumName = enumNamespace+enumName;
+            fullEnumName = enumNamespace+enumName.string();
         assert(fullEnumName == fullTypeName(enumName));
         if ((symbol = newTypeSymbol(enumName))) {
             if (symbol->type) {
@@ -512,7 +503,7 @@ SymbolPtr HeaderParser::parseEnum() {
     }
     if (forwardDeclaration)
         return symbol;
-    if (enumName.empty() && !pass.namesOnly()) {
+    if (!enumName && !pass.namesOnly()) {
         symbol = typeSet->newUnnamedEnum(enumClass, enumNamespace);
         assert(symbol->type);
         enumType = static_cast<EnumType *>(symbol->type.get());
@@ -545,38 +536,39 @@ SymbolPtr HeaderParser::parseEnum() {
 SymbolPtr HeaderParser::parseType() {
     const char *orig = cur;
     skipWhitespaceAndComments();
-    if (cur < end && ((isWordChar(*cur) && !isdigit(*cur)) || *cur == ':')) {
-        std::string typeName = readNamespacedIdentifier();
-        if (typeName.empty())
+    if (cur < end && (isInitialNameChar(*cur) || *cur == ':')) {
+        QualifiedName typeName = readNamespacedIdentifier();
+        if (!typeName)
             return nullptr;
         const char *prev = cur;
         skipWhitespaceAndComments();
         // Special case: multi-word fundamental types
-        if (typeName == "signed" || typeName == "unsigned" || typeName == "short" || typeName == "long") {
+        if (typeName.isUnqualified() && (typeName.prefix().string() == "signed" || typeName.prefix().string() == "unsigned" || typeName.prefix().string() == "short" || typeName.prefix().string() == "long")) {
+            std::string multiWordTypeName = typeName.prefix().string();
             const char *kwStart = cur;
             if (matchKeyword("short") || matchKeyword("long")) { // Possible 3 word type?
-                typeName += " "+std::string(kwStart, cur);
+                multiWordTypeName += " "+std::string(kwStart, cur);
                 prev = cur;
                 skipWhitespaceAndComments();
                 kwStart = cur;
             }
             if (matchKeyword("short") || matchKeyword("long")) { // 4 word type??? (unsigned long long int)
-                typeName += " "+std::string(kwStart, cur);
+                multiWordTypeName += " "+std::string(kwStart, cur);
                 prev = cur;
                 skipWhitespaceAndComments();
                 kwStart = cur;
             }
             if (matchKeyword("int") || matchKeyword("char") || matchKeyword("double") || matchKeyword("float")) {
-                typeName += " "+std::string(kwStart, cur);
+                multiWordTypeName += " "+std::string(kwStart, cur);
                 prev = cur;
             }
             cur = prev;
-            return curNamespace->findSymbol(typeName, true);
+            return typeSet->root().findLocalSymbol(multiWordTypeName);
         } else if (matchSymbol('<')) { // Template type
             skipWhitespaceAndComments();
             const Type *elementType = nullptr;
             // regular container
-            if (ContainerTemplate<> *containerTemplate = findContainerTemplate<>(typeName)) {
+            if (ContainerTemplate<> *containerTemplate = findContainerTemplate<>(typeName.string())) {
                 int elementTypeIndex = containerTemplate->templateArgIndex('T');
                 for (int index = 0; !matchSymbol('>'); ++index) {
                     if (cur >= end)
@@ -594,7 +586,7 @@ SymbolPtr HeaderParser::parseType() {
                 return nullptr;
             }
             // static array container
-            else if (ContainerTemplate<int> *containerTemplate = findContainerTemplate<int>(typeName)) {
+            else if (ContainerTemplate<int> *containerTemplate = findContainerTemplate<int>(typeName.string())) {
                 int arrayLength = -1;
                 int elementTypeIndex = containerTemplate->templateArgIndex('T');
                 int arrayLengthIndex = containerTemplate->templateArgIndex('N');
@@ -616,7 +608,7 @@ SymbolPtr HeaderParser::parseType() {
                 return nullptr;
             }
             // object map container
-            else if (ContainerTemplate<const Type *> *containerTemplate = findContainerTemplate<const Type *>(typeName)) {
+            else if (ContainerTemplate<const Type *> *containerTemplate = findContainerTemplate<const Type *>(typeName.string())) {
                 const Type *keyType = nullptr;
                 int keyTypeIndex = containerTemplate->templateArgIndex('K');
                 int elementTypeIndex = containerTemplate->templateArgIndex('T');
@@ -692,11 +684,11 @@ SymbolPtr HeaderParser::tryParseArrayTypeSuffix(SymbolPtr symbol) {
 int HeaderParser::parseArrayLength() {
     skipWhitespaceAndComments();
     // TODO what if #define ARRAY_SIZE 42 etc.
-    if (cur < end && isdigit(*cur)) {
+    if (cur < end && !(*cur&0x80) && isdigit(*cur)) {
         std::string number;
         do {
             number.push_back(*cur++);
-        } while (cur < end && isWordChar(*cur));
+        } while (cur < end && isNameChar(*cur)); // isNameChar because of literal suffixes
         int arrayLength = 0;
         if (sscanf(number.c_str(), "%i", &arrayLength) == 1)
             return arrayLength;
@@ -704,27 +696,23 @@ int HeaderParser::parseArrayLength() {
     throw Error::INVALID_ARRAY_SYNTAX;
 }
 
-std::string HeaderParser::readNamespacedIdentifier() {
+QualifiedName HeaderParser::readNamespacedIdentifier() {
     const char *orig = cur;
-    bool rootNamespace = false;
+    QualifiedName identifier;
     if (cur+1 < end && *cur == ':' && *(cur+1) == ':') {
         cur += 2;
         skipWhitespaceAndComments();
-        rootNamespace = true;
+        identifier.setAbsolute(true);
     }
-    if (cur < end && isWordChar(*cur) && !isdigit(*cur)) {
-        std::string identifier;
-        if (rootNamespace)
-            identifier = "::";
+    if (cur < end && isInitialNameChar(*cur)) {
         while (true) {
             std::string subIdentifier = readIdentifier();
             if (subIdentifier.empty())
                 break;
-            identifier += subIdentifier;
+            identifier.append((std::string &&) subIdentifier);
             const char *prev = cur;
             skipWhitespaceAndComments();
             if (cur+1 < end && *cur == ':' && *(cur+1) == ':') {
-                identifier += "::";
                 cur += 2;
                 skipWhitespaceAndComments();
             } else {
@@ -734,15 +722,15 @@ std::string HeaderParser::readNamespacedIdentifier() {
         }
     }
     cur = orig;
-    return std::string();
+    return identifier;
 }
 
 std::string HeaderParser::readIdentifier() {
-    if (cur < end && isWordChar(*cur) && !isdigit(*cur)) {
+    if (cur < end && isInitialNameChar(*cur)) {
         std::string identifier;
         do {
             identifier.push_back(*cur++);
-        } while (cur < end && isWordChar(*cur));
+        } while (cur < end && isNameChar(*cur));
         return identifier;
     }
     return std::string();
@@ -945,17 +933,13 @@ bool HeaderParser::matchKeyword(const char *keyword) {
     const char *subCur = cur;
     do {
         if (!*keyword) {
-            if (subCur < end && isWordChar(*subCur))
+            if (subCur < end && isNameChar(*subCur))
                 return false;
             cur = subCur;
             return true;
         }
     } while (subCur < end && *subCur++ == *keyword++);
     return false;
-}
-
-bool HeaderParser::isWordChar(char c) {
-    return c&0x80 || c == '_' || isalnum(c);
 }
 
 HeaderParser::Error parseHeader(HeaderParser::Pass &pass, TypeSet &outputTypeSet, const std::string &headerString) {

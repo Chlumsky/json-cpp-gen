@@ -11,8 +11,10 @@
 #include "container-templates/OptionalContainerTemplate.h"
 #include "HeaderParser.h"
 
+static const UnqualifiedName stdNamespaceName("std");
+
 TypeSet::TypeSet() : rootNamespace(new Namespace(nullptr)) {
-    rootNamespace->establishNamespace("std");
+    Namespace *stdNamespace = rootNamespace->establishNamespace(QualifiedName(stdNamespaceName))->ns.get();
     addBasicType("bool", BasicType::BOOL);
     addBasicType("char", BasicType::CHAR);
     addBasicType("signed char", BasicType::SIGNED_CHAR);
@@ -58,7 +60,7 @@ TypeSet::TypeSet() : rootNamespace(new Namespace(nullptr)) {
     addStdBasicType("uint32_t", BasicType::UINT32_T);
     addStdBasicType("int64_t", BasicType::INT64_T);
     addStdBasicType("uint64_t", BasicType::UINT64_T);
-    rootNamespace->establishSymbol(StringType::STD_STRING.name().body(), false)->type = std::unique_ptr<Type>(new StringType(StringType::STD_STRING));
+    stdNamespace->requireLocalSymbol(UnqualifiedName("string"))->type = std::unique_ptr<Type>(new StringType(StringType::STD_STRING));
     addContainerTemplate(std::unique_ptr<ContainerTemplate<> >(new ArrayContainerTemplate(ArrayContainerTemplate::STD_VECTOR)));
     addContainerTemplate(std::unique_ptr<ContainerTemplate<> >(new ArrayContainerTemplate(ArrayContainerTemplate::STD_DEQUE)));
     addContainerTemplate(std::unique_ptr<ContainerTemplate<> >(new ArrayContainerTemplate(ArrayContainerTemplate::STD_LIST)));
@@ -71,12 +73,12 @@ TypeSet::TypeSet() : rootNamespace(new Namespace(nullptr)) {
 }
 
 void TypeSet::addBasicType(const char *name, BasicType::Type type) {
-    rootNamespace->establishSymbol(name, false)->type = std::unique_ptr<Type>(new BasicType(type));
+    rootNamespace->requireLocalSymbol(UnqualifiedName(name))->type = std::unique_ptr<Type>(new BasicType(type));
 }
 
 void TypeSet::addStdBasicType(const char *name, BasicType::Type type) {
     addBasicType(name, type);
-    rootNamespace->findSymbol("std", false)->ns->establishSymbol(name, false)->type = std::unique_ptr<Type>(new BasicType(type));
+    rootNamespace->findLocalSymbol(stdNamespaceName)->ns->requireLocalSymbol(UnqualifiedName(name))->type = std::unique_ptr<Type>(new BasicType(type));
 }
 
 const std::string &TypeSet::resolveAlias(const std::string &alias) const {
@@ -95,16 +97,16 @@ Namespace &TypeSet::root() {
 }
 
 const Type *TypeSet::find(const std::string &name) const {
-    return symbolType(rootNamespace->findSymbol(name, false));
+    return symbolType(rootNamespace->findSymbol(QualifiedName(name), false));
 }
 
 bool TypeSet::addAlias(const std::string &aliasName, const std::string &actualName) {
     if (aliasName.empty() || actualName.empty())
         return true;
     for (char c : actualName) {
-        if (!(isalnum(c) || c == '_' || c == ':')) {
+        if (!(isNameChar(c) || c == ':')) {
             // Not a simple lexical alias - create new alias type
-            if (SymbolPtr symbol = rootNamespace->establishSymbol(aliasName, false)) {
+            if (SymbolPtr symbol = rootNamespace->establishSymbol(QualifiedName(aliasName), false)) {
                 symbol->type = std::unique_ptr<Type>(new TypeAlias(aliasName));
                 return true;
             } else

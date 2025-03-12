@@ -23,6 +23,7 @@ void test_nested_type_alias() {
     };
     std::string json;
     CHECK_RESULT(Serializer::serialize(json, i));
+    DUMP_JSON("nested-type-alias", json);
     CHECK_RESULT(Parser::parse(o, json.c_str()));
     CHECK(NESTED_ALIAS !memcmp(o.ha.value, i.ha.value, sizeof(Hermes::Aethalides::value)));
     CHECK(NESTED_ALIAS o.hm.value == i.hm.value);

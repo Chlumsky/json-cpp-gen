@@ -1,6 +1,12 @@
 
 #include "NameFormat.h"
 
+#include <cctype>
+
+static bool isAlphanumeric(char c) {
+    return (c&0x80) || isalnum(c);
+}
+
 std::string formatName(const std::string &name, NameFormat format) {
     std::string formatted;
     formatted.reserve(name.size());
@@ -15,12 +21,12 @@ std::string formatName(const std::string &name, NameFormat format) {
             // fallthrough
         case NameFormat::UPERCASE_DASH:
             for (char c : name) {
-                if (!isalnum(c)) {
+                if (!isAlphanumeric(c)) {
                     if (!prevSpace)
                         formatted.push_back(separator);
                     prevSpace = true;
                 } else {
-                    if (islower(c))
+                    if (!(c&0x80) && islower(c))
                         c = (char) toupper(c);
                     formatted.push_back(c);
                     prevSpace = false;
@@ -32,12 +38,12 @@ std::string formatName(const std::string &name, NameFormat format) {
             // fallthrough
         case NameFormat::LOWERCASE_DASH:
             for (char c : name) {
-                if (!isalnum(c)) {
+                if (!isAlphanumeric(c)) {
                     if (!prevSpace)
                         formatted.push_back(separator);
                     prevSpace = true;
                 } else {
-                    if (isupper(c))
+                    if (!(c&0x80) && isupper(c))
                         c = (char) tolower(c);
                     formatted.push_back(c);
                     prevSpace = false;
@@ -49,10 +55,10 @@ std::string formatName(const std::string &name, NameFormat format) {
             // fallthrough
         case NameFormat::CAMELCASE:
             for (char c : name) {
-                if (!isalnum(c))
+                if (!isAlphanumeric(c))
                     prevSpace = true;
                 else {
-                    if (prevSpace && islower(c))
+                    if (prevSpace && !(c&0x80) && islower(c))
                         c = (char) toupper(c);
                     formatted.push_back(c);
                     prevSpace = false;

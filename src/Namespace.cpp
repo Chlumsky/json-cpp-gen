@@ -1,33 +1,15 @@
 
 #include "Namespace.h"
 
-static bool isWhitespace(char c) {
-    return c == ' ' || c == '\t' || c == '\r' || c == '\n';
-}
-
-void Namespace::splitPrefix(std::string &inWholeOutPrefix, std::string &outSuffix) {
-    size_t sepStart = inWholeOutPrefix.find("::");
-    if (sepStart != std::string::npos) {
-        size_t sepEnd = sepStart+2;
-        while (sepEnd < inWholeOutPrefix.size() && isWhitespace(inWholeOutPrefix[sepEnd]))
-            ++sepEnd;
-        while (sepStart > 0 && isWhitespace(inWholeOutPrefix[sepStart-1]))
-            --sepStart;
-        outSuffix = inWholeOutPrefix.substr(sepEnd);
-        inWholeOutPrefix.resize(sepStart);
-    } else
-        outSuffix = std::string();
-}
-
 Namespace::Namespace(Namespace *parentNamespace) : parent(parentNamespace) { }
 
 Namespace *Namespace::parentNamespace() {
     return parent;
 }
 
-bool Namespace::makeLocalAlias(const std::string &unqualifiedName, const SymbolPtr &originalSymbol) {
+bool Namespace::makeLocalAlias(const UnqualifiedName &name, const SymbolPtr &originalSymbol) {
     if (originalSymbol) {
-        SymbolPtr &symbol = symbols[unqualifiedName];
+        SymbolPtr &symbol = symbols[name];
         if (symbol)
             return symbol == originalSymbol;
         symbol = originalSymbol;
@@ -35,72 +17,63 @@ bool Namespace::makeLocalAlias(const std::string &unqualifiedName, const SymbolP
     return true;
 }
 
-SymbolPtr Namespace::findLocalSymbol(const std::string &unqualifiedName) const {
-    std::map<std::string, SymbolPtr>::const_iterator it = symbols.find(unqualifiedName);
+SymbolPtr Namespace::findLocalSymbol(const UnqualifiedName &name) const {
+    std::map<std::string, SymbolPtr>::const_iterator it = symbols.find(name);
     if (it != symbols.end())
         return it->second;
     return nullptr;
 }
 
-SymbolPtr Namespace::requireLocalSymbol(const std::string &unqualifiedName) {
-    SymbolPtr &symbol = symbols[unqualifiedName];
+SymbolPtr Namespace::requireLocalSymbol(const UnqualifiedName &name) {
+    SymbolPtr &symbol = symbols[name];
     if (!symbol)
         symbol = SymbolPtr(new Symbol);
     return symbol;
 }
 
-SymbolPtr Namespace::establishSymbol(const std::string &qualifiedName, bool establishNamespace) {
-    if (qualifiedName.empty())
+SymbolPtr Namespace::establishSymbol(QualifiedName::Ref name, bool establishNamespace) {
+    if (!name)
         return nullptr;
-    if (qualifiedName[0] == ':') {
+    if (name.isAbsolute()) {
         if (parent)
-            return parent->establishSymbol(qualifiedName, establishNamespace);
-        std::string nameCopy(qualifiedName);
-        std::string nonRootName;
-        splitPrefix(nameCopy, nonRootName);
-        return establishSymbol(nonRootName, establishNamespace);
+            return parent->establishSymbol(name, establishNamespace);
+        name = name.exceptAbsolute();
     }
-    std::string outerName(qualifiedName);
-    std::string innerName;
-    splitPrefix(outerName, innerName);
-    SymbolPtr &symbol = symbols[outerName];
+    SymbolPtr &symbol = symbols[name.prefix()];
+    name = name.exceptPrefix();
     if (!symbol)
         symbol = SymbolPtr(new Symbol);
-    if (innerName.empty() && !establishNamespace)
+    if (!name && !establishNamespace)
         return symbol;
     if (!symbol->ns)
         symbol->ns = std::unique_ptr<Namespace>(new Namespace(this));
-    if (innerName.empty())
+    if (!name)
         return symbol;
-    return symbol->ns->establishSymbol(innerName, establishNamespace);
+    return symbol->ns->establishSymbol(name, establishNamespace);
 }
 
-SymbolPtr Namespace::establishNamespace(const std::string &qualifiedName) {
-    return establishSymbol(qualifiedName, true);
+SymbolPtr Namespace::establishNamespace(QualifiedName::Ref name) {
+    return establishSymbol(name, true);
 }
 
-SymbolPtr Namespace::findSymbol(const std::string &qualifiedName, bool parentFallback) const {
-    if (qualifiedName.empty())
+SymbolPtr Namespace::findSymbol(QualifiedName::Ref name, bool parentFallback) const {
+    if (!name)
         return nullptr;
-    if (qualifiedName[0] == ':') {
+    if (name.isAbsolute()) {
         if (parent)
-            return parent->findSymbol(qualifiedName, parentFallback);
-        std::string nameCopy(qualifiedName);
-        std::string nonRootName;
-        splitPrefix(nameCopy, nonRootName);
-        return findSymbol(nonRootName, false);
+            return parent->findSymbol(name, parentFallback);
+        name = name.exceptAbsolute();
+        parentFallback = false;
     }
-    std::string outerName(qualifiedName);
-    std::string innerName;
-    splitPrefix(outerName, innerName);
-    std::map<std::string, SymbolPtr>::const_iterator it = symbols.find(outerName);
+    std::map<std::string, SymbolPtr>::const_iterator it = symbols.find(name.prefix());
+    QualifiedName::Ref innerName = name.exceptPrefix();
     if (it != symbols.end() && it->second) {
-        if (innerName.empty())
+        if (!innerName)
             return it->second;
         else if (it->second->ns)
             return it->second->ns->findSymbol(innerName, false);
     } else if (parent && parentFallback)
-        return parent->findSymbol(qualifiedName, true);
+        return parent->findSymbol(name, true);
     return nullptr;
 }
 

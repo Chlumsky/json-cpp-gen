@@ -125,6 +125,7 @@ void test_basic_case() {
 
     std::string json;
     CHECK_RESULT(Serializer::serialize(json, i));
+    DUMP_JSON("basic-case", json);
     CHECK_RESULT(Parser::parse(o, json.c_str()));
     CHECK(o == i);
 }

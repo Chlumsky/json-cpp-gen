@@ -38,6 +38,7 @@ void test_reverse_order_inputs() {
 
     std::string json;
     CHECK_RESULT(Serializer::serialize(json, i));
+    DUMP_JSON("reverse-order-input", json);
     CHECK_RESULT(Parser::parse(o, json.c_str()));
     CHECK(REVERSED_INPUTS o == i);
 }

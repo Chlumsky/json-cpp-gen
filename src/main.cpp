@@ -136,11 +136,19 @@ int main(int argc, const char *const *argv) {
 
     TypeSet typeSet;
     { // CUSTOM TYPE DEFINITIONS
-        for (const Configuration::StringDef &stringDef : config.stringTypes)
-            typeSet.root().establishSymbol(stringDef.name, false)->type = std::unique_ptr<Type>(new StringType(Generator::safeName(stringDef.name), stringDef.api));
+        for (const Configuration::StringDef &stringDef : config.stringTypes) {
+            if (QualifiedName::validate(stringDef.name))
+                typeSet.root().establishSymbol(QualifiedName(stringDef.name), false)->type = std::unique_ptr<Type>(new StringType(Generator::safeName(stringDef.name), stringDef.api));
+            else
+                fprintf(stderr, "Error: String type '%s' is not a simple type name\n", stringDef.name.c_str());
+        }
         for (const Configuration::ConstStringDef &fixedStringDef : config.constStringTypes) {
-            if (const StringType *dynamicStringType = findStringType(typeSet, fixedStringDef.stringType))
-                typeSet.root().establishSymbol(fixedStringDef.name, false)->type = std::unique_ptr<Type>(new ConstStringType(Generator::safeName(fixedStringDef.name), dynamicStringType, fixedStringDef.api));
+            if (const StringType *dynamicStringType = findStringType(typeSet, fixedStringDef.stringType)) {
+                if (QualifiedName::validate(fixedStringDef.name))
+                    typeSet.root().establishSymbol(QualifiedName(fixedStringDef.name), false)->type = std::unique_ptr<Type>(new ConstStringType(Generator::safeName(fixedStringDef.name), dynamicStringType, fixedStringDef.api));
+                else
+                    fprintf(stderr, "Error: Fixed string type '%s' is not a simple type name\n", fixedStringDef.name.c_str());
+            }
             else {
                 fprintf(stderr, "Error: String type '%s' not found, skipping fixed string type '%s'\n", fixedStringDef.stringType.c_str(), fixedStringDef.name.c_str());
                 continue;
@@ -204,6 +212,9 @@ int main(int argc, const char *const *argv) {
             }
         }
     }
+#ifndef NDEBUG
+    fprintf(stderr, "Header parser passes: %d\n", totalParserPasses);
+#endif
 
     // TYPE FINALIZATION
     if (const Type *badType = typeSet.compile()) {

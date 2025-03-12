@@ -3,6 +3,7 @@
 
 #include <string>
 #include <vector>
+#include "QualifiedName.h"
 #include "Namespace.h"
 #include "TypeSet.h"
 
@@ -94,14 +95,14 @@ private:
         std::vector<std::string> outerNamespaceNames;
         bool outerWithinStruct;
     public:
-        NamespaceBlockGuard(HeaderParser &parent, const std::string &namespacedName);
+        NamespaceBlockGuard(HeaderParser &parent, QualifiedName::Ref namespaceName);
         ~NamespaceBlockGuard();
     };
 
     template <typename... T>
     ContainerTemplate<T...> *findContainerTemplate(const std::string &name);
-    std::string fullTypeName(const std::string &baseName) const;
-    SymbolPtr newTypeSymbol(std::string qualifiedNewTypeName);
+    std::string fullTypeName(QualifiedName::Ref baseName) const;
+    SymbolPtr newTypeSymbol(QualifiedName::Ref newTypeName);
 
     void parseSection();
     void parseNamespace();
@@ -113,7 +114,7 @@ private:
     SymbolPtr tryParseType();
     SymbolPtr tryParseArrayTypeSuffix(SymbolPtr symbol);
     int parseArrayLength();
-    std::string readNamespacedIdentifier();
+    QualifiedName readNamespacedIdentifier();
     std::string readIdentifier();
     void skipLine();
     void skipWhitespaceAndComments();
@@ -125,8 +126,6 @@ private:
     void skipTemplateArgument();
     bool matchSymbol(char s);
     bool matchKeyword(const char *keyword);
-
-    static bool isWordChar(char c);
 
 };
 
