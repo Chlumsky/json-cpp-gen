@@ -86,7 +86,6 @@ private:
     const char *cur, *end;
     Namespace *curNamespace;
     std::vector<std::string> namespaceNames;
-    std::vector<QualifiedName> usingNamespaces;
     bool withinStruct;
 
     enum BraceTypes {
@@ -98,7 +97,6 @@ private:
         HeaderParser &parent;
         Namespace *outerNamespace;
         size_t outerNamespaceNamesLength;
-        size_t outerUsingNamespacesCount;
         std::vector<std::string> outerNamespaceNames;
         bool outerWithinStruct;
     public:
@@ -109,7 +107,6 @@ private:
     template <typename... T>
     ContainerTemplate<T...> *findContainerTemplate(const std::string &name);
     std::string fullTypeName(QualifiedName::Ref baseName) const;
-    SymbolPtr findSymbol(QualifiedName::Ref typeName) const;
     SymbolPtr newTypeSymbol(QualifiedName::Ref newTypeName, Namespace **newTypeNamespace = nullptr);
 
     void parseSection();
@@ -145,7 +142,8 @@ ContainerTemplate<T...> *HeaderParser::findContainerTemplate(const std::string &
         return nullptr;
     if (name.size() >= 2 && name[0] == ':' && name[1] == ':')
         return typeSet->findContainerTemplate<T...>(name.substr(2));
-    for (int i = (int) namespaceNames.size(); i >= 0; --i) {
+    int namespaceNameCount = int(namespaceNames.size());
+    for (int i = namespaceNameCount; i >= 0; --i) {
         std::string fullName;
         for (int j = 0; j < i; ++j)
             fullName += namespaceNames[j]+"::";
@@ -153,8 +151,24 @@ ContainerTemplate<T...> *HeaderParser::findContainerTemplate(const std::string &
         if (ContainerTemplate<T...> *containerTemplate = typeSet->findContainerTemplate<T...>(fullName))
             return containerTemplate;
     }
-    for (const QualifiedName &ns : usingNamespaces)
-        if (ContainerTemplate<T...> *containerTemplate = typeSet->findContainerTemplate<T...>(ns.exceptAbsolute().string()+"::"+name))
-            return containerTemplate;
+    // using namespace fallback
+    for (Namespace *baseNamespace = curNamespace; baseNamespace; baseNamespace = baseNamespace->parentNamespace(), --namespaceNameCount) {
+        for (const QualifiedName &usingNamespaceName : baseNamespace->usingNamespaces()) {
+            if (usingNamespaceName.isAbsolute()) {
+                if (ContainerTemplate<T...> *containerTemplate = typeSet->findContainerTemplate<T...>(usingNamespaceName.exceptAbsolute().string()+"::"+name))
+                    return containerTemplate;
+            } else {
+                for (int i = namespaceNameCount; i >= 0; --i) {
+                    std::string fullName;
+                    for (int j = 0; j < i; ++j)
+                        fullName += namespaceNames[j]+"::";
+                    fullName += usingNamespaceName.string()+"::";
+                    fullName += name;
+                    if (ContainerTemplate<T...> *containerTemplate = typeSet->findContainerTemplate<T...>(fullName))
+                        return containerTemplate;
+                }
+            }
+        }
+    }
     return nullptr;
 }

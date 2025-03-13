@@ -69,6 +69,7 @@ public:
     std::string string() const;
     bool isUnqualified() const;
     explicit operator bool() const;
+    bool operator==(const QualifiedName &other) const;
 
 private:
     std::vector<UnqualifiedName> names;

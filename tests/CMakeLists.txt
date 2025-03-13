@@ -14,6 +14,7 @@ include(reverse-order-inputs/reverse-order-inputs.cmake)
 include(multipass-1/multipass-1.cmake)
 include(multipass-2/multipass-2.cmake)
 include(multipass-3/multipass-3.cmake)
+include(namespaces/namespaces.cmake)
 
 list(APPEND TEST_FILES ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp)
 

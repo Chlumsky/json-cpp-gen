@@ -228,6 +228,16 @@ QualifiedName::operator bool() const {
     return !names.empty();
 }
 
+bool QualifiedName::operator==(const QualifiedName &other) const {
+    if (!(absolute == other.absolute && names.size() == other.names.size()))
+        return false;
+    for (size_t i = 0; i < names.size(); ++i) {
+        if (names[i].string() != other.names[i].string())
+            return false;
+    }
+    return true;
+}
+
 QualifiedName operator+(QualifiedName::Ref a, QualifiedName::Ref b) {
     if (b.isAbsolute())
         return QualifiedName(b);

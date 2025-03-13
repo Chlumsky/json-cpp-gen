@@ -3,6 +3,14 @@
 
 Namespace::Namespace(Namespace *parentNamespace) : parent(parentNamespace) { }
 
+bool Namespace::inheritsRecursively(const Namespace *ns) const {
+    for (Namespace *baseNs : inheritedNamespaces) {
+        if (baseNs == ns || baseNs->inheritsRecursively(ns))
+            return true;
+    }
+    return false;
+}
+
 void Namespace::inheritFrom(Namespace *baseNamespace) {
     if (baseNamespace && baseNamespace != this && !baseNamespace->inheritsRecursively(this)) {
         for (Namespace *preexistingBase : inheritedNamespaces) {
@@ -11,6 +19,20 @@ void Namespace::inheritFrom(Namespace *baseNamespace) {
         }
         inheritedNamespaces.push_back(baseNamespace);
     }
+}
+
+void Namespace::usingNamespace(QualifiedName &&usingNamespaceName) {
+    if (usingNamespaceName) {
+        for (const QualifiedName &preexistingUsingNamespace : usingNamespaceNames) {
+            if (preexistingUsingNamespace == usingNamespaceName)
+                return;
+        }
+        usingNamespaceNames.push_back((QualifiedName &&) usingNamespaceName);
+    }
+}
+
+const std::vector<QualifiedName> &Namespace::usingNamespaces() const {
+    return usingNamespaceNames;
 }
 
 Namespace *Namespace::parentNamespace() {
@@ -66,14 +88,22 @@ SymbolPtr Namespace::establishNamespace(QualifiedName::Ref name) {
     return establishSymbol(name, true);
 }
 
-SymbolPtr Namespace::findSymbol(QualifiedName::Ref name, bool parentFallback) const {
+#define FALLBACK_FLAG_INHERITED 0x01
+#define FALLBACK_FLAG_PARENT 0x02
+#define FALLBACK_FLAG_USING 0x04
+
+SymbolPtr Namespace::findSymbol(QualifiedName::Ref name, bool localOnly) const {
+    return findSymbol(name, localOnly ? FALLBACK_FLAG_INHERITED : FALLBACK_FLAG_INHERITED|FALLBACK_FLAG_PARENT|FALLBACK_FLAG_USING);
+}
+
+SymbolPtr Namespace::findSymbol(QualifiedName::Ref name, int fallbackFlags) const {
     if (!name)
         return nullptr;
     if (name.isAbsolute()) {
         if (parent)
-            return parent->findSymbol(name, parentFallback);
+            return parent->findSymbol(name, fallbackFlags);
         name = name.exceptAbsolute();
-        parentFallback = false;
+        fallbackFlags &= FALLBACK_FLAG_INHERITED;
     }
     std::map<std::string, SymbolPtr>::const_iterator it = symbols.find(name.prefix());
     if (it != symbols.end() && it->second) {
@@ -81,14 +111,24 @@ SymbolPtr Namespace::findSymbol(QualifiedName::Ref name, bool parentFallback) co
         if (!innerName)
             return it->second;
         else if (it->second->ns)
-            return it->second->ns->findSymbol(innerName, false);
+            return it->second->ns->findSymbol(innerName, true);
     } else {
-        for (Namespace *baseNamespace : inheritedNamespaces) {
-            if (SymbolPtr symbol = baseNamespace->findSymbol(name, false))
+        if (fallbackFlags&FALLBACK_FLAG_INHERITED) {
+            for (Namespace *baseNamespace : inheritedNamespaces) {
+                if (SymbolPtr symbol = baseNamespace->findSymbol(name, FALLBACK_FLAG_INHERITED))
+                    return symbol;
+            }
+        }
+        if ((fallbackFlags&FALLBACK_FLAG_PARENT) && parent) {
+            if (SymbolPtr symbol = parent->findSymbol(name, fallbackFlags|FALLBACK_FLAG_USING))
                 return symbol;
         }
-        if (parent && parentFallback)
-            return parent->findSymbol(name, true);
+        if (fallbackFlags&FALLBACK_FLAG_USING) {
+            for (const QualifiedName &usingNamespace : usingNamespaceNames) {
+                if (SymbolPtr symbol = findSymbol(usingNamespace+name, fallbackFlags&FALLBACK_FLAG_PARENT))
+                    return symbol;
+            }
+        }
     }
     return nullptr;
 }
@@ -107,14 +147,6 @@ int Namespace::compileTypes(TemplateInstanceCache *templateInstanceCache, int st
         }
     }
     return result;
-}
-
-bool Namespace::inheritsRecursively(const Namespace *ns) const {
-    for (Namespace *baseNs : inheritedNamespaces) {
-        if (baseNs == ns || baseNs->inheritsRecursively(ns))
-            return true;
-    }
-    return false;
 }
 
 std::string Namespace::dump(int indent) const {

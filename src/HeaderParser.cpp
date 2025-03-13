@@ -74,7 +74,7 @@ void HeaderParser::Pass::unresolvedBaseTypeEncountered() {
     ++cur.nameResolutionBlockers;
 }
 
-HeaderParser::NamespaceBlockGuard::NamespaceBlockGuard(HeaderParser &parent, QualifiedName::Ref namespaceName) : parent(parent), outerNamespace(parent.curNamespace), outerNamespaceNamesLength(parent.namespaceNames.size()), outerUsingNamespacesCount(parent.usingNamespaces.size()), outerWithinStruct(parent.withinStruct) {
+HeaderParser::NamespaceBlockGuard::NamespaceBlockGuard(HeaderParser &parent, QualifiedName::Ref namespaceName) : parent(parent), outerNamespace(parent.curNamespace), outerNamespaceNamesLength(parent.namespaceNames.size()), outerWithinStruct(parent.withinStruct) {
     if (!namespaceName)
         return;
     size_t pos = 0;
@@ -101,7 +101,6 @@ HeaderParser::NamespaceBlockGuard::~NamespaceBlockGuard() {
         parent.namespaceNames.resize(outerNamespaceNamesLength);
     else
         parent.namespaceNames = std::move(outerNamespaceNames);
-    parent.usingNamespaces.resize(outerUsingNamespacesCount);
     parent.curNamespace = outerNamespace;
 }
 
@@ -117,18 +116,6 @@ void HeaderParser::parse() {
         parseSection();
         cur += cur == prev;
     }
-}
-
-SymbolPtr HeaderParser::findSymbol(QualifiedName::Ref typeName) const {
-    if (typeName.isAbsolute())
-        return typeSet->root().findSymbol(typeName.exceptAbsolute(), false);
-    if (SymbolPtr symbol = curNamespace->findSymbol(typeName, true))
-        return symbol;
-    for (const QualifiedName &usingNamespace : usingNamespaces) {
-        if (SymbolPtr symbol = curNamespace->findSymbol(usingNamespace+typeName, true))
-            return symbol;
-    }
-    return nullptr;
 }
 
 std::string HeaderParser::fullTypeName(QualifiedName::Ref baseName) const {
@@ -199,7 +186,7 @@ void HeaderParser::parseNamespace() {
     if (matchSymbol('=')) {
         skipWhitespaceAndComments();
         if (QualifiedName aliasedNamespaceName = readNamespacedIdentifier()) {
-            if (SymbolPtr aliasedNamespaceSymbol = findSymbol(aliasedNamespaceName)) {
+            if (SymbolPtr aliasedNamespaceSymbol = curNamespace->findSymbol(aliasedNamespaceName, false)) {
                 if (aliasedNamespaceSymbol->ns) {
                     Namespace *targetNamespace = curNamespace;
                     if (QualifiedName::Ref parentNamespaceName = namespaceName.exceptSuffix()) {
@@ -232,7 +219,7 @@ void HeaderParser::parseUsing() {
     if (matchKeyword("namespace")) {
         skipWhitespaceAndComments();
         if (QualifiedName namespaceName = readNamespacedIdentifier())
-            usingNamespaces.push_back((QualifiedName &&) namespaceName);
+            curNamespace->usingNamespace((QualifiedName &&) namespaceName);
         return skipSection();
     }
     QualifiedName aliasName = readNamespacedIdentifier();
@@ -242,7 +229,7 @@ void HeaderParser::parseUsing() {
     if (matchSymbol(';')) {
         // using ns::type;
         if (aliasName.exceptSuffix()) {
-            if (SymbolPtr aliasedSymbol = findSymbol(aliasName)) {
+            if (SymbolPtr aliasedSymbol = curNamespace->findSymbol(aliasName, false)) {
                 if (!curNamespace->makeLocalAlias(aliasName.suffix(), aliasedSymbol))
                     throw Error::TYPE_REDEFINITION;
             } else
@@ -336,7 +323,7 @@ SymbolPtr HeaderParser::parseStruct(bool isClass) {
         // Actually not a structure declaration/definition but a variable
         // Rewind cur because "final" is actually variable name
         cur = possibleDeclarationEnd;
-        return findSymbol(structName);
+        return curNamespace->findSymbol(structName, false);
     }
 
     SymbolPtr symbol;
@@ -524,7 +511,7 @@ SymbolPtr HeaderParser::parseEnum() {
     skipWhitespaceAndComments();
     if (!(cur < end && (*cur == ';' || *cur == ':' || *cur == '{'))) {
         // Actually not an enum declaration/definition but a variable
-        return findSymbol(enumName);
+        return curNamespace->findSymbol(enumName, false);
     }
     if (matchSymbol(':')) {
         while ((skipWhitespaceAndComments(), cur < end) && !(*cur == ';' || *cur == '{')) {
@@ -686,7 +673,7 @@ SymbolPtr HeaderParser::parseType() {
             }
         } else {
             cur = prev;
-            return findSymbol(typeName);
+            return curNamespace->findSymbol(typeName, false);
         }
     }
     cur = orig;
