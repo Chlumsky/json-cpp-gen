@@ -9,6 +9,7 @@
 
 #define FOR_HEADER_PARSER_ERROR_TYPES(M) \
     M(TYPE_REDEFINITION) \
+    M(NAMESPACE_REDEFINITION) \
     M(UNSUPPORTED_TYPE) \
     M(UNEXPECTED_EOF) \
     M(BRACE_MISMATCH) \
@@ -65,13 +66,13 @@ public:
         struct {
             /// Unresolved nested types are a separate category because they are handled differently in the NAMES_ONLY_FALLBACK stage
             int unresolvedNestedTypes;
-            /// Unresolved type aliases and class base types can prevent nested types from being recognized
-            int unresolvedNamespacibleTypes;
+            /// Unresolved aliases and class base types can prevent nested types from being recognized
+            int nameResolutionBlockers;
         } cur, prev;
 
         bool namesOnly() const;
         void unresolvedNestedTypeEncountered();
-        void unresolvedTypeAliasEncountered();
+        void unresolvedAliasEncountered();
         void unresolvedBaseTypeEncountered();
     };
 
@@ -85,7 +86,7 @@ private:
     const char *cur, *end;
     Namespace *curNamespace;
     std::vector<std::string> namespaceNames;
-    std::vector<std::string> usingNamespaces;
+    std::vector<QualifiedName> usingNamespaces;
     bool withinStruct;
 
     enum BraceTypes {
@@ -108,6 +109,7 @@ private:
     template <typename... T>
     ContainerTemplate<T...> *findContainerTemplate(const std::string &name);
     std::string fullTypeName(QualifiedName::Ref baseName) const;
+    SymbolPtr findSymbol(QualifiedName::Ref typeName) const;
     SymbolPtr newTypeSymbol(QualifiedName::Ref newTypeName, Namespace **newTypeNamespace = nullptr);
 
     void parseSection();
@@ -151,8 +153,8 @@ ContainerTemplate<T...> *HeaderParser::findContainerTemplate(const std::string &
         if (ContainerTemplate<T...> *containerTemplate = typeSet->findContainerTemplate<T...>(fullName))
             return containerTemplate;
     }
-    for (const std::string &ns : usingNamespaces)
-        if (ContainerTemplate<T...> *containerTemplate = typeSet->findContainerTemplate<T...>(ns+"::"+name))
+    for (const QualifiedName &ns : usingNamespaces)
+        if (ContainerTemplate<T...> *containerTemplate = typeSet->findContainerTemplate<T...>(ns.exceptAbsolute().string()+"::"+name))
             return containerTemplate;
     return nullptr;
 }

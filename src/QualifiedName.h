@@ -44,6 +44,7 @@ public:
         std::string string() const;
         bool isUnqualified() const;
         explicit operator bool() const;
+        explicit operator QualifiedName() const;
     private:
         const UnqualifiedName *start;
         int n;
@@ -74,3 +75,5 @@ private:
     bool absolute;
 
 };
+
+QualifiedName operator+(QualifiedName::Ref a, QualifiedName::Ref b);

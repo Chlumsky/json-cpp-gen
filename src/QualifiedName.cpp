@@ -114,6 +114,13 @@ QualifiedName::Ref::operator bool() const {
     return n > 0;
 }
 
+QualifiedName::Ref::operator QualifiedName() const {
+    QualifiedName name;
+    name.names = std::vector<UnqualifiedName>(start, start+n);
+    name.absolute = absolute;
+    return name;
+}
+
 bool QualifiedName::validate(const std::string &string) {
     if (string.empty())
         return false;
@@ -219,4 +226,13 @@ bool QualifiedName::isUnqualified() const {
 
 QualifiedName::operator bool() const {
     return !names.empty();
+}
+
+QualifiedName operator+(QualifiedName::Ref a, QualifiedName::Ref b) {
+    if (b.isAbsolute())
+        return QualifiedName(b);
+    QualifiedName total(a);
+    for (; b; b = b.exceptPrefix())
+        total.append(b.prefix());
+    return total;
 }

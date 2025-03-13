@@ -39,11 +39,11 @@ HeaderParser::Pass::Pass(Stage initialStage) : stage(initialStage), cur(), prev(
 void HeaderParser::Pass::operator++() {
     if (stage >= FINAL)
         stage = NONE;
-    else if (cur.unresolvedNestedTypes == 0 && cur.unresolvedNamespacibleTypes == 0)
+    else if (cur.unresolvedNestedTypes == 0 && cur.nameResolutionBlockers == 0)
         stage = FINAL;
     else if (stage == INITIAL)
         stage = NAMES_ONLY;
-    else if (cur.unresolvedNestedTypes >= prev.unresolvedNestedTypes && cur.unresolvedNamespacibleTypes >= prev.unresolvedNamespacibleTypes) {
+    else if (cur.unresolvedNestedTypes >= prev.unresolvedNestedTypes && cur.nameResolutionBlockers >= prev.nameResolutionBlockers) {
         if (cur.unresolvedNestedTypes == 0 || stage == NAMES_ONLY_FALLBACK)
             stage = FINAL;
         else
@@ -51,7 +51,7 @@ void HeaderParser::Pass::operator++() {
     }
     prev = cur;
     cur.unresolvedNestedTypes = 0;
-    cur.unresolvedNamespacibleTypes = 0;
+    cur.nameResolutionBlockers = 0;
 }
 
 HeaderParser::Pass::operator bool() const {
@@ -66,12 +66,12 @@ void HeaderParser::Pass::unresolvedNestedTypeEncountered() {
     ++cur.unresolvedNestedTypes;
 }
 
-void HeaderParser::Pass::unresolvedTypeAliasEncountered() {
-    ++cur.unresolvedNamespacibleTypes;
+void HeaderParser::Pass::unresolvedAliasEncountered() {
+    ++cur.nameResolutionBlockers;
 }
 
 void HeaderParser::Pass::unresolvedBaseTypeEncountered() {
-    ++cur.unresolvedNamespacibleTypes;
+    ++cur.nameResolutionBlockers;
 }
 
 HeaderParser::NamespaceBlockGuard::NamespaceBlockGuard(HeaderParser &parent, QualifiedName::Ref namespaceName) : parent(parent), outerNamespace(parent.curNamespace), outerNamespaceNamesLength(parent.namespaceNames.size()), outerUsingNamespacesCount(parent.usingNamespaces.size()), outerWithinStruct(parent.withinStruct) {
@@ -117,6 +117,18 @@ void HeaderParser::parse() {
         parseSection();
         cur += cur == prev;
     }
+}
+
+SymbolPtr HeaderParser::findSymbol(QualifiedName::Ref typeName) const {
+    if (typeName.isAbsolute())
+        return typeSet->root().findSymbol(typeName.exceptAbsolute(), false);
+    if (SymbolPtr symbol = curNamespace->findSymbol(typeName, true))
+        return symbol;
+    for (const QualifiedName &usingNamespace : usingNamespaces) {
+        if (SymbolPtr symbol = curNamespace->findSymbol(usingNamespace+typeName, true))
+            return symbol;
+    }
+    return nullptr;
 }
 
 std::string HeaderParser::fullTypeName(QualifiedName::Ref baseName) const {
@@ -184,6 +196,27 @@ void HeaderParser::parseNamespace() {
     skipWhitespaceAndComments();
     if (matchSymbol(';'))
         return;
+    if (matchSymbol('=')) {
+        skipWhitespaceAndComments();
+        if (QualifiedName aliasedNamespaceName = readNamespacedIdentifier()) {
+            if (SymbolPtr aliasedNamespaceSymbol = findSymbol(aliasedNamespaceName)) {
+                if (aliasedNamespaceSymbol->ns) {
+                    Namespace *targetNamespace = curNamespace;
+                    if (QualifiedName::Ref parentNamespaceName = namespaceName.exceptSuffix()) {
+                        targetNamespace = nullptr;
+                        if (SymbolPtr parentNamespaceSymbol = curNamespace->establishNamespace(parentNamespaceName))
+                            targetNamespace = parentNamespaceSymbol->ns.get();
+                    }
+                    if (targetNamespace) {
+                        if (!targetNamespace->makeLocalAlias(namespaceName.suffix(), aliasedNamespaceSymbol))
+                            throw Error::NAMESPACE_REDEFINITION;
+                    }
+                }
+            } else
+                pass.unresolvedAliasEncountered();
+        }
+        return skipSection();
+    }
     if (!matchSymbol('{'))
         throw Error::INVALID_NAMESPACE_SYNTAX;
     NamespaceBlockGuard namespaceBlockGuard(*this, namespaceName);
@@ -198,20 +231,8 @@ void HeaderParser::parseUsing() {
     skipWhitespaceAndComments();
     if (matchKeyword("namespace")) {
         skipWhitespaceAndComments();
-        if (QualifiedName namespaceName = readNamespacedIdentifier()) {
-            if (namespaceName.isAbsolute())
-                usingNamespaces.push_back(namespaceName.exceptAbsolute().string());
-            else {
-                std::string namespaceNameString = namespaceName.string();
-                for (int i = (int) namespaceNames.size(); i >= 0; --i) {
-                    std::string fullNamespaceName;
-                    for (int j = 0; j < i; ++j)
-                        fullNamespaceName += namespaceNames[j]+"::";
-                    fullNamespaceName += namespaceNameString;
-                    usingNamespaces.push_back((std::string &&) fullNamespaceName);
-                }
-            }
-        }
+        if (QualifiedName namespaceName = readNamespacedIdentifier())
+            usingNamespaces.push_back((QualifiedName &&) namespaceName);
         return skipSection();
     }
     QualifiedName aliasName = readNamespacedIdentifier();
@@ -221,11 +242,11 @@ void HeaderParser::parseUsing() {
     if (matchSymbol(';')) {
         // using ns::type;
         if (aliasName.exceptSuffix()) {
-            if (SymbolPtr aliasedSymbol = curNamespace->findSymbol(aliasName, true)) {
+            if (SymbolPtr aliasedSymbol = findSymbol(aliasName)) {
                 if (!curNamespace->makeLocalAlias(aliasName.suffix(), aliasedSymbol))
                     throw Error::TYPE_REDEFINITION;
             } else
-                pass.unresolvedTypeAliasEncountered();
+                pass.unresolvedAliasEncountered();
         }
         return;
     }
@@ -252,7 +273,7 @@ void HeaderParser::parseUsing() {
                 return;
             }
         } else
-            pass.unresolvedTypeAliasEncountered();
+            pass.unresolvedAliasEncountered();
     }
     skipSection();
 }
@@ -295,7 +316,7 @@ void HeaderParser::parseTypedef() {
                 if (!curNamespace->makeLocalAlias(aliasName.prefix(), aliasedType))
                     throw Error::TYPE_REDEFINITION;
             } else
-                pass.unresolvedTypeAliasEncountered();
+                pass.unresolvedAliasEncountered();
         }
         skipWhitespaceAndComments();
     } while (matchSymbol(','));
@@ -315,7 +336,7 @@ SymbolPtr HeaderParser::parseStruct(bool isClass) {
         // Actually not a structure declaration/definition but a variable
         // Rewind cur because "final" is actually variable name
         cur = possibleDeclarationEnd;
-        return curNamespace->findSymbol(structName, true);
+        return findSymbol(structName);
     }
 
     SymbolPtr symbol;
@@ -503,7 +524,7 @@ SymbolPtr HeaderParser::parseEnum() {
     skipWhitespaceAndComments();
     if (!(cur < end && (*cur == ';' || *cur == ':' || *cur == '{'))) {
         // Actually not an enum declaration/definition but a variable
-        return curNamespace->findSymbol(enumName, true);
+        return findSymbol(enumName);
     }
     if (matchSymbol(':')) {
         while ((skipWhitespaceAndComments(), cur < end) && !(*cur == ';' || *cur == '{')) {
@@ -665,7 +686,7 @@ SymbolPtr HeaderParser::parseType() {
             }
         } else {
             cur = prev;
-            return curNamespace->findSymbol(typeName, true);
+            return findSymbol(typeName);
         }
     }
     cur = orig;
