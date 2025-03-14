@@ -22,7 +22,7 @@ std::string EnumType::ParserSwitchTreeCaseGenerator::operator()(ParserGenerator 
     std::string body;
     body += indent+"if ("+valueType->generateEqualsStringLiteral(value, parserGenerator->getJsonMemberNameLiteral(caseLabel).c_str())+") {\n";
     body += indent+INDENT "value = "+Generator::safeName(parent->valuePrefix+caseLabel)+";\n";
-    body += indent+INDENT "return"+(parserGenerator->settings().noThrow ? " Error::OK" : "")+"; \n";
+    body += indent+INDENT "return"+(parserGenerator->settings().noThrow ? " Error::OK" : "")+";\n";
     body += indent+"}\n";
     return body;
 }

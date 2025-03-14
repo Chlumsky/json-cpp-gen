@@ -1,7 +1,9 @@
 
 #include "Namespace.h"
 
-Namespace::Namespace(Namespace *parentNamespace) : parent(parentNamespace) { }
+Namespace::Namespace(Root) : parent(nullptr) { }
+
+Namespace::Namespace(const UnqualifiedName &name, Namespace *parentNamespace) : name(name), parent(parentNamespace) { }
 
 bool Namespace::inheritsRecursively(const Namespace *ns) const {
     for (Namespace *baseNs : inheritedNamespaces) {
@@ -33,6 +35,15 @@ void Namespace::usingNamespace(QualifiedName &&usingNamespaceName) {
 
 const std::vector<QualifiedName> &Namespace::usingNamespaces() const {
     return usingNamespaceNames;
+}
+
+QualifiedName Namespace::fullName() const {
+    QualifiedName qualifiedName;
+    if (parent) {
+        qualifiedName = parent->fullName();
+        qualifiedName.append(name);
+    }
+    return qualifiedName;
 }
 
 Namespace *Namespace::parentNamespace() {
@@ -71,14 +82,15 @@ SymbolPtr Namespace::establishSymbol(QualifiedName::Ref name, bool establishName
             return parent->establishSymbol(name, establishNamespace);
         name = name.exceptAbsolute();
     }
-    SymbolPtr &symbol = symbols[name.prefix()];
+    const UnqualifiedName &subname = name.prefix();
     name = name.exceptPrefix();
+    SymbolPtr &symbol = symbols[subname];
     if (!symbol)
         symbol = SymbolPtr(new Symbol);
     if (!name && !establishNamespace)
         return symbol;
     if (!symbol->ns)
-        symbol->ns = std::unique_ptr<Namespace>(new Namespace(this));
+        symbol->ns = std::unique_ptr<Namespace>(new Namespace(subname, this));
     if (!name)
         return symbol;
     return symbol->ns->establishSymbol(name, establishNamespace);

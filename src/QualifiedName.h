@@ -42,6 +42,7 @@ public:
         Ref exceptPrefix() const;
         Ref exceptSuffix() const;
         std::string string() const;
+        std::string stringPrefix() const;
         bool isUnqualified() const;
         explicit operator bool() const;
         explicit operator QualifiedName() const;
@@ -67,6 +68,7 @@ public:
     Ref exceptPrefix() const;
     Ref exceptSuffix() const;
     std::string string() const;
+    std::string stringPrefix() const;
     bool isUnqualified() const;
     explicit operator bool() const;
     bool operator==(const QualifiedName &other) const;

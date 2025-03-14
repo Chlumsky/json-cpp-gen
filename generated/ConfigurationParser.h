@@ -45,7 +45,6 @@ protected:
     void skipValue();
     bool matchSymbol(char s);
     void readHexQuad(int &value);
-    void unescape(char *codepoints);
     static bool isAlphanumeric(char c);
     static int decodeHexDigit(char digit);
 

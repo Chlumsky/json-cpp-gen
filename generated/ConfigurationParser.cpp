@@ -305,7 +305,7 @@ void ConfigurationParser::parseSettingsJsonIO(Settings::JsonIO &value) {
     parseStdString(buffer);
     if (buffer == "NULL_TERMINATED_STRING") {
         value = Settings::JsonIO::NULL_TERMINATED_STRING;
-        return; 
+        return;
     }
     throw Error::UNKNOWN_ENUM_VALUE;
 }
@@ -318,13 +318,13 @@ void ConfigurationParser::parseSettingsInfPolicy(Settings::InfPolicy &value) {
                 case 'N':
                     if (buffer == "NULL_VALUE") {
                         value = Settings::InfPolicy::NULL_VALUE;
-                        return; 
+                        return;
                     }
                     break;
                 case 'Z':
                     if (buffer == "ZERO_VALUE") {
                         value = Settings::InfPolicy::ZERO_VALUE;
-                        return; 
+                        return;
                     }
                     break;
             }
@@ -332,13 +332,13 @@ void ConfigurationParser::parseSettingsInfPolicy(Settings::InfPolicy &value) {
         case 16:
             if (buffer == "SERIALIZER_ERROR") {
                 value = Settings::InfPolicy::SERIALIZER_ERROR;
-                return; 
+                return;
             }
             break;
         case 17:
             if (buffer == "EXPONENT_OVERFLOW") {
                 value = Settings::InfPolicy::EXPONENT_OVERFLOW;
-                return; 
+                return;
             }
             break;
         case 26:
@@ -346,13 +346,13 @@ void ConfigurationParser::parseSettingsInfPolicy(Settings::InfPolicy &value) {
                 case 'L':
                     if (buffer == "LOWERCASE_INF_STRING_VALUE") {
                         value = Settings::InfPolicy::LOWERCASE_INF_STRING_VALUE;
-                        return; 
+                        return;
                     }
                     break;
                 case 'U':
                     if (buffer == "UPPERCASE_INF_STRING_VALUE") {
                         value = Settings::InfPolicy::UPPERCASE_INF_STRING_VALUE;
-                        return; 
+                        return;
                     }
                     break;
             }
@@ -360,7 +360,7 @@ void ConfigurationParser::parseSettingsInfPolicy(Settings::InfPolicy &value) {
         case 28:
             if (buffer == "CAPITALIZED_INF_STRING_VALUE") {
                 value = Settings::InfPolicy::CAPITALIZED_INF_STRING_VALUE;
-                return; 
+                return;
             }
             break;
         case 31:
@@ -368,13 +368,13 @@ void ConfigurationParser::parseSettingsInfPolicy(Settings::InfPolicy &value) {
                 case 'L':
                     if (buffer == "LOWERCASE_INFINITY_STRING_VALUE") {
                         value = Settings::InfPolicy::LOWERCASE_INFINITY_STRING_VALUE;
-                        return; 
+                        return;
                     }
                     break;
                 case 'U':
                     if (buffer == "UPPERCASE_INFINITY_STRING_VALUE") {
                         value = Settings::InfPolicy::UPPERCASE_INFINITY_STRING_VALUE;
-                        return; 
+                        return;
                     }
                     break;
             }
@@ -382,7 +382,7 @@ void ConfigurationParser::parseSettingsInfPolicy(Settings::InfPolicy &value) {
         case 33:
             if (buffer == "CAPITALIZED_INFINITY_STRING_VALUE") {
                 value = Settings::InfPolicy::CAPITALIZED_INFINITY_STRING_VALUE;
-                return; 
+                return;
             }
             break;
     }
@@ -396,37 +396,37 @@ void ConfigurationParser::parseSettingsNanPolicy(Settings::NanPolicy &value) {
             case 'L':
                 if (buffer == "LOWERCASE_NAN_STRING_VALUE") {
                     value = Settings::NanPolicy::LOWERCASE_NAN_STRING_VALUE;
-                    return; 
+                    return;
                 }
                 break;
             case 'M':
                 if (buffer == "MIXED_CASE_NAN_STRING_VALUE") {
                     value = Settings::NanPolicy::MIXED_CASE_NAN_STRING_VALUE;
-                    return; 
+                    return;
                 }
                 break;
             case 'N':
                 if (buffer == "NULL_VALUE") {
                     value = Settings::NanPolicy::NULL_VALUE;
-                    return; 
+                    return;
                 }
                 break;
             case 'S':
                 if (buffer == "SERIALIZER_ERROR") {
                     value = Settings::NanPolicy::SERIALIZER_ERROR;
-                    return; 
+                    return;
                 }
                 break;
             case 'U':
                 if (buffer == "UPPERCASE_NAN_STRING_VALUE") {
                     value = Settings::NanPolicy::UPPERCASE_NAN_STRING_VALUE;
-                    return; 
+                    return;
                 }
                 break;
             case 'Z':
                 if (buffer == "ZERO_VALUE") {
                     value = Settings::NanPolicy::ZERO_VALUE;
-                    return; 
+                    return;
                 }
                 break;
         }

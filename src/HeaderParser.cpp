@@ -74,33 +74,17 @@ void HeaderParser::Pass::unresolvedBaseTypeEncountered() {
     ++cur.nameResolutionBlockers;
 }
 
-HeaderParser::NamespaceBlockGuard::NamespaceBlockGuard(HeaderParser &parent, QualifiedName::Ref namespaceName) : parent(parent), outerNamespace(parent.curNamespace), outerNamespaceNamesLength(parent.namespaceNames.size()), outerWithinStruct(parent.withinStruct) {
+HeaderParser::NamespaceBlockGuard::NamespaceBlockGuard(HeaderParser &parent, QualifiedName::Ref namespaceName) : parent(parent), outerNamespace(parent.curNamespace), outerWithinStruct(parent.withinStruct) {
     if (!namespaceName)
         return;
-    size_t pos = 0;
-    if (namespaceName.isAbsolute()) {
-        parent.curNamespace = &parent.typeSet->root();
-        // Stash namespaceNames if entering root namespace
-        std::swap(outerNamespaceNames, parent.namespaceNames);
-        pos += 2;
-    }
-    // Iterate over namespaceName's sub-names (this is only done because of parent.namespaceNames which is planned to be removed)
-    while (namespaceName) {
-        if (SymbolPtr symbol = parent.curNamespace->establishNamespace(QualifiedName::Ref(namespaceName.prefix()))) {
-            parent.curNamespace = symbol->ns.get();
-            parent.namespaceNames.push_back(namespaceName.prefix().string());
-            namespaceName = namespaceName.exceptPrefix();
-        } else
-            throw Error::UNEXPECTED_CODE_PATH;
-    }
+    if (SymbolPtr symbol = parent.curNamespace->establishNamespace(namespaceName))
+        parent.curNamespace = symbol->ns.get();
+    else
+        throw Error::UNEXPECTED_CODE_PATH;
 }
 
 HeaderParser::NamespaceBlockGuard::~NamespaceBlockGuard() {
     parent.withinStruct = outerWithinStruct;
-    if (outerNamespaceNames.empty())
-        parent.namespaceNames.resize(outerNamespaceNamesLength);
-    else
-        parent.namespaceNames = std::move(outerNamespaceNames);
     parent.curNamespace = outerNamespace;
 }
 
@@ -116,15 +100,6 @@ void HeaderParser::parse() {
         parseSection();
         cur += cur == prev;
     }
-}
-
-std::string HeaderParser::fullTypeName(QualifiedName::Ref baseName) const {
-    if (baseName.isAbsolute())
-        return baseName.exceptAbsolute().string();
-    std::string prefix;
-    for (const std::string &ns : namespaceNames)
-        prefix += ns+"::";
-    return prefix+baseName.string();
 }
 
 SymbolPtr HeaderParser::newTypeSymbol(QualifiedName::Ref newTypeName, Namespace **newTypeNamespace) {
@@ -148,14 +123,14 @@ SymbolPtr HeaderParser::newTypeSymbol(QualifiedName::Ref newTypeName, Namespace 
             return nullptr;
         }
         if (!symbol->ns)
-            symbol->ns = std::unique_ptr<Namespace>(new Namespace(targetNamespace));
+            symbol->ns = std::unique_ptr<Namespace>(new Namespace(newTypeName.prefix(), targetNamespace));
         targetNamespace = symbol->ns.get();
         newTypeName = newTypeName.exceptPrefix();
     }
     SymbolPtr symbol = targetNamespace->requireLocalSymbol(newTypeName.prefix());
     if (newTypeNamespace) {
         if (!symbol->ns)
-            symbol->ns = std::unique_ptr<Namespace>(new Namespace(targetNamespace));
+            symbol->ns = std::unique_ptr<Namespace>(new Namespace(newTypeName.prefix(), targetNamespace));
         *newTypeNamespace = symbol->ns.get();
     }
     return symbol;
@@ -184,28 +159,34 @@ void HeaderParser::parseNamespace() {
     if (matchSymbol(';'))
         return;
     if (matchSymbol('=')) {
-        skipWhitespaceAndComments();
-        if (QualifiedName aliasedNamespaceName = readNamespacedIdentifier()) {
-            if (SymbolPtr aliasedNamespaceSymbol = curNamespace->findSymbol(aliasedNamespaceName, false)) {
-                if (aliasedNamespaceSymbol->ns) {
-                    Namespace *targetNamespace = curNamespace;
-                    if (QualifiedName::Ref parentNamespaceName = namespaceName.exceptSuffix()) {
-                        targetNamespace = nullptr;
-                        if (SymbolPtr parentNamespaceSymbol = curNamespace->establishNamespace(parentNamespaceName))
-                            targetNamespace = parentNamespaceSymbol->ns.get();
+        if (namespaceName) {
+            skipWhitespaceAndComments();
+            if (QualifiedName aliasedNamespaceName = readNamespacedIdentifier()) {
+                if (SymbolPtr aliasedNamespaceSymbol = curNamespace->findSymbol(aliasedNamespaceName, false)) {
+                    if (aliasedNamespaceSymbol->ns) {
+                        Namespace *targetNamespace = curNamespace;
+                        if (QualifiedName::Ref parentNamespaceName = namespaceName.exceptSuffix()) {
+                            targetNamespace = nullptr;
+                            if (SymbolPtr parentNamespaceSymbol = curNamespace->establishNamespace(parentNamespaceName))
+                                targetNamespace = parentNamespaceSymbol->ns.get();
+                        }
+                        if (targetNamespace) {
+                            if (!targetNamespace->makeLocalAlias(namespaceName.suffix(), aliasedNamespaceSymbol))
+                                throw Error::NAMESPACE_REDEFINITION;
+                        }
                     }
-                    if (targetNamespace) {
-                        if (!targetNamespace->makeLocalAlias(namespaceName.suffix(), aliasedNamespaceSymbol))
-                            throw Error::NAMESPACE_REDEFINITION;
-                    }
-                }
-            } else
-                pass.unresolvedAliasEncountered();
+                } else
+                    pass.unresolvedAliasEncountered();
+            }
         }
         return skipSection();
     }
     if (!matchSymbol('{'))
         throw Error::INVALID_NAMESPACE_SYNTAX;
+    if (!namespaceName) { // Skip unnamed namespace
+        --cur; // back before '{'
+        return skipBlock(ANY_BRACES_EXCEPT_ANGLED);
+    }
     NamespaceBlockGuard namespaceBlockGuard(*this, namespaceName);
     for (skipWhitespaceAndComments(); !matchSymbol('}'); skipWhitespaceAndComments()) {
         if (cur >= end)
@@ -337,7 +318,7 @@ SymbolPtr HeaderParser::parseStruct(bool isClass) {
                     if (!((structType = symbol->type->incompleteStructureType()) || (forwardDeclaration && symbol->type->structureType())))
                         throw Error::TYPE_REDEFINITION;
                 } else
-                    symbol->type = std::unique_ptr<StructureType>(structType = new StructureType(Generator::safeName(fullTypeName(structName))));
+                    symbol->type = std::unique_ptr<StructureType>(structType = new StructureType(Generator::safeName((curNamespace->fullName()+structName).string())));
             }
         }
         if (!structName && !forwardDeclaration && !pass.namesOnly()) {
@@ -524,29 +505,19 @@ SymbolPtr HeaderParser::parseEnum() {
     SymbolPtr symbol;
     EnumType *enumType = nullptr;
     bool forwardDeclaration = cur < end && *cur == ';';
-    std::string enumNamespace;
-    for (const std::string &namespaceSubName : namespaceNames)
-        enumNamespace += namespaceSubName+"::";
     if (enumName) {
-        std::string fullEnumName;
-        if (enumName.isAbsolute()) {
-            fullEnumName = enumName.exceptAbsolute().string();
-            enumNamespace.clear();
-        } else
-            fullEnumName = enumNamespace+enumName.string();
-        assert(fullEnumName == fullTypeName(enumName));
         if ((symbol = newTypeSymbol(enumName))) {
             if (symbol->type) {
                 if (!(((enumType = symbol->type->incompleteEnumType()) && enumType->isEnumClass() == enumClass) || (forwardDeclaration && symbol->type->enumType() && symbol->type->enumType()->isEnumClass() == enumClass)))
                     throw Error::TYPE_REDEFINITION;
             } else
-                symbol->type = std::unique_ptr<EnumType>(enumType = new EnumType(enumClass, enumNamespace, Generator::safeName(fullEnumName)));
+                symbol->type = std::unique_ptr<EnumType>(enumType = new EnumType(enumClass, enumName.isAbsolute() ? std::string() : curNamespace->fullName().stringPrefix(), Generator::safeName((curNamespace->fullName()+enumName).string())));
         }
     }
     if (forwardDeclaration)
         return symbol;
     if (!enumName && !pass.namesOnly()) {
-        symbol = typeSet->newUnnamedEnum(enumClass, enumNamespace);
+        symbol = typeSet->newUnnamedEnum(enumClass, curNamespace->fullName().stringPrefix());
         assert(symbol->type);
         enumType = static_cast<EnumType *>(symbol->type.get());
         assert(enumType == symbol->type->enumType());

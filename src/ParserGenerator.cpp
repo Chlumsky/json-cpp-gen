@@ -317,7 +317,6 @@ std::string ParserGenerator::generateHeader() {
     code += std::string(INDENT)+(settings().noThrow ? "Error::Type" : "void")+" skipValue();\n";
     code += INDENT "bool matchSymbol(char s);\n";
     code += std::string(INDENT)+(settings().noThrow ? "bool" : "void")+" readHexQuad(int &value);\n";
-    code += std::string(INDENT)+(settings().noThrow ? "Error::Type" : "void")+" unescape(char *codepoints);\n";
     code += INDENT "static bool isAlphanumeric(char c);\n";
     code += INDENT "static int decodeHexDigit(char digit);\n";
     code += "\n";

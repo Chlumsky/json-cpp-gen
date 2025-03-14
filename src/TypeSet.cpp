@@ -13,7 +13,7 @@
 
 static const UnqualifiedName stdNamespaceName("std");
 
-TypeSet::TypeSet() : rootNamespace(new Namespace(nullptr)) {
+TypeSet::TypeSet() : rootNamespace(new Namespace(Namespace::ROOT)) {
     Namespace *stdNamespace = rootNamespace->establishNamespace(QualifiedName(stdNamespaceName))->ns.get();
     addBasicType("bool", BasicType::BOOL);
     addBasicType("char", BasicType::CHAR);

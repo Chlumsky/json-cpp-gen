@@ -12,10 +12,16 @@
 class Namespace {
 
 public:
-    explicit Namespace(Namespace *parentNamespace);
+    enum Root {
+        ROOT
+    };
+
+    Namespace(Root);
+    Namespace(const UnqualifiedName &name, Namespace *parentNamespace);
     void inheritFrom(Namespace *baseNamespace);
     void usingNamespace(QualifiedName &&usingNamespaceName);
     const std::vector<QualifiedName> &usingNamespaces() const;
+    QualifiedName fullName() const;
     Namespace *parentNamespace();
     bool makeLocalAlias(const UnqualifiedName &name, const SymbolPtr &originalSymbol);
     SymbolPtr findLocalSymbol(const UnqualifiedName &name) const;
@@ -28,6 +34,7 @@ public:
     std::string dump(int indent = 0) const;
 
 private:
+    UnqualifiedName name;
     Namespace *parent;
     std::vector<Namespace *> inheritedNamespaces;
     std::map<std::string, SymbolPtr> symbols;

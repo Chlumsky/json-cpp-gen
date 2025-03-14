@@ -106,6 +106,17 @@ std::string QualifiedName::Ref::string() const {
     return str;
 }
 
+std::string QualifiedName::Ref::stringPrefix() const {
+    std::string str;
+    if (absolute)
+        str += "::";
+    for (const UnqualifiedName *subName = start, *end = start+n; subName < end; ++subName) {
+        str += subName->string();
+        str += "::";
+    }
+    return str;
+}
+
 bool QualifiedName::Ref::isUnqualified() const {
     return !absolute && n == 1;
 }
@@ -218,6 +229,10 @@ QualifiedName::Ref QualifiedName::exceptSuffix() const {
 
 std::string QualifiedName::string() const {
     return Ref(*this).string();
+}
+
+std::string QualifiedName::stringPrefix() const {
+    return Ref(*this).stringPrefix();
 }
 
 bool QualifiedName::isUnqualified() const {
