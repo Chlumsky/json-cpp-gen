@@ -38,21 +38,21 @@ std::string StructureType::ParserSwitchTreeCaseGenerator::operator()(ParserGener
         std::string checkBits = "doneKeys["+std::to_string(i/32)+"]";
         std::string checkMask = hexUint32(1ul<<(i%32));
         if (parserGenerator->settings().checkRepeatingKeys) {
-            body += indent+INDENT "if ("+checkBits+"&"+checkMask+")\n";
-            body += indent+INDENT INDENT+parserGenerator->generateErrorStatement(ParserGenerator::Error::REPEATED_KEY)+";\n";
+            body += indent+"\tif ("+checkBits+"&"+checkMask+")\n";
+            body += indent+"\t\t"+parserGenerator->generateErrorStatement(ParserGenerator::Error::REPEATED_KEY)+";\n";
         }
-        body += indent+INDENT+checkBits+" |= "+checkMask+";\n";
+        body += indent+"\t"+checkBits+" |= "+checkMask+";\n";
         if (parserGenerator->settings().checkMissingKeys)
             optionalMembers.push_back(!!memberType->optionalContainerType());
         ++i;
     }
     if (parserGenerator->settings().noThrow) {
-        body += indent+INDENT "if (Error error = "+parserGenerator->generateParserFunctionCall(memberType, "value."+caseLabel)+")\n";
-        body += indent+INDENT INDENT "return error;\n";
+        body += indent+"\tif (Error error = "+parserGenerator->generateParserFunctionCall(memberType, "value."+caseLabel)+")\n";
+        body += indent+"\t\treturn error;\n";
     } else {
-        body += indent+INDENT+parserGenerator->generateParserFunctionCall(memberType, "value."+caseLabel)+";\n";
+        body += indent+"\t"+parserGenerator->generateParserFunctionCall(memberType, "value."+caseLabel)+";\n";
     }
-    body += indent+INDENT "continue;\n";
+    body += indent+"\tcontinue;\n";
     body += indent+"}\n";
     return body;
 }
@@ -65,39 +65,39 @@ std::string StructureType::generateParserFunctionBody(ParserGenerator *generator
     std::string body;
     std::vector<bool> optionalMembers;
     body += indent+"if (!matchSymbol('{'))\n";
-    body += indent+INDENT+generator->generateErrorStatement(ParserGenerator::Error::TYPE_MISMATCH)+";\n";
+    body += indent+"\t"+generator->generateErrorStatement(ParserGenerator::Error::TYPE_MISMATCH)+";\n";
     if ((generator->settings().checkMissingKeys || generator->settings().checkRepeatingKeys) && !orderedMembers.empty())
         body += indent+"unsigned long doneKeys["+std::to_string((orderedMembers.size()+31)/32)+"] = { };\n";
     if (generator->settings().strictSyntaxCheck)
         body += indent+"int separatorCheck = -1;\n";
     body += indent+"for (; !matchSymbol('}'); "+(generator->settings().strictSyntaxCheck ? "separatorCheck = " : "")+"matchSymbol(',')) {\n";
     if (generator->settings().strictSyntaxCheck) {
-        body += indent+INDENT "if (!separatorCheck)\n";
-        body += indent+INDENT INDENT+generator->generateErrorStatement(ParserGenerator::Error::JSON_SYNTAX_ERROR)+";\n";
+        body += indent+"\tif (!separatorCheck)\n";
+        body += indent+"\t\t"+generator->generateErrorStatement(ParserGenerator::Error::JSON_SYNTAX_ERROR)+";\n";
     }
-    body += generator->generateValueParse(generator->stringType(), ParserGenerator::COMMON_STRING_BUFFER, indent+INDENT);
-    body += indent+INDENT "if (!matchSymbol(':'))\n";
-    body += indent+INDENT INDENT+generator->generateErrorStatement(ParserGenerator::Error::JSON_SYNTAX_ERROR)+";\n";
+    body += generator->generateValueParse(generator->stringType(), ParserGenerator::COMMON_STRING_BUFFER, indent+"\t");
+    body += indent+"\tif (!matchSymbol(':'))\n";
+    body += indent+"\t\t"+generator->generateErrorStatement(ParserGenerator::Error::JSON_SYNTAX_ERROR)+";\n";
     if (!orderedMembers.empty()) {
         std::vector<std::string> labels;
         labels.reserve(orderedMembers.size());
         for (const Member &member : orderedMembers)
             labels.push_back(member.name);
         ParserSwitchTreeCaseGenerator switchTreeCaseGenerator(this, optionalMembers);
-        body += generator->generateSwitchTree(&switchTreeCaseGenerator, StringSwitchTree::build(labels.data(), labels.size()).get(), generator->stringType(), ParserGenerator::COMMON_STRING_BUFFER, indent+INDENT);
+        body += generator->generateSwitchTree(&switchTreeCaseGenerator, StringSwitchTree::build(labels.data(), labels.size()).get(), generator->stringType(), ParserGenerator::COMMON_STRING_BUFFER, indent+"\t");
     }
     if (generator->settings().ignoreExtraKeys) {
         if (generator->settings().noThrow) {
-            body += indent+INDENT "if (Error error = skipValue())\n";
-            body += indent+INDENT INDENT "return error;\n";
+            body += indent+"\tif (Error error = skipValue())\n";
+            body += indent+"\t\treturn error;\n";
         } else
-            body += indent+INDENT "skipValue();\n";
+            body += indent+"\tskipValue();\n";
     } else
-        body += indent+INDENT+generator->generateErrorStatement(ParserGenerator::Error::UNKNOWN_KEY)+";\n";
+        body += indent+"\t"+generator->generateErrorStatement(ParserGenerator::Error::UNKNOWN_KEY)+";\n";
     body += indent+"}\n";
     if (generator->settings().strictSyntaxCheck) {
         body += indent+"if (separatorCheck == 1)\n";
-        body += indent+INDENT+generator->generateErrorStatement(ParserGenerator::Error::JSON_SYNTAX_ERROR)+";\n";
+        body += indent+"\t"+generator->generateErrorStatement(ParserGenerator::Error::JSON_SYNTAX_ERROR)+";\n";
     }
     if (generator->settings().checkMissingKeys && !orderedMembers.empty()) {
         { // Consider optional members done
@@ -118,7 +118,7 @@ std::string StructureType::generateParserFunctionBody(ParserGenerator *generator
         for (size_t i = 0; i < groups-1; ++i)
             body += "doneKeys["+std::to_string(i)+"] == 0xffffffff && ";
         body += "doneKeys["+std::to_string(groups-1)+"] == "+hexUint32(~(orderedMembers.size()%32 ? ~0ul<<(orderedMembers.size()%32) : 0ul))+"))\n";
-        body += indent+INDENT+generator->generateErrorStatement(ParserGenerator::Error::MISSING_KEY)+";\n";
+        body += indent+"\t"+generator->generateErrorStatement(ParserGenerator::Error::MISSING_KEY)+";\n";
     }
     return body;
 }
@@ -144,7 +144,7 @@ std::string StructureType::generateSerializerFunctionBody(SerializerGenerator *g
                 maybeFirst = true;
             }
             body += indent+"if ("+optionalMemberType->generateHasValue(("value."+member.name).c_str())+") {\n";
-            subIndent += INDENT;
+            subIndent += "\t";
             memberSerialization = generator->generateValueSerialization(optionalMemberType->elementType(), optionalMemberType->generateGetValue(("value."+member.name).c_str()), subIndent);
         } else
             memberSerialization = generator->generateValueSerialization(member.type, "value."+member.name, subIndent);

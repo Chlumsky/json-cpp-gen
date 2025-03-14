@@ -36,7 +36,7 @@ std::string SerializerGenerator::generateSerializerFunctionCall(const Type *type
         Function serializeFunction;
         serializeFunction.type = type;
         serializeFunction.name = functionName;
-        serializeFunction.body = type->generateSerializerFunctionBody(this, INDENT);
+        serializeFunction.body = type->generateSerializerFunctionBody(this, "\t");
         functions.push_back(std::move(serializeFunction));
     }
     return functionName+"("+inputArg+")";
@@ -44,7 +44,7 @@ std::string SerializerGenerator::generateSerializerFunctionCall(const Type *type
 
 std::string SerializerGenerator::generateValueSerialization(const Type *type, const std::string &inputArg, const std::string &indent) {
     if (settings().noThrow)
-        return indent+"if (Error error = "+generateSerializerFunctionCall(type, inputArg)+(indent.empty() ? ") " : ")\n"+indent+INDENT)+"return error;"+(indent.empty() ? "" : "\n");
+        return indent+"if (Error error = "+generateSerializerFunctionCall(type, inputArg)+(indent.empty() ? ") " : ")\n"+indent+"\t")+"return error;"+(indent.empty() ? "" : "\n");
     else
         return indent+generateSerializerFunctionCall(type, inputArg)+(indent.empty() ? ";" : ";\n");
 }
@@ -66,45 +66,45 @@ std::string SerializerGenerator::generateHeader() {
     code += "class "+className+" {\n";
 
     code += "\npublic:\n";
-    code += INDENT "struct Error {\n";
-    code += INDENT INDENT "enum Type {\n";
-    code += INDENT INDENT INDENT "OK";
-    #define SERIALIZER_GENERATOR_APPEND_ERROR_NAME(e) code += std::string(",\n" INDENT INDENT INDENT)+Error::e;
+    code += "\tstruct Error {\n";
+    code += "\t\tenum Type {\n";
+    code += "\t\t\tOK";
+    #define SERIALIZER_GENERATOR_APPEND_ERROR_NAME(e) code += std::string(",\n\t\t\t")+Error::e;
     FOR_SERIALIZER_ERRORS(SERIALIZER_GENERATOR_APPEND_ERROR_NAME)
-    code += "\n" INDENT INDENT "} type;\n";
-    code += INDENT INDENT "const void *datapoint;\n\n";
-    code += INDENT INDENT "inline Error(Type type = Error::OK) : type(type), datapoint() { }\n";
-    code += INDENT INDENT "inline Error(Type type, const void *datapoint) : type(type), datapoint(datapoint) { }\n";
-    code += INDENT INDENT "operator Type() const;\n";
-    code += INDENT INDENT "operator bool() const;\n";
-    code += INDENT INDENT "const char *typeString() const;\n";
-    code += INDENT "};\n\n";
+    code += "\n" "\t\t} type;\n";
+    code += "\t\tconst void *datapoint;\n\n";
+    code += "\t\tinline Error(Type type = Error::OK) : type(type), datapoint() { }\n";
+    code += "\t\tinline Error(Type type, const void *datapoint) : type(type), datapoint(datapoint) { }\n";
+    code += "\t\toperator Type() const;\n";
+    code += "\t\toperator bool() const;\n";
+    code += "\t\tconst char *typeString() const;\n";
+    code += "\t};\n\n";
 
     for (const Type *type : entryTypes) {
         std::map<std::string, std::string>::const_iterator it = functionNames.find(type->name().fullName());
         if (it != functionNames.end())
-            code += INDENT "static Error serialize("+stringType()->name().refArgDeclaration("jsonString")+", "+type->name().constRefArgDeclaration("input")+");\n";
+            code += "\tstatic Error serialize("+stringType()->name().refArgDeclaration("jsonString")+", "+type->name().constRefArgDeclaration("input")+");\n";
     }
 
     code += "\nprotected:\n";
-    code += generateVirtualTypedefs(INDENT);
-    code += INDENT+stringType()->name().refArgDeclaration(OUTPUT_STRING)+";\n\n";
-    code += INDENT+className+"("+stringType()->name().refArgDeclaration(OUTPUT_STRING)+");\n";
-    code += INDENT "void writeEscaped(char c);\n";
+    code += generateVirtualTypedefs("\t");
+    code += "\t"+stringType()->name().refArgDeclaration(OUTPUT_STRING)+";\n\n";
+    code += "\t"+className+"("+stringType()->name().refArgDeclaration(OUTPUT_STRING)+");\n";
+    code += "\tvoid writeEscaped(char c);\n";
     code += "\n";
 
     for (const Function &serializeFunction : functions)
-        code += std::string(INDENT)+(settings().noThrow ? "Error " : "void ")+serializeFunction.name+"("+serializeFunction.type->name().constRefArgDeclaration("value")+");\n";
+        code += std::string("\t")+(settings().noThrow ? "Error " : "void ")+serializeFunction.name+"("+serializeFunction.type->name().constRefArgDeclaration("value")+");\n";
 
     if (featureBits&(FEATURE_WRITE_SIGNED|FEATURE_WRITE_UNSIGNED)) {
         code += "\nprivate:\n";
         if (featureBits&FEATURE_WRITE_SIGNED) {
-            code += INDENT "template <typename U, typename T>\n";
-            code += INDENT "void writeSigned(T value);\n";
+            code += "\ttemplate <typename U, typename T>\n";
+            code += "\tvoid writeSigned(T value);\n";
         }
         if (featureBits&FEATURE_WRITE_UNSIGNED) {
-            code += INDENT "template <typename T>\n";
-            code += INDENT "void writeUnsigned(T value);\n";
+            code += "\ttemplate <typename T>\n";
+            code += "\tvoid writeUnsigned(T value);\n";
         }
     }
     code += "\n};\n";
@@ -144,24 +144,24 @@ std::string SerializerGenerator::generateSource(const std::string &relativeHeade
     code += beginNamespace();
 
     // Error member functions
-    code += className+"::Error::operator "+className+"::Error::Type() const {\n" INDENT "return type;\n}\n\n";
-    code += className+"::Error::operator bool() const {\n" INDENT "return type != Error::OK;\n}\n\n";
+    code += className+"::Error::operator "+className+"::Error::Type() const {\n\treturn type;\n}\n\n";
+    code += className+"::Error::operator bool() const {\n\treturn type != Error::OK;\n}\n\n";
     code += "const char *"+className+"::Error::typeString() const {\n";
-    code += INDENT "switch (type) {\n";
-    #define SERIALIZER_GENERATOR_ERROR_TYPE_STRING_CASE(e) code += INDENT INDENT "case Error::" #e ":\n" INDENT INDENT INDENT "return \"" #e "\";\n";
+    code += "\tswitch (type) {\n";
+    #define SERIALIZER_GENERATOR_ERROR_TYPE_STRING_CASE(e) code += "\t\tcase Error::" #e ":\n\t\t\treturn \"" #e "\";\n";
     SERIALIZER_GENERATOR_ERROR_TYPE_STRING_CASE(OK)
     FOR_SERIALIZER_ERRORS(SERIALIZER_GENERATOR_ERROR_TYPE_STRING_CASE)
-    code += INDENT "}\n";
-    code += INDENT "return \"\";\n";
+    code += "\t}\n";
+    code += "\treturn \"\";\n";
     code += "}\n\n";
 
     // Constructor
     code += className+"::"+className+"("+stringType()->name().refArgDeclaration(OUTPUT_STRING)+") : "+OUTPUT_STRING+"("+OUTPUT_STRING+") {\n";
-    code += INDENT+stringType()->generateClear(OUTPUT_STRING)+";\n";
+    code += "\t"+stringType()->generateClear(OUTPUT_STRING)+";\n";
     code += "}\n\n";
     // writeEscaped
     code += "void "+className+"::writeEscaped(char c) {\n";
-    code += INDENT "switch (c) {\n";
+    code += "\tswitch (c) {\n";
     for (int i = 0x00; i < 0x20; ++i) {
         char alias = '\0';
         switch ((char) i) {
@@ -172,19 +172,19 @@ std::string SerializerGenerator::generateSource(const std::string &relativeHeade
             case '\t': alias = 't'; break;
         }
         if (alias)
-            code += std::string(INDENT INDENT "case '\\")+alias+"': "+stringType()->generateAppendStringLiteral(OUTPUT_STRING, (std::string("\"\\\\")+alias+"\"").c_str())+"; break;\n";
+            code += std::string("\t\tcase '\\")+alias+"': "+stringType()->generateAppendStringLiteral(OUTPUT_STRING, (std::string("\"\\\\")+alias+"\"").c_str())+"; break;\n";
         else {
             std::string hexChar = hexUint8((unsigned char) i);
-            code += INDENT INDENT "case '\\x"+hexChar+"': "+stringType()->generateAppendStringLiteral(OUTPUT_STRING, ("\"\\\\u00"+hexChar+"\"").c_str())+"; break;\n";
+            code += "\t\tcase '\\x"+hexChar+"': "+stringType()->generateAppendStringLiteral(OUTPUT_STRING, ("\"\\\\u00"+hexChar+"\"").c_str())+"; break;\n";
         }
     }
-    code += INDENT INDENT "case '\"': "+stringType()->generateAppendStringLiteral(OUTPUT_STRING, "\"\\\\\\\"\"")+"; break;\n";
+    code += "\t\tcase '\"': "+stringType()->generateAppendStringLiteral(OUTPUT_STRING, "\"\\\\\\\"\"")+"; break;\n";
     if (settings().escapeForwardSlash)
-        code += INDENT INDENT "case '/': "+stringType()->generateAppendStringLiteral(OUTPUT_STRING, "\"\\\\/\"")+"; break;\n";
-    code += INDENT INDENT "case '\\\\': "+stringType()->generateAppendStringLiteral(OUTPUT_STRING, "\"\\\\\\\\\"")+"; break;\n";
-    code += INDENT INDENT "default:\n";
-    code += INDENT INDENT INDENT+stringType()->generateAppendChar(OUTPUT_STRING, "c")+";\n";
-    code += INDENT "}\n";
+        code += "\t\tcase '/': "+stringType()->generateAppendStringLiteral(OUTPUT_STRING, "\"\\\\/\"")+"; break;\n";
+    code += "\t\tcase '\\\\': "+stringType()->generateAppendStringLiteral(OUTPUT_STRING, "\"\\\\\\\\\"")+"; break;\n";
+    code += "\t\tdefault:\n";
+    code += "\t\t\t"+stringType()->generateAppendChar(OUTPUT_STRING, "c")+";\n";
+    code += "\t}\n";
     code += "}\n";
 
     // Integer write functions
@@ -193,23 +193,23 @@ std::string SerializerGenerator::generateSource(const std::string &relativeHeade
         code += "\n";
         code += "template <typename U, typename T>\n";
         code += "void "+className+"::writeSigned(T value) {\n";
-        code += INDENT "if (value < 0) {\n";
-        code += INDENT INDENT+stringType()->generateAppendChar(OUTPUT_STRING, "'-'")+";\n";
-        code += INDENT INDENT "value = -value;\n";
-        code += INDENT "}\n";
-        code += INDENT "U unsignedValue = static_cast<U>(value);\n";
-        code += INDENT "char buffer[4*(sizeof(U)+1)], *cur = &(buffer[4*(sizeof(U)+1)-1] = '\\0');\n";
-        code += INDENT "do *--cur = '0'+unsignedValue%10; while (unsignedValue /= 10);\n";
-        code += INDENT+stringType()->generateAppendCStr(OUTPUT_STRING, "cur")+";\n";
+        code += "\tif (value < 0) {\n";
+        code += "\t\t"+stringType()->generateAppendChar(OUTPUT_STRING, "'-'")+";\n";
+        code += "\t\tvalue = -value;\n";
+        code += "\t}\n";
+        code += "\tU unsignedValue = static_cast<U>(value);\n";
+        code += "\tchar buffer[4*(sizeof(U)+1)], *cur = &(buffer[4*(sizeof(U)+1)-1] = '\\0');\n";
+        code += "\tdo *--cur = '0'+unsignedValue%10; while (unsignedValue /= 10);\n";
+        code += "\t"+stringType()->generateAppendCStr(OUTPUT_STRING, "cur")+";\n";
         code += "}\n";
     }
     if (featureBits&FEATURE_WRITE_UNSIGNED) {
         code += "\n";
         code += "template <typename T>\n";
         code += "void "+className+"::writeUnsigned(T value) {\n";
-        code += INDENT "char buffer[4*(sizeof(T)+1)], *cur = &(buffer[4*(sizeof(T)+1)-1] = '\\0');\n";
-        code += INDENT "do *--cur = '0'+value%10; while (value /= 10);\n";
-        code += INDENT+stringType()->generateAppendCStr(OUTPUT_STRING, "cur")+";\n";
+        code += "\tchar buffer[4*(sizeof(T)+1)], *cur = &(buffer[4*(sizeof(T)+1)-1] = '\\0');\n";
+        code += "\tdo *--cur = '0'+value%10; while (value /= 10);\n";
+        code += "\t"+stringType()->generateAppendCStr(OUTPUT_STRING, "cur")+";\n";
         code += "}\n";
     }
 
@@ -220,14 +220,14 @@ std::string SerializerGenerator::generateSource(const std::string &relativeHeade
             code += "\n";
             code += className+"::Error "+className+"::serialize("+stringType()->name().refArgDeclaration("jsonString")+", "+type->name().constRefArgDeclaration("input")+") {\n";
             if (settings().noThrow)
-                code += INDENT "return "+className+"(jsonString)."+it->second+"(input);\n";
+                code += "\treturn "+className+"(jsonString)."+it->second+"(input);\n";
             else {
-                code += INDENT "try {\n";
-                code += INDENT INDENT+className+"(jsonString)."+it->second+"(input);\n";
-                code += INDENT "} catch (const Error &error) {\n";
-                code += INDENT INDENT "return error;\n";
-                code += INDENT "}\n";
-                code += INDENT "return Error::OK;\n";
+                code += "\ttry {\n";
+                code += "\t\t"+className+"(jsonString)."+it->second+"(input);\n";
+                code += "\t} catch (const Error &error) {\n";
+                code += "\t\treturn error;\n";
+                code += "\t}\n";
+                code += "\treturn Error::OK;\n";
             }
             code += "}\n";
         }
@@ -246,7 +246,7 @@ std::string SerializerGenerator::generateSource(const std::string &relativeHeade
         if (code.back() != '\n')
             code += "\n";
         else if (settings().noThrow)
-            code += INDENT "return Error::OK;\n";
+            code += "\treturn Error::OK;\n";
         code += "}\n";
     }
     code += endNamespace();

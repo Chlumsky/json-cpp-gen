@@ -15,25 +15,25 @@ const ArrayContainerTemplate *ArrayContainerType::arrayContainerTemplate() const
 std::string ArrayContainerType::generateParserFunctionBody(ParserGenerator *generator, const std::string &indent) const {
     std::string body;
     body += indent+"if (!matchSymbol('['))\n";
-    body += indent+INDENT+generator->generateErrorStatement(ParserGenerator::Error::TYPE_MISMATCH)+";\n";
+    body += indent+"\t"+generator->generateErrorStatement(ParserGenerator::Error::TYPE_MISMATCH)+";\n";
     body += indent+generateClear("value")+";\n";
     if (generator->settings().strictSyntaxCheck)
         body += indent+"int separatorCheck = -1;\n";
     body += indent+"while (!matchSymbol(']')) {\n";
     if (generator->settings().strictSyntaxCheck) {
-        body += indent+INDENT "if (!separatorCheck)\n";
-        body += indent+INDENT INDENT+generator->generateErrorStatement(ParserGenerator::Error::JSON_SYNTAX_ERROR)+";\n";
+        body += indent+"\tif (!separatorCheck)\n";
+        body += indent+"\t\t"+generator->generateErrorStatement(ParserGenerator::Error::JSON_SYNTAX_ERROR)+";\n";
     }
     std::string elemRef = generateRefAppended("value");
-    body += generator->generateValueParse(elementType(), elemRef, indent+INDENT);
+    body += generator->generateValueParse(elementType(), elemRef, indent+"\t");
     if (generator->settings().strictSyntaxCheck)
-        body += indent+INDENT "separatorCheck = matchSymbol(',');\n";
+        body += indent+"\tseparatorCheck = matchSymbol(',');\n";
     else
-        body += indent+INDENT "matchSymbol(',');\n";
+        body += indent+"\tmatchSymbol(',');\n";
     body += indent+"}\n";
     if (generator->settings().strictSyntaxCheck) {
         body += indent+"if (separatorCheck == 1)\n";
-        body += indent+INDENT+generator->generateErrorStatement(ParserGenerator::Error::JSON_SYNTAX_ERROR)+";\n";
+        body += indent+"\t"+generator->generateErrorStatement(ParserGenerator::Error::JSON_SYNTAX_ERROR)+";\n";
     }
     return body;
 }

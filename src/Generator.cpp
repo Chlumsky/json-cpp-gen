@@ -146,3 +146,29 @@ std::string Generator::charLiteral(char c) {
         return buffer;
     }
 }
+
+std::string Generator::translateIndentation(std::string &&code, const std::string &indentation) {
+    if (indentation == "\t")
+        return (std::string &&) code;
+    std::string translatedCode;
+    translatedCode.reserve(2*code.size());
+    bool lineStart = true;
+    for (char c : code) {
+        switch (c) {
+            case '\n':
+                lineStart = true;
+                translatedCode.push_back('\n');
+                break;
+            case '\t':
+                if (lineStart) {
+                    translatedCode += indentation;
+                    break;
+                }
+                // fallthrough
+            default:
+                lineStart = false;
+                translatedCode.push_back(c);
+        }
+    }
+    return translatedCode;
+}

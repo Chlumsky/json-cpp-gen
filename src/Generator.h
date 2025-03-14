@@ -10,8 +10,6 @@
 #include "TypeSet.h"
 #include "Configuration.h"
 
-#define INDENT "    "
-
 // A code generator - prototype of ParserGenerator & SerializerGenerator.
 class Generator {
 
@@ -29,6 +27,7 @@ public:
 
     static std::string safeName(const std::string &name);
     static std::string charLiteral(char c);
+    static std::string translateIndentation(std::string &&code, const std::string &indentation);
 
 protected:
     struct Function {

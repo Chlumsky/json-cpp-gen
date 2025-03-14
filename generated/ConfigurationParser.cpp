@@ -501,6 +501,12 @@ void ConfigurationParser::parseSettings(Settings &value) {
                         continue;
                     }
                     break;
+                case 'd':
+                    if (buffer == "cppIndentation") {
+                        parseStdString(value.cppIndentation);
+                        continue;
+                    }
+                    break;
                 case 'e':
                     switch (buffer.size()) {
                         case 15:

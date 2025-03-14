@@ -16,14 +16,14 @@ std::string OptionalContainerType::generateParserFunctionBody(ParserGenerator *g
     std::string body;
     body += indent+"skipWhitespace();\n";
     body += indent+"if ("+ParserGenerator::generateMatchKeyword("null")+")\n";
-    body += indent+INDENT+generateClear("value")+";\n";
+    body += indent+"\t"+generateClear("value")+";\n";
     std::string elemRef = generateRefInitialized("value");
     if (generator->settings().noThrow) {
         body += indent+"else if (Error error = "+generator->generateParserFunctionCall(elementType(), elemRef)+")\n";
-        body += indent+INDENT "return error;\n";
+        body += indent+"\treturn error;\n";
     } else {
         body += indent+"else\n";
-        body += indent+INDENT+generator->generateParserFunctionCall(elementType(), elemRef)+";\n";
+        body += indent+"\t"+generator->generateParserFunctionCall(elementType(), elemRef)+";\n";
     }
     return body;
 }
@@ -31,9 +31,9 @@ std::string OptionalContainerType::generateParserFunctionBody(ParserGenerator *g
 std::string OptionalContainerType::generateSerializerFunctionBody(SerializerGenerator *generator, const std::string &indent) const {
     std::string body;
     body += indent+"if ("+generateHasValue("value")+") {\n";
-    body += generator->generateValueSerialization(elementType(), generateGetValue("value"), indent+INDENT);
+    body += generator->generateValueSerialization(elementType(), generateGetValue("value"), indent+"\t");
     body += indent+"} else {\n";
-    body += indent+INDENT+generator->stringType()->generateAppendStringLiteral(SerializerGenerator::OUTPUT_STRING, "\"null\"")+";\n";
+    body += indent+"\t"+generator->stringType()->generateAppendStringLiteral(SerializerGenerator::OUTPUT_STRING, "\"null\"")+";\n";
     body += indent+"}\n";
     return body;
 }

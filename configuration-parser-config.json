@@ -11,7 +11,8 @@
         "checkRepeatingKeys": false,
         "ignoreExtraKeys": true,
         "checkIntegerOverflow": true,
-        "cppLineEndings": "SAME_AS_INPUT"
+        "cppLineEndings": "SAME_AS_INPUT",
+        "cppIndentation": "    "
     },
     "parsers": [ {
         "name": "ConfigurationParser",

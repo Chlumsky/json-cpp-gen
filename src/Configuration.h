@@ -56,6 +56,8 @@ struct Settings {
         NATIVE,
         SAME_AS_INPUT
     } cppLineEndings = LineEndingStyle::SAME_AS_INPUT;
+    /// Indentation style of the generated C++ code - the string represents one level of indentation
+    std::string cppIndentation = "\t";
 };
 
 struct StringAPI {

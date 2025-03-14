@@ -19,30 +19,30 @@ int StaticArrayContainerType::length() const {
 std::string StaticArrayContainerType::generateParserFunctionBody(ParserGenerator *generator, const std::string &indent) const {
     std::string body;
     body += indent+"if (!matchSymbol('['))\n";
-    body += indent+INDENT+generator->generateErrorStatement(ParserGenerator::Error::TYPE_MISMATCH)+";\n";
+    body += indent+"\t"+generator->generateErrorStatement(ParserGenerator::Error::TYPE_MISMATCH)+";\n";
     if (generator->settings().strictSyntaxCheck)
         body += indent+"int separatorCheck = -1;\n";
     body += indent+"int i = 0;\n";
     body += indent+"while (!matchSymbol(']')) {\n";
     if (generator->settings().strictSyntaxCheck) {
-        body += indent+INDENT "if (!separatorCheck)\n";
-        body += indent+INDENT INDENT+generator->generateErrorStatement(ParserGenerator::Error::JSON_SYNTAX_ERROR)+";\n";
+        body += indent+"\tif (!separatorCheck)\n";
+        body += indent+"\t\t"+generator->generateErrorStatement(ParserGenerator::Error::JSON_SYNTAX_ERROR)+";\n";
     }
-    body += indent+INDENT "if (i == "+std::to_string(length())+")\n";
-    body += indent+INDENT INDENT+generator->generateErrorStatement(ParserGenerator::Error::ARRAY_SIZE_MISMATCH)+";\n";
-    body += generator->generateValueParse(elementType(), generateRefByIndex("value", "i"), indent+INDENT);
-    body += indent+INDENT "++i;\n";
+    body += indent+"\tif (i == "+std::to_string(length())+")\n";
+    body += indent+"\t\t"+generator->generateErrorStatement(ParserGenerator::Error::ARRAY_SIZE_MISMATCH)+";\n";
+    body += generator->generateValueParse(elementType(), generateRefByIndex("value", "i"), indent+"\t");
+    body += indent+"\t++i;\n";
     if (generator->settings().strictSyntaxCheck)
-        body += indent+INDENT "separatorCheck = matchSymbol(',');\n";
+        body += indent+"\tseparatorCheck = matchSymbol(',');\n";
     else
-        body += indent+INDENT "matchSymbol(',');\n";
+        body += indent+"\tmatchSymbol(',');\n";
     body += indent+"}\n";
     if (generator->settings().strictSyntaxCheck) {
         body += indent+"if (separatorCheck == 1)\n";
-        body += indent+INDENT+generator->generateErrorStatement(ParserGenerator::Error::JSON_SYNTAX_ERROR)+";\n";
+        body += indent+"\t"+generator->generateErrorStatement(ParserGenerator::Error::JSON_SYNTAX_ERROR)+";\n";
     }
     body += indent+"if (i != "+std::to_string(length())+")\n";
-    body += indent+INDENT+generator->generateErrorStatement(ParserGenerator::Error::ARRAY_SIZE_MISMATCH)+";\n";
+    body += indent+"\t"+generator->generateErrorStatement(ParserGenerator::Error::ARRAY_SIZE_MISMATCH)+";\n";
     return body;
 }
 
@@ -53,8 +53,8 @@ std::string StaticArrayContainerType::generateSerializerFunctionBody(SerializerG
         body += generator->generateValueSerialization(elementType(), generateRefByIndex("value", "0"), indent);
         if (length() >= 2) {
             body += indent+"for (int i = 1; i < "+std::to_string(length())+"; ++i) {\n";
-            body += indent+INDENT+generator->stringType()->generateAppendChar(SerializerGenerator::OUTPUT_STRING, "','")+";\n";
-            body += generator->generateValueSerialization(elementType(), generateRefByIndex("value", "i"), indent+INDENT);
+            body += indent+"\t"+generator->stringType()->generateAppendChar(SerializerGenerator::OUTPUT_STRING, "','")+";\n";
+            body += generator->generateValueSerialization(elementType(), generateRefByIndex("value", "i"), indent+"\t");
             body += indent+"}\n";
         }
     }

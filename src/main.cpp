@@ -260,8 +260,8 @@ int main(int argc, const char *const *argv) {
             else
                 fprintf(stderr, "Error: Type '%s' not found, will not be parsed by '%s'\n", typeName.c_str(), parserDef.name.c_str());
         }
-        std::string header = parserGen.generateHeader();
-        std::string source = parserGen.generateSource(headerPath-sourcePath);
+        std::string header = Generator::translateIndentation(parserGen.generateHeader(), config.settings.cppIndentation);
+        std::string source = Generator::translateIndentation(parserGen.generateSource(headerPath-sourcePath), config.settings.cppIndentation);
         if (!parserDef.headerOutput.empty() && !writeTextFile(header, headerPath.cStr(), config.settings.cppLineEndings)) {
             fprintf(stderr, "Error: Failed to write output header file '%s'\n", parserDef.headerOutput.c_str());
             return -1;
@@ -293,8 +293,8 @@ int main(int argc, const char *const *argv) {
             else
                 fprintf(stderr, "Error: Type '%s' not found, will not be serialized by '%s'\n", typeName.c_str(), serializerDef.name.c_str());
         }
-        std::string header = serializerGen.generateHeader();
-        std::string source = serializerGen.generateSource(headerPath-sourcePath);
+        std::string header = Generator::translateIndentation(serializerGen.generateHeader(), config.settings.cppIndentation);
+        std::string source = Generator::translateIndentation(serializerGen.generateSource(headerPath-sourcePath), config.settings.cppIndentation);
         if (!serializerDef.headerOutput.empty() && !writeTextFile(header, headerPath.cStr(), config.settings.cppLineEndings)) {
             fprintf(stderr, "Error: Failed to write output header file '%s'\n", serializerDef.headerOutput.c_str());
             return -1;

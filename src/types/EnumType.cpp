@@ -21,8 +21,8 @@ EnumType::ParserSwitchTreeCaseGenerator::ParserSwitchTreeCaseGenerator(const Enu
 std::string EnumType::ParserSwitchTreeCaseGenerator::operator()(ParserGenerator *parserGenerator, const std::string &caseLabel, const StringType *valueType, const char *value, int, const std::string &indent) {
     std::string body;
     body += indent+"if ("+valueType->generateEqualsStringLiteral(value, parserGenerator->getJsonMemberNameLiteral(caseLabel).c_str())+") {\n";
-    body += indent+INDENT "value = "+Generator::safeName(parent->valuePrefix+caseLabel)+";\n";
-    body += indent+INDENT "return"+(parserGenerator->settings().noThrow ? " Error::OK" : "")+";\n";
+    body += indent+"\tvalue = "+Generator::safeName(parent->valuePrefix+caseLabel)+";\n";
+    body += indent+"\treturn"+(parserGenerator->settings().noThrow ? " Error::OK" : "")+";\n";
     body += indent+"}\n";
     return body;
 }
@@ -54,9 +54,9 @@ std::string EnumType::generateSerializerFunctionBody(SerializerGenerator *genera
     std::string body;
     body += indent+"switch (value) {\n";
     for (const std::string &enumValue : values)
-        body += indent+INDENT "case "+Generator::safeName(valuePrefix+enumValue)+": "+generator->stringType()->generateAppendStringLiteral(SerializerGenerator::OUTPUT_STRING, ("\"\\\""+enumValue+"\\\"\"").c_str())+"; break;\n";
-    body += indent+INDENT "default:\n";
-    body += indent+INDENT INDENT+generator->generateErrorStatement(SerializerGenerator::Error::UNKNOWN_ENUM_VALUE)+";\n";
+        body += indent+"\tcase "+Generator::safeName(valuePrefix+enumValue)+": "+generator->stringType()->generateAppendStringLiteral(SerializerGenerator::OUTPUT_STRING, ("\"\\\""+enumValue+"\\\"\"").c_str())+"; break;\n";
+    body += indent+"\tdefault:\n";
+    body += indent+"\t\t"+generator->generateErrorStatement(SerializerGenerator::Error::UNKNOWN_ENUM_VALUE)+";\n";
     body += indent+"}\n";
     return body;
 }
