@@ -434,6 +434,37 @@ void ConfigurationParser::parseSettingsNanPolicy(Settings::NanPolicy &value) {
     throw Error::UNKNOWN_ENUM_VALUE;
 }
 
+void ConfigurationParser::parseSettingsLineEndingStyle(Settings::LineEndingStyle &value) {
+    parseStdString(buffer);
+    switch (buffer.size()) {
+        case 2:
+            if (buffer == "LF") {
+                value = Settings::LineEndingStyle::LF;
+                return;
+            }
+            break;
+        case 4:
+            if (buffer == "CRLF") {
+                value = Settings::LineEndingStyle::CRLF;
+                return;
+            }
+            break;
+        case 6:
+            if (buffer == "NATIVE") {
+                value = Settings::LineEndingStyle::NATIVE;
+                return;
+            }
+            break;
+        case 13:
+            if (buffer == "SAME_AS_INPUT") {
+                value = Settings::LineEndingStyle::SAME_AS_INPUT;
+                return;
+            }
+            break;
+    }
+    throw Error::UNKNOWN_ENUM_VALUE;
+}
+
 void ConfigurationParser::parseSettings(Settings &value) {
     if (!matchSymbol('{'))
         throw Error::TYPE_MISMATCH;
@@ -505,6 +536,12 @@ void ConfigurationParser::parseSettings(Settings &value) {
                 case 'm':
                     if (buffer == "skipEmptyFields") {
                         parseBool(value.skipEmptyFields);
+                        continue;
+                    }
+                    break;
+                case 'n':
+                    if (buffer == "cppLineEndings") {
+                        parseSettingsLineEndingStyle(value.cppLineEndings);
                         continue;
                     }
                     break;

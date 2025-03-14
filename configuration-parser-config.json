@@ -10,7 +10,8 @@
         "checkMissingKeys": false,
         "checkRepeatingKeys": false,
         "ignoreExtraKeys": true,
-        "checkIntegerOverflow": true
+        "checkIntegerOverflow": true,
+        "cppLineEndings": "SAME_AS_INPUT"
     },
     "parsers": [ {
         "name": "ConfigurationParser",

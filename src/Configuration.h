@@ -49,6 +49,13 @@ struct Settings {
         LOWERCASE_INFINITY_STRING_VALUE, // "infinity"
         CAPITALIZED_INFINITY_STRING_VALUE // "Infinity"
     } infPolicy = InfPolicy::EXPONENT_OVERFLOW;
+    /// Line ending style of the generated C++ code (parsers and serializers)
+    enum class LineEndingStyle {
+        LF,
+        CRLF,
+        NATIVE,
+        SAME_AS_INPUT
+    } cppLineEndings = LineEndingStyle::SAME_AS_INPUT;
 };
 
 struct StringAPI {

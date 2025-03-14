@@ -56,6 +56,7 @@ protected:
     void parseSettingsJsonIO(Settings::JsonIO &value);
     void parseSettingsInfPolicy(Settings::InfPolicy &value);
     void parseSettingsNanPolicy(Settings::NanPolicy &value);
+    void parseSettingsLineEndingStyle(Settings::LineEndingStyle &value);
     void parseSettings(Settings &value);
     void parseStringAPI(StringAPI &value);
     void parseConfigurationStringDef(Configuration::StringDef &value);

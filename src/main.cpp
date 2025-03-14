@@ -23,8 +23,9 @@
 #include "container-templates/StaticArrayContainerTemplate.h"
 #include "container-templates/ObjectContainerTemplate.h"
 #include "container-templates/ObjectMapContainerTemplate.h"
-#include "HeaderParser.h"
 #include "text-file-io.h"
+#include "LineEndingStats.h"
+#include "HeaderParser.h"
 #include "ParserGenerator.h"
 #include "SerializerGenerator.h"
 #include "../generated/ConfigurationParser.h"
@@ -189,6 +190,7 @@ int main(int argc, const char *const *argv) {
     }
 
     // INPUT SOURCE FILES
+    LineEndingStats lineEndingStats;
     int totalParserPasses = 0;
     for (HeaderParser::Pass parserPass; parserPass; ++parserPass, ++totalParserPasses) {
         for (const std::string &input : config.inputs) {
@@ -210,8 +212,12 @@ int main(int argc, const char *const *argv) {
             #endif
                 return -1;
             }
+            if (config.settings.cppLineEndings == Settings::LineEndingStyle::SAME_AS_INPUT && totalParserPasses == 0)
+                lineEndingStats.process(inputString);
         }
     }
+    if (config.settings.cppLineEndings == Settings::LineEndingStyle::SAME_AS_INPUT)
+        config.settings.cppLineEndings = lineEndingStats.majorityStyle();
 #ifndef NDEBUG
     fprintf(stderr, "Header parser passes: %d\n", totalParserPasses);
 #endif
@@ -256,11 +262,11 @@ int main(int argc, const char *const *argv) {
         }
         std::string header = parserGen.generateHeader();
         std::string source = parserGen.generateSource(headerPath-sourcePath);
-        if (!parserDef.headerOutput.empty() && !writeTextFile(header, headerPath.cStr())) {
+        if (!parserDef.headerOutput.empty() && !writeTextFile(header, headerPath.cStr(), config.settings.cppLineEndings)) {
             fprintf(stderr, "Error: Failed to write output header file '%s'\n", parserDef.headerOutput.c_str());
             return -1;
         }
-        if (!parserDef.sourceOutput.empty() && !writeTextFile(source, sourcePath.cStr())) {
+        if (!parserDef.sourceOutput.empty() && !writeTextFile(source, sourcePath.cStr(), config.settings.cppLineEndings)) {
             fprintf(stderr, "Error: Failed to write output source file '%s'\n", parserDef.sourceOutput.c_str());
             return -1;
         }
@@ -289,11 +295,11 @@ int main(int argc, const char *const *argv) {
         }
         std::string header = serializerGen.generateHeader();
         std::string source = serializerGen.generateSource(headerPath-sourcePath);
-        if (!serializerDef.headerOutput.empty() && !writeTextFile(header, headerPath.cStr())) {
+        if (!serializerDef.headerOutput.empty() && !writeTextFile(header, headerPath.cStr(), config.settings.cppLineEndings)) {
             fprintf(stderr, "Error: Failed to write output header file '%s'\n", serializerDef.headerOutput.c_str());
             return -1;
         }
-        if (!serializerDef.sourceOutput.empty() && !writeTextFile(source, sourcePath.cStr())) {
+        if (!serializerDef.sourceOutput.empty() && !writeTextFile(source, sourcePath.cStr(), config.settings.cppLineEndings)) {
             fprintf(stderr, "Error: Failed to write output source file '%s'\n", serializerDef.sourceOutput.c_str());
             return -1;
         }
