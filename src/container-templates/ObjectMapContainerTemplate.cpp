@@ -8,7 +8,7 @@ static ObjectContainerAPI stdMapAPI() {
     ObjectContainerAPI api;
     api.clear = "$S.clear()";
     api.refByKey = "$S[$K]";
-    api.iterateElements = "for (std::map<$U, $T>::const_iterator $I = $S.begin(), $Z = $S.end(); $I != $Z; ++$I) { $U const &$K = $I->first; $T const &$V = $I->second; $F }";
+    api.iterateElements = "for (std::map<$U, $T>::const_iterator $I = $S.begin(), $Z = $S.end(); $I != $Z; ++$I) {\n\t$U const &$K = $I->first;\n\t$T const &$V = $I->second;\n\t$F\n}";
     return api;
 }
 

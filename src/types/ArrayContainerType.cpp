@@ -16,7 +16,7 @@ std::string ArrayContainerType::generateParserFunctionBody(ParserGenerator *gene
     std::string body;
     body += indent+"if (!matchSymbol('['))\n";
     body += indent+"\t"+generator->generateErrorStatement(ParserGenerator::Error::TYPE_MISMATCH)+";\n";
-    body += indent+generateClear("value")+";\n";
+    body += indent+generateClear(indent, "value")+";\n";
     if (generator->settings().strictSyntaxCheck)
         body += indent+"int separatorCheck = -1;\n";
     body += indent+"while (!matchSymbol(']')) {\n";
@@ -24,7 +24,7 @@ std::string ArrayContainerType::generateParserFunctionBody(ParserGenerator *gene
         body += indent+"\tif (!separatorCheck)\n";
         body += indent+"\t\t"+generator->generateErrorStatement(ParserGenerator::Error::JSON_SYNTAX_ERROR)+";\n";
     }
-    std::string elemRef = generateRefAppended("value");
+    std::string elemRef = generateRefAppended(indent+"\t\t", "value");
     body += generator->generateValueParse(elementType(), elemRef, indent+"\t");
     if (generator->settings().strictSyntaxCheck)
         body += indent+"\tseparatorCheck = matchSymbol(',');\n";
@@ -41,34 +41,36 @@ std::string ArrayContainerType::generateParserFunctionBody(ParserGenerator *gene
 std::string ArrayContainerType::generateSerializerFunctionBody(SerializerGenerator *generator, const std::string &indent) const {
     std::string body;
     body += indent+"bool prev = false;\n";
-    body += indent+generator->stringType()->generateAppendChar(SerializerGenerator::OUTPUT_STRING, "'['")+";\n";
+    body += indent+generator->stringType()->generateAppendChar(indent, SerializerGenerator::OUTPUT_STRING, "'['")+";\n";
     std::string iterBody;
-    iterBody += "if (prev) { ";
-    iterBody += generator->stringType()->generateAppendChar(SerializerGenerator::OUTPUT_STRING, "','");
-    iterBody += "; } prev = true; ";
-    iterBody += generator->generateValueSerialization(elementType(), "elem");
-    body += indent+generateIterateElements("value", "i", "end", "elem", iterBody.c_str())+"\n";
-    body += indent+generator->stringType()->generateAppendChar(SerializerGenerator::OUTPUT_STRING, "']'")+";\n";
+    iterBody += "if (prev) {\n";
+    iterBody += "\t"+generator->stringType()->generateAppendChar("\t", SerializerGenerator::OUTPUT_STRING, "','")+";\n";
+    iterBody += "}\n";
+    iterBody += "prev = true;\n";
+    iterBody += generator->generateValueSerialization(elementType(), "elem", "");
+    iterBody.pop_back(); // trim \n at end
+    body += indent+generateIterateElements(indent, "value", "i", "end", "elem", iterBody.c_str())+"\n";
+    body += indent+generator->stringType()->generateAppendChar(indent, SerializerGenerator::OUTPUT_STRING, "']'")+";\n";
     return body;
 }
 
-std::string ArrayContainerType::generateClear(const char *subject) const {
+std::string ArrayContainerType::generateClear(const std::string &indent, const char *subject) const {
     Replacer r[] = {
         { 'T', elementType()->name().body().c_str() },
         { 'S', subject }
     };
-    return fillPattern(arrayContainerTemplate()->api().clear, r, ARRAY_LENGTH(r));
+    return fillPattern(arrayContainerTemplate()->api().clear, r, ARRAY_LENGTH(r), indent);
 }
 
-std::string ArrayContainerType::generateRefAppended(const char *subject) const {
+std::string ArrayContainerType::generateRefAppended(const std::string &indent, const char *subject) const {
     Replacer r[] = {
         { 'T', elementType()->name().body().c_str() },
         { 'S', subject }
     };
-    return fillPattern(arrayContainerTemplate()->api().refAppended, r, ARRAY_LENGTH(r));
+    return fillPattern(arrayContainerTemplate()->api().refAppended, r, ARRAY_LENGTH(r), indent);
 }
 
-std::string ArrayContainerType::generateIterateElements(const char *subject, const char *iteratorName, const char *endIteratorName, const char *elementName, const char *body) const {
+std::string ArrayContainerType::generateIterateElements(const std::string &indent, const char *subject, const char *iteratorName, const char *endIteratorName, const char *elementName, const char *body) const {
     Replacer r[] = {
         { 'T', elementType()->name().body().c_str() },
         { 'S', subject },
@@ -77,5 +79,5 @@ std::string ArrayContainerType::generateIterateElements(const char *subject, con
         { 'E', elementName },
         { 'F', body }
     };
-    return fillPattern(arrayContainerTemplate()->api().iterateElements, r, ARRAY_LENGTH(r));
+    return fillPattern(arrayContainerTemplate()->api().iterateElements, r, ARRAY_LENGTH(r), indent);
 }

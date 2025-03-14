@@ -14,7 +14,7 @@ static StringAPI stdStringAPI() {
     api.appendCStr = "$S += $X";
     api.appendStringLiteral = "$S += $X";
     api.equalsStringLiteral = "$S == $X";
-    api.iterateChars = "for (std::string::const_iterator $I = $S.begin(), $Z = $S.end(); $I != $Z; ++$I) { char $E = *$I; $F }";
+    api.iterateChars = "for (std::string::const_iterator $I = $S.begin(), $Z = $S.end(); $I != $Z; ++$I) {\n\tchar $E = *$I;\n\t$F\n}";
     return api;
 }
 
@@ -37,11 +37,12 @@ std::string StringType::generateUnescapeBody(ParserGenerator *generator, const c
     body += indent+"\tcase '\\0':\n";
     body += indent+"\t\t--cur;\n";
     body += indent+"\t\t"+generator->generateErrorStatement(ParserGenerator::Error::UNEXPECTED_END_OF_FILE)+";\n";
-    body += indent+"\tcase 'B': case 'b': "+generateAppendChar(outputName, "'\\b'")+"; break;\n";
-    body += indent+"\tcase 'F': case 'f': "+generateAppendChar(outputName, "'\\f'")+"; break;\n";
-    body += indent+"\tcase 'N': case 'n': "+generateAppendChar(outputName, "'\\n'")+"; break;\n";
-    body += indent+"\tcase 'R': case 'r': "+generateAppendChar(outputName, "'\\r'")+"; break;\n";
-    body += indent+"\tcase 'T': case 't': "+generateAppendChar(outputName, "'\\t'")+"; break;\n";
+    std::string caseIndent = indent+"\t\t";
+    body += indent+"\tcase 'B': case 'b': "+generateAppendChar(caseIndent, outputName, "'\\b'")+"; break;\n";
+    body += indent+"\tcase 'F': case 'f': "+generateAppendChar(caseIndent, outputName, "'\\f'")+"; break;\n";
+    body += indent+"\tcase 'N': case 'n': "+generateAppendChar(caseIndent, outputName, "'\\n'")+"; break;\n";
+    body += indent+"\tcase 'R': case 'r': "+generateAppendChar(caseIndent, outputName, "'\\r'")+"; break;\n";
+    body += indent+"\tcase 'T': case 't': "+generateAppendChar(caseIndent, outputName, "'\\t'")+"; break;\n";
     body += indent+"\tcase 'U': case 'u': {\n";
     body += indent+"\t\tunsigned long cp;\n";
     body += indent+"\t\tint wc;\n";
@@ -68,15 +69,15 @@ std::string StringType::generateUnescapeBody(ParserGenerator *generator, const c
     body += indent+"\t\tif (cp&0xffffff80) {\n";
     body += indent+"\t\t\tint len;\n";
     body += indent+"\t\t\tfor (len = 1; cp>>(5*len+1) && len < 6; ++len);\n";
-    body += indent+"\t\t\t"+generateAppendChar(outputName, "(char) (0xff<<(8-len)|cp>>6*(len-1))")+";\n";
+    body += indent+"\t\t\t"+generateAppendChar(indent+"\t\t\t", outputName, "(char) (0xff<<(8-len)|cp>>6*(len-1))")+";\n";
     body += indent+"\t\t\tfor (int i = 1; i < len; ++i)\n";
-    body += indent+"\t\t\t\t"+generateAppendChar(outputName, "(char) (0x80|(cp>>6*(len-i-1)&0x3f))")+";\n";
+    body += indent+"\t\t\t\t"+generateAppendChar(indent+"\t\t\t\t", outputName, "(char) (0x80|(cp>>6*(len-i-1)&0x3f))")+";\n";
     body += indent+"\t\t} else\n";
-    body += indent+"\t\t\t"+generateAppendChar(outputName, "(char) cp")+";\n";
+    body += indent+"\t\t\t"+generateAppendChar(indent+"\t\t\t", outputName, "(char) cp")+";\n";
     body += indent+"\t\tbreak;\n";
     body += indent+"\t}\n";
     body += indent+"\tdefault:\n";
-    body += indent+"\t\t"+generateAppendChar(outputName, "cur[-1]")+";\n";
+    body += indent+"\t\t"+generateAppendChar(indent+"\t\t", outputName, "cur[-1]")+";\n";
     body += indent+"}\n";
     return body;
 }
@@ -85,7 +86,7 @@ std::string StringType::generateParserFunctionBody(ParserGenerator *generator, c
     std::string body;
     body += indent+"if (!matchSymbol('\"'))\n";
     body += indent+"\t"+generator->generateErrorStatement(ParserGenerator::Error::STRING_EXPECTED)+";\n";
-    body += indent+generateClear("value")+";\n";
+    body += indent+generateClear(indent, "value")+";\n";
     body += indent+"while (*cur != '\"') {\n";
     body += indent+"\tif (*cur == '\\\\') {\n";
     body += generateUnescapeBody(generator, "value", indent+"\t\t");
@@ -93,7 +94,7 @@ std::string StringType::generateParserFunctionBody(ParserGenerator *generator, c
     body += indent+"\t}\n";
     body += indent+"\tif (!*cur)\n";
     body += indent+"\t\t"+generator->generateErrorStatement(ParserGenerator::Error::UNEXPECTED_END_OF_FILE)+";\n";
-    body += indent+"\t"+generateAppendChar("value", "*cur")+";\n";
+    body += indent+"\t"+generateAppendChar(indent+"\t", "value", "*cur")+";\n";
     body += indent+"\t++cur;\n";
     body += indent+"}\n";
     body += indent+"++cur;\n";
@@ -102,67 +103,67 @@ std::string StringType::generateParserFunctionBody(ParserGenerator *generator, c
 
 std::string StringType::generateSerializerFunctionBody(SerializerGenerator *generator, const std::string &indent) const {
     std::string body;
-    body += indent+generator->stringType()->generateAppendChar(SerializerGenerator::OUTPUT_STRING, "'\"'")+";\n";
-    body += indent+generateIterateChars("value", "i", "end", "c", "writeEscaped(c);")+"\n";
-    body += indent+generator->stringType()->generateAppendChar(SerializerGenerator::OUTPUT_STRING, "'\"'")+";\n";
+    body += indent+generator->stringType()->generateAppendChar(indent, SerializerGenerator::OUTPUT_STRING, "'\"'")+";\n";
+    body += indent+generateIterateChars(indent, "value", "i", "end", "c", "writeEscaped(c);")+"\n";
+    body += indent+generator->stringType()->generateAppendChar(indent, SerializerGenerator::OUTPUT_STRING, "'\"'")+";\n";
     return body;
 }
 
-std::string StringType::generateClear(const char *subject) const {
+std::string StringType::generateClear(const std::string &indent, const char *subject) const {
     Replacer r[] = {
         { 'S', subject }
     };
-    return fillPattern(api.clear, r, ARRAY_LENGTH(r));
+    return fillPattern(api.clear, r, ARRAY_LENGTH(r), indent);
 }
 
-std::string StringType::generateGetLength(const char *subject) const {
+std::string StringType::generateGetLength(const std::string &indent, const char *subject) const {
     Replacer r[] = {
         { 'S', subject }
     };
-    return fillPattern(api.getLength, r, ARRAY_LENGTH(r));
+    return fillPattern(api.getLength, r, ARRAY_LENGTH(r), indent);
 }
 
-std::string StringType::generateGetCharAt(const char *subject, const char *index) const {
+std::string StringType::generateGetCharAt(const std::string &indent, const char *subject, const char *index) const {
     Replacer r[] = {
         { 'S', subject },
         { 'I', index }
     };
-    return fillPattern(api.getCharAt, r, ARRAY_LENGTH(r));
+    return fillPattern(api.getCharAt, r, ARRAY_LENGTH(r), indent);
 }
 
-std::string StringType::generateAppendChar(const char *subject, const char *x) const {
+std::string StringType::generateAppendChar(const std::string &indent, const char *subject, const char *x) const {
     Replacer r[] = {
         { 'S', subject },
         { 'X', x }
     };
-    return fillPattern(api.appendChar, r, ARRAY_LENGTH(r));
+    return fillPattern(api.appendChar, r, ARRAY_LENGTH(r), indent);
 }
 
-std::string StringType::generateAppendCStr(const char *subject, const char *x) const {
+std::string StringType::generateAppendCStr(const std::string &indent, const char *subject, const char *x) const {
     Replacer r[] = {
         { 'S', subject },
         { 'X', x }
     };
-    return fillPattern(api.appendCStr, r, ARRAY_LENGTH(r));
+    return fillPattern(api.appendCStr, r, ARRAY_LENGTH(r), indent);
 }
 
-std::string StringType::generateAppendStringLiteral(const char *subject, const char *x) const {
+std::string StringType::generateAppendStringLiteral(const std::string &indent, const char *subject, const char *x) const {
     Replacer r[] = {
         { 'S', subject },
         { 'X', x }
     };
-    return fillPattern(api.appendStringLiteral, r, ARRAY_LENGTH(r));
+    return fillPattern(api.appendStringLiteral, r, ARRAY_LENGTH(r), indent);
 }
 
-std::string StringType::generateEqualsStringLiteral(const char *subject, const char *x) const {
+std::string StringType::generateEqualsStringLiteral(const std::string &indent, const char *subject, const char *x) const {
     Replacer r[] = {
         { 'S', subject },
         { 'X', x }
     };
-    return fillPattern(api.equalsStringLiteral, r, ARRAY_LENGTH(r));
+    return fillPattern(api.equalsStringLiteral, r, ARRAY_LENGTH(r), indent);
 }
 
-std::string StringType::generateIterateChars(const char *subject, const char *iteratorName, const char *endIteratorName, const char *elementName, const char *body) const {
+std::string StringType::generateIterateChars(const std::string &indent, const char *subject, const char *iteratorName, const char *endIteratorName, const char *elementName, const char *body) const {
     Replacer r[] = {
         { 'S', subject },
         { 'I', iteratorName },
@@ -170,5 +171,5 @@ std::string StringType::generateIterateChars(const char *subject, const char *it
         { 'E', elementName },
         { 'F', body }
     };
-    return fillPattern(api.iterateChars, r, ARRAY_LENGTH(r));
+    return fillPattern(api.iterateChars, r, ARRAY_LENGTH(r), indent);
 }

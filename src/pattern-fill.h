@@ -10,4 +10,4 @@ struct Replacer {
     const char *value;
 };
 
-std::string fillPattern(const std::string &pattern, const Replacer *replacers, int count);
+std::string fillPattern(const std::string &pattern, const Replacer *replacers, int count, const std::string &indent = std::string());

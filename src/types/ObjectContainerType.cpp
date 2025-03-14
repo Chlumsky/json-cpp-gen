@@ -26,7 +26,7 @@ std::string ObjectContainerType::generateParserFunctionBody(ParserGenerator *gen
         body += indent+keyType()->name().variableDeclaration(keyName)+";\n";
     body += indent+"if (!matchSymbol('{'))\n";
     body += indent+"\t"+generator->generateErrorStatement(ParserGenerator::Error::TYPE_MISMATCH)+";\n";
-    body += indent+generateClear("value")+";\n";
+    body += indent+generateClear(indent, "value")+";\n";
     if (generator->settings().strictSyntaxCheck)
         body += indent+"int separatorCheck = -1;\n";
     body += indent+"while (!matchSymbol('}')) {\n";
@@ -37,7 +37,7 @@ std::string ObjectContainerType::generateParserFunctionBody(ParserGenerator *gen
     body += generator->generateValueParse(keyType(), keyName, indent+"\t");
     body += indent+"\tif (!matchSymbol(':'))\n";
     body += indent+"\t\t"+generator->generateErrorStatement(ParserGenerator::Error::JSON_SYNTAX_ERROR)+";\n";
-    std::string elemRef = generateRefByKey("value", keyName);
+    std::string elemRef = generateRefByKey(indent+"\t\t", "value", keyName);
     body += generator->generateValueParse(elementType(), elemRef, indent+"\t");
     if (generator->settings().strictSyntaxCheck)
         body += indent+"\tseparatorCheck = matchSymbol(',');\n";
@@ -54,50 +54,53 @@ std::string ObjectContainerType::generateParserFunctionBody(ParserGenerator *gen
 std::string ObjectContainerType::generateSerializerFunctionBody(SerializerGenerator *generator, const std::string &indent) const {
     std::string body;
     body += indent+"bool prev = false;\n";
-    body += indent+generator->stringType()->generateAppendChar(SerializerGenerator::OUTPUT_STRING, "'{'")+";\n";
+    body += indent+generator->stringType()->generateAppendChar(indent, SerializerGenerator::OUTPUT_STRING, "'{'")+";\n";
     std::string iterBody;
     const OptionalContainerType *optionalElemType = nullptr;
     if (generator->settings().skipEmptyFields)
         optionalElemType = elementType()->optionalContainerType();
-    if (optionalElemType)
-        iterBody += "if ("+optionalElemType->generateHasValue("elem")+") { ";
-    iterBody += "if (prev) { ";
-    iterBody += generator->stringType()->generateAppendChar(SerializerGenerator::OUTPUT_STRING, "','");
-    iterBody += "; } prev = true; ";
-    iterBody += generator->generateValueSerialization(keyType(), "key");
-    iterBody += " ";
-    iterBody += generator->stringType()->generateAppendChar(SerializerGenerator::OUTPUT_STRING, "':'");
-    iterBody += "; ";
+    std::string iterIndent;
     if (optionalElemType) {
-        iterBody += generator->generateValueSerialization(optionalElemType->elementType(), optionalElemType->generateGetValue("elem"));
-        iterBody += " }";
+        iterBody += "if ("+optionalElemType->generateHasValue("\t", "elem")+") {\n";
+        iterIndent += "\t";
+    }
+    iterBody += iterIndent+"if (prev) {\n";
+    iterBody += iterIndent+"\t"+generator->stringType()->generateAppendChar(iterIndent+"\t", SerializerGenerator::OUTPUT_STRING, "','")+";\n";
+    iterBody += iterIndent+"}\n";
+    iterBody += iterIndent+"prev = true;\n";
+    iterBody += generator->generateValueSerialization(keyType(), "key", iterIndent);
+    iterBody += iterIndent+generator->stringType()->generateAppendChar(iterIndent, SerializerGenerator::OUTPUT_STRING, "':'")+";\n";
+    if (optionalElemType) {
+        iterBody += generator->generateValueSerialization(optionalElemType->elementType(), optionalElemType->generateGetValue("\t\t", "elem"), "\t");
+        iterBody += "}\n";
     } else
-        iterBody += generator->generateValueSerialization(elementType(), "elem");
-    body += indent+generateIterateElements("value", "i", "end", "key", "elem", iterBody.c_str())+"\n";
-    body += indent+generator->stringType()->generateAppendChar(SerializerGenerator::OUTPUT_STRING, "'}'")+";\n";
+        iterBody += generator->generateValueSerialization(elementType(), "elem", "");
+    iterBody.pop_back(); // trim \n at end
+    body += indent+generateIterateElements(indent, "value", "i", "end", "key", "elem", iterBody.c_str())+"\n";
+    body += indent+generator->stringType()->generateAppendChar(indent, SerializerGenerator::OUTPUT_STRING, "'}'")+";\n";
     return body;
 }
 
-std::string ObjectContainerType::generateClear(const char *subject) const {
+std::string ObjectContainerType::generateClear(const std::string &indent, const char *subject) const {
     Replacer r[] = {
         { 'U', keyType()->name().body().c_str() },
         { 'T', elementType()->name().body().c_str() },
         { 'S', subject }
     };
-    return fillPattern(objectContainerTemplate()->api().clear, r, ARRAY_LENGTH(r));
+    return fillPattern(objectContainerTemplate()->api().clear, r, ARRAY_LENGTH(r), indent);
 }
 
-std::string ObjectContainerType::generateRefByKey(const char *subject, const char *keyName) const {
+std::string ObjectContainerType::generateRefByKey(const std::string &indent, const char *subject, const char *keyName) const {
     Replacer r[] = {
         { 'U', keyType()->name().body().c_str() },
         { 'T', elementType()->name().body().c_str() },
         { 'S', subject },
         { 'K', keyName }
     };
-    return fillPattern(objectContainerTemplate()->api().refByKey, r, ARRAY_LENGTH(r));
+    return fillPattern(objectContainerTemplate()->api().refByKey, r, ARRAY_LENGTH(r), indent);
 }
 
-std::string ObjectContainerType::generateIterateElements(const char *subject, const char *iteratorName, const char *endIteratorName, const char *keyName, const char *elementName, const char *body) const {
+std::string ObjectContainerType::generateIterateElements(const std::string &indent, const char *subject, const char *iteratorName, const char *endIteratorName, const char *keyName, const char *elementName, const char *body) const {
     Replacer r[] = {
         { 'U', keyType()->name().body().c_str() },
         { 'T', elementType()->name().body().c_str() },
@@ -108,5 +111,5 @@ std::string ObjectContainerType::generateIterateElements(const char *subject, co
         { 'V', elementName },
         { 'F', body }
     };
-    return fillPattern(objectContainerTemplate()->api().iterateElements, r, ARRAY_LENGTH(r));
+    return fillPattern(objectContainerTemplate()->api().iterateElements, r, ARRAY_LENGTH(r), indent);
 }

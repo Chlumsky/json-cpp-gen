@@ -44,9 +44,9 @@ std::string SerializerGenerator::generateSerializerFunctionCall(const Type *type
 
 std::string SerializerGenerator::generateValueSerialization(const Type *type, const std::string &inputArg, const std::string &indent) {
     if (settings().noThrow)
-        return indent+"if (Error error = "+generateSerializerFunctionCall(type, inputArg)+(indent.empty() ? ") " : ")\n"+indent+"\t")+"return error;"+(indent.empty() ? "" : "\n");
+        return indent+"if (Error error = "+generateSerializerFunctionCall(type, inputArg)+")\n"+indent+"\treturn error;\n";
     else
-        return indent+generateSerializerFunctionCall(type, inputArg)+(indent.empty() ? ";" : ";\n");
+        return indent+generateSerializerFunctionCall(type, inputArg)+";\n";
 }
 
 std::string SerializerGenerator::generateErrorStatement(const char *errorName) const {
@@ -157,7 +157,7 @@ std::string SerializerGenerator::generateSource(const std::string &relativeHeade
 
     // Constructor
     code += className+"::"+className+"("+stringType()->name().refArgDeclaration(OUTPUT_STRING)+") : "+OUTPUT_STRING+"("+OUTPUT_STRING+") {\n";
-    code += "\t"+stringType()->generateClear(OUTPUT_STRING)+";\n";
+    code += "\t"+stringType()->generateClear("\t", OUTPUT_STRING)+";\n";
     code += "}\n\n";
     // writeEscaped
     code += "void "+className+"::writeEscaped(char c) {\n";
@@ -172,18 +172,18 @@ std::string SerializerGenerator::generateSource(const std::string &relativeHeade
             case '\t': alias = 't'; break;
         }
         if (alias)
-            code += std::string("\t\tcase '\\")+alias+"': "+stringType()->generateAppendStringLiteral(OUTPUT_STRING, (std::string("\"\\\\")+alias+"\"").c_str())+"; break;\n";
+            code += std::string("\t\tcase '\\")+alias+"': "+stringType()->generateAppendStringLiteral("\t\t\t", OUTPUT_STRING, (std::string("\"\\\\")+alias+"\"").c_str())+"; break;\n";
         else {
             std::string hexChar = hexUint8((unsigned char) i);
-            code += "\t\tcase '\\x"+hexChar+"': "+stringType()->generateAppendStringLiteral(OUTPUT_STRING, ("\"\\\\u00"+hexChar+"\"").c_str())+"; break;\n";
+            code += "\t\tcase '\\x"+hexChar+"': "+stringType()->generateAppendStringLiteral("\t\t\t", OUTPUT_STRING, ("\"\\\\u00"+hexChar+"\"").c_str())+"; break;\n";
         }
     }
-    code += "\t\tcase '\"': "+stringType()->generateAppendStringLiteral(OUTPUT_STRING, "\"\\\\\\\"\"")+"; break;\n";
+    code += "\t\tcase '\"': "+stringType()->generateAppendStringLiteral("\t\t\t", OUTPUT_STRING, "\"\\\\\\\"\"")+"; break;\n";
     if (settings().escapeForwardSlash)
-        code += "\t\tcase '/': "+stringType()->generateAppendStringLiteral(OUTPUT_STRING, "\"\\\\/\"")+"; break;\n";
-    code += "\t\tcase '\\\\': "+stringType()->generateAppendStringLiteral(OUTPUT_STRING, "\"\\\\\\\\\"")+"; break;\n";
+        code += "\t\tcase '/': "+stringType()->generateAppendStringLiteral("\t\t\t", OUTPUT_STRING, "\"\\\\/\"")+"; break;\n";
+    code += "\t\tcase '\\\\': "+stringType()->generateAppendStringLiteral("\t\t\t", OUTPUT_STRING, "\"\\\\\\\\\"")+"; break;\n";
     code += "\t\tdefault:\n";
-    code += "\t\t\t"+stringType()->generateAppendChar(OUTPUT_STRING, "c")+";\n";
+    code += "\t\t\t"+stringType()->generateAppendChar("\t\t\t", OUTPUT_STRING, "c")+";\n";
     code += "\t}\n";
     code += "}\n";
 
@@ -194,13 +194,13 @@ std::string SerializerGenerator::generateSource(const std::string &relativeHeade
         code += "template <typename U, typename T>\n";
         code += "void "+className+"::writeSigned(T value) {\n";
         code += "\tif (value < 0) {\n";
-        code += "\t\t"+stringType()->generateAppendChar(OUTPUT_STRING, "'-'")+";\n";
+        code += "\t\t"+stringType()->generateAppendChar("\t\t", OUTPUT_STRING, "'-'")+";\n";
         code += "\t\tvalue = -value;\n";
         code += "\t}\n";
         code += "\tU unsignedValue = static_cast<U>(value);\n";
         code += "\tchar buffer[4*(sizeof(U)+1)], *cur = &(buffer[4*(sizeof(U)+1)-1] = '\\0');\n";
         code += "\tdo *--cur = '0'+unsignedValue%10; while (unsignedValue /= 10);\n";
-        code += "\t"+stringType()->generateAppendCStr(OUTPUT_STRING, "cur")+";\n";
+        code += "\t"+stringType()->generateAppendCStr("\t", OUTPUT_STRING, "cur")+";\n";
         code += "}\n";
     }
     if (featureBits&FEATURE_WRITE_UNSIGNED) {
@@ -209,7 +209,7 @@ std::string SerializerGenerator::generateSource(const std::string &relativeHeade
         code += "void "+className+"::writeUnsigned(T value) {\n";
         code += "\tchar buffer[4*(sizeof(T)+1)], *cur = &(buffer[4*(sizeof(T)+1)-1] = '\\0');\n";
         code += "\tdo *--cur = '0'+value%10; while (value /= 10);\n";
-        code += "\t"+stringType()->generateAppendCStr(OUTPUT_STRING, "cur")+";\n";
+        code += "\t"+stringType()->generateAppendCStr("\t", OUTPUT_STRING, "cur")+";\n";
         code += "}\n";
     }
 

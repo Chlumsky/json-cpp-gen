@@ -37,16 +37,16 @@ std::string StaticArrayType::generateParserFunctionBody(ParserGenerator *generat
 
 std::string StaticArrayType::generateSerializerFunctionBody(SerializerGenerator *generator, const std::string &indent) const {
     std::string body;
-    body += indent+generator->stringType()->generateAppendChar(SerializerGenerator::OUTPUT_STRING, "'['")+";\n";
+    body += indent+generator->stringType()->generateAppendChar(indent, SerializerGenerator::OUTPUT_STRING, "'['")+";\n";
     if (length >= 1) {
         body += generator->generateValueSerialization(elemType, "value[0]", indent);
         if (length >= 2) {
             body += indent+"for (int i = 1; i < "+std::to_string(length)+"; ++i) {\n";
-            body += indent+"\t"+generator->stringType()->generateAppendChar(SerializerGenerator::OUTPUT_STRING, "','")+";\n";
+            body += indent+"\t"+generator->stringType()->generateAppendChar(indent+"\t", SerializerGenerator::OUTPUT_STRING, "','")+";\n";
             body += generator->generateValueSerialization(elemType, "value[i]", indent+"\t");
             body += indent+"}\n";
         }
     }
-    body += indent+generator->stringType()->generateAppendChar(SerializerGenerator::OUTPUT_STRING, "']'")+";\n";
+    body += indent+generator->stringType()->generateAppendChar(indent, SerializerGenerator::OUTPUT_STRING, "']'")+";\n";
     return body;
 }

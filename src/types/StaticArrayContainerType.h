@@ -13,6 +13,6 @@ public:
     int length() const;
     virtual std::string generateParserFunctionBody(ParserGenerator *generator, const std::string &indent) const override;
     virtual std::string generateSerializerFunctionBody(SerializerGenerator *generator, const std::string &indent) const override;
-    std::string generateRefByIndex(const char *subject, const char *index) const;
+    std::string generateRefByIndex(const std::string &indent, const char *subject, const char *index) const;
 
 };

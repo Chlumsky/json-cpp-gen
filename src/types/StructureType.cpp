@@ -33,7 +33,7 @@ std::string StructureType::ParserSwitchTreeCaseGenerator::operator()(ParserGener
     if (memberType->name().substance() == TypeName::VIRTUAL)
         parserGenerator->resolveVirtualTypename(memberType, parent, caseLabel);
     std::string body;
-    body += indent+"if ("+valueType->generateEqualsStringLiteral(value, parserGenerator->getJsonMemberNameLiteral(caseLabel).c_str())+") {\n";
+    body += indent+"if ("+valueType->generateEqualsStringLiteral(indent+"\t", value, parserGenerator->getJsonMemberNameLiteral(caseLabel).c_str())+") {\n";
     if (parserGenerator->settings().checkMissingKeys || parserGenerator->settings().checkRepeatingKeys) {
         std::string checkBits = "doneKeys["+std::to_string(i/32)+"]";
         std::string checkMask = hexUint32(1ul<<(i%32));
@@ -125,7 +125,7 @@ std::string StructureType::generateParserFunctionBody(ParserGenerator *generator
 
 std::string StructureType::generateSerializerFunctionBody(SerializerGenerator *generator, const std::string &indent) const {
     if (orderedMembers.empty())
-        return indent+generator->stringType()->generateAppendStringLiteral(SerializerGenerator::OUTPUT_STRING, "\"{}\"")+";\n";
+        return indent+generator->stringType()->generateAppendStringLiteral(indent, SerializerGenerator::OUTPUT_STRING, "\"{}\"")+";\n";
     std::string body;
     bool first = true;
     bool maybeFirst = false;
@@ -140,17 +140,24 @@ std::string StructureType::generateSerializerFunctionBody(SerializerGenerator *g
         if (optionalMemberType) {
             if (first) {
                 body += indent+"bool prev = false;\n";
-                body += indent+generator->stringType()->generateAppendChar(SerializerGenerator::OUTPUT_STRING, "'{'")+";\n";
+                body += indent+generator->stringType()->generateAppendChar(indent, SerializerGenerator::OUTPUT_STRING, "'{'")+";\n";
                 maybeFirst = true;
             }
-            body += indent+"if ("+optionalMemberType->generateHasValue(("value."+member.name).c_str())+") {\n";
+            body += indent+"if ("+optionalMemberType->generateHasValue(indent+"\t", ("value."+member.name).c_str())+") {\n";
             subIndent += "\t";
-            memberSerialization = generator->generateValueSerialization(optionalMemberType->elementType(), optionalMemberType->generateGetValue(("value."+member.name).c_str()), subIndent);
+            memberSerialization = generator->generateValueSerialization(optionalMemberType->elementType(), optionalMemberType->generateGetValue(subIndent+"\t", ("value."+member.name).c_str()), subIndent);
         } else
             memberSerialization = generator->generateValueSerialization(member.type, "value."+member.name, subIndent);
         if (maybeFirst && !first)
-            body += subIndent+"if (prev) { "+generator->stringType()->generateAppendChar(SerializerGenerator::OUTPUT_STRING, "','")+"; }\n";
-        body += subIndent+generator->stringType()->generateAppendStringLiteral(SerializerGenerator::OUTPUT_STRING, (std::string("\"")+(maybeFirst ? "" : first ? "{" : ",")+"\\\"\" "+generator->getJsonMemberNameLiteral(member.name)+" \"\\\":\"").c_str())+";\n"; // TODO merge to one literal
+            body += subIndent+"if (prev) { "+generator->stringType()->generateAppendChar(subIndent+"\t", SerializerGenerator::OUTPUT_STRING, "','")+"; }\n";
+        std::string jsonNameLiteral = generator->getJsonMemberNameLiteral(member.name);
+        std::string appendedLiteral = std::string("\"")+(maybeFirst ? "" : first ? "{" : ",")+"\\\"";
+        if (jsonNameLiteral.size() >= 2 && jsonNameLiteral.front() == '"' && jsonNameLiteral.back() == '"') {
+            appendedLiteral += jsonNameLiteral.substr(1, jsonNameLiteral.size()-2);
+        } else
+            appendedLiteral += "\" "+jsonNameLiteral+" \"";
+        appendedLiteral += +"\\\":\"";
+        body += subIndent+generator->stringType()->generateAppendStringLiteral(subIndent, SerializerGenerator::OUTPUT_STRING, appendedLiteral.c_str())+";\n";
         body += memberSerialization;
         if (optionalMemberType) {
             if (maybeFirst)
@@ -160,7 +167,7 @@ std::string StructureType::generateSerializerFunctionBody(SerializerGenerator *g
             maybeFirst = false;
         first = false;
     }
-    body += indent+generator->stringType()->generateAppendChar(SerializerGenerator::OUTPUT_STRING, "'}'")+";\n";
+    body += indent+generator->stringType()->generateAppendChar(indent, SerializerGenerator::OUTPUT_STRING, "'}'")+";\n";
     return body;
 }
 

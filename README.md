@@ -105,10 +105,9 @@ for the [`ConfigurationParser`](generated/ConfigurationParser.h) class.
 - Full UTF-8 & UTF-16 support in JSON
 
 Currently **NOT** supported but planned features:
-- Omitting specific member variables from parsing and serialization - planned via annotations
-- Structure members under different name in JSON - planned via annotations
-- Classes - currently ignored due to their data being typically private but explicit enablement via annotations is planned - access to private members must be ensured by the user
-- `#define`, `typedef`, `using` aliases - basic support planned
+- Omitting specific member variables from parsing and serialization
+- Structure members under different name in JSON
+- Classes - currently ignored due to their data being typically private
 
 What will (probably) never be supported:
 - Heterogeneous JSON objects - not really representable by static stuctures

@@ -8,7 +8,7 @@ static ArrayContainerAPI stdSequenceAPI(const std::string &templateName) {
     ArrayContainerAPI api;
     api.clear = "$S.clear()";
     api.refAppended = "($S.resize($S.size()+1), $S.back())";
-    api.iterateElements = "for ("+templateName+"<$T>::const_iterator $I = $S.begin(), $Z = $S.end(); $I != $Z; ++$I) { $T const &$E = *$I; $F }";
+    api.iterateElements = "for ("+templateName+"<$T>::const_iterator $I = $S.begin(), $Z = $S.end(); $I != $Z; ++$I) {\n\t$T const &$E = *$I;\n\t$F\n}";
     return api;
 }
 

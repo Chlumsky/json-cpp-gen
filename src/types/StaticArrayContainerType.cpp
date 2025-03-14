@@ -30,7 +30,7 @@ std::string StaticArrayContainerType::generateParserFunctionBody(ParserGenerator
     }
     body += indent+"\tif (i == "+std::to_string(length())+")\n";
     body += indent+"\t\t"+generator->generateErrorStatement(ParserGenerator::Error::ARRAY_SIZE_MISMATCH)+";\n";
-    body += generator->generateValueParse(elementType(), generateRefByIndex("value", "i"), indent+"\t");
+    body += generator->generateValueParse(elementType(), generateRefByIndex(indent+"\t\t", "value", "i"), indent+"\t");
     body += indent+"\t++i;\n";
     if (generator->settings().strictSyntaxCheck)
         body += indent+"\tseparatorCheck = matchSymbol(',');\n";
@@ -48,21 +48,21 @@ std::string StaticArrayContainerType::generateParserFunctionBody(ParserGenerator
 
 std::string StaticArrayContainerType::generateSerializerFunctionBody(SerializerGenerator *generator, const std::string &indent) const {
     std::string body;
-    body += indent+generator->stringType()->generateAppendChar(SerializerGenerator::OUTPUT_STRING, "'['")+";\n";
+    body += indent+generator->stringType()->generateAppendChar(indent, SerializerGenerator::OUTPUT_STRING, "'['")+";\n";
     if (length() >= 1) {
-        body += generator->generateValueSerialization(elementType(), generateRefByIndex("value", "0"), indent);
+        body += generator->generateValueSerialization(elementType(), generateRefByIndex(indent+"\t", "value", "0"), indent);
         if (length() >= 2) {
             body += indent+"for (int i = 1; i < "+std::to_string(length())+"; ++i) {\n";
-            body += indent+"\t"+generator->stringType()->generateAppendChar(SerializerGenerator::OUTPUT_STRING, "','")+";\n";
-            body += generator->generateValueSerialization(elementType(), generateRefByIndex("value", "i"), indent+"\t");
+            body += indent+"\t"+generator->stringType()->generateAppendChar(indent+"\t", SerializerGenerator::OUTPUT_STRING, "','")+";\n";
+            body += generator->generateValueSerialization(elementType(), generateRefByIndex(indent+"\t\t", "value", "i"), indent+"\t");
             body += indent+"}\n";
         }
     }
-    body += indent+generator->stringType()->generateAppendChar(SerializerGenerator::OUTPUT_STRING, "']'")+";\n";
+    body += indent+generator->stringType()->generateAppendChar(indent, SerializerGenerator::OUTPUT_STRING, "']'")+";\n";
     return body;
 }
 
-std::string StaticArrayContainerType::generateRefByIndex(const char *subject, const char *index) const {
+std::string StaticArrayContainerType::generateRefByIndex(const std::string &indent, const char *subject, const char *index) const {
     std::string lengthStr = std::to_string(length());
     Replacer r[] = {
         { 'T', elementType()->name().body().c_str() },
@@ -70,5 +70,5 @@ std::string StaticArrayContainerType::generateRefByIndex(const char *subject, co
         { 'S', subject },
         { 'I', index }
     };
-    return fillPattern(staticArrayContainerTemplate()->api().refByIndex, r, ARRAY_LENGTH(r));
+    return fillPattern(staticArrayContainerTemplate()->api().refByIndex, r, ARRAY_LENGTH(r), indent);
 }

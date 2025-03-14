@@ -16,8 +16,8 @@ std::string OptionalContainerType::generateParserFunctionBody(ParserGenerator *g
     std::string body;
     body += indent+"skipWhitespace();\n";
     body += indent+"if ("+ParserGenerator::generateMatchKeyword("null")+")\n";
-    body += indent+"\t"+generateClear("value")+";\n";
-    std::string elemRef = generateRefInitialized("value");
+    body += indent+"\t"+generateClear(indent+"\t", "value")+";\n";
+    std::string elemRef = generateRefInitialized(indent+"\t\t", "value");
     if (generator->settings().noThrow) {
         body += indent+"else if (Error error = "+generator->generateParserFunctionCall(elementType(), elemRef)+")\n";
         body += indent+"\treturn error;\n";
@@ -30,42 +30,42 @@ std::string OptionalContainerType::generateParserFunctionBody(ParserGenerator *g
 
 std::string OptionalContainerType::generateSerializerFunctionBody(SerializerGenerator *generator, const std::string &indent) const {
     std::string body;
-    body += indent+"if ("+generateHasValue("value")+") {\n";
-    body += generator->generateValueSerialization(elementType(), generateGetValue("value"), indent+"\t");
+    body += indent+"if ("+generateHasValue(indent+"\t", "value")+") {\n";
+    body += generator->generateValueSerialization(elementType(), generateGetValue(indent+"\t\t", "value"), indent+"\t");
     body += indent+"} else {\n";
-    body += indent+"\t"+generator->stringType()->generateAppendStringLiteral(SerializerGenerator::OUTPUT_STRING, "\"null\"")+";\n";
+    body += indent+"\t"+generator->stringType()->generateAppendStringLiteral(indent+"\t", SerializerGenerator::OUTPUT_STRING, "\"null\"")+";\n";
     body += indent+"}\n";
     return body;
 }
 
-std::string OptionalContainerType::generateClear(const char *subject) const {
+std::string OptionalContainerType::generateClear(const std::string &indent, const char *subject) const {
     Replacer r[] = {
         { 'T', elementType()->name().body().c_str() },
         { 'S', subject }
     };
-    return fillPattern(optionalContainerTemplate()->api().clear, r, ARRAY_LENGTH(r));
+    return fillPattern(optionalContainerTemplate()->api().clear, r, ARRAY_LENGTH(r), indent);
 }
 
-std::string OptionalContainerType::generateRefInitialized(const char *subject) const {
+std::string OptionalContainerType::generateRefInitialized(const std::string &indent, const char *subject) const {
     Replacer r[] = {
         { 'T', elementType()->name().body().c_str() },
         { 'S', subject }
     };
-    return fillPattern(optionalContainerTemplate()->api().refInitialized, r, ARRAY_LENGTH(r));
+    return fillPattern(optionalContainerTemplate()->api().refInitialized, r, ARRAY_LENGTH(r), indent);
 }
 
-std::string OptionalContainerType::generateHasValue(const char *subject) const {
+std::string OptionalContainerType::generateHasValue(const std::string &indent, const char *subject) const {
     Replacer r[] = {
         { 'T', elementType()->name().body().c_str() },
         { 'S', subject }
     };
-    return fillPattern(optionalContainerTemplate()->api().hasValue, r, ARRAY_LENGTH(r));
+    return fillPattern(optionalContainerTemplate()->api().hasValue, r, ARRAY_LENGTH(r), indent);
 }
 
-std::string OptionalContainerType::generateGetValue(const char *subject) const {
+std::string OptionalContainerType::generateGetValue(const std::string &indent, const char *subject) const {
     Replacer r[] = {
         { 'T', elementType()->name().body().c_str() },
         { 'S', subject }
     };
-    return fillPattern(optionalContainerTemplate()->api().getValue, r, ARRAY_LENGTH(r));
+    return fillPattern(optionalContainerTemplate()->api().getValue, r, ARRAY_LENGTH(r), indent);
 }

@@ -199,7 +199,7 @@ std::string ParserGenerator::generateSwitchTree(SwitchTreeCaseGenerator *caseGen
         if (switchTree->position == StringSwitchTree::LEAF_NODE_MARKER)
             return (*caseGenerator)(this, switchTree->label, valueType, value, knownMinLength, indent);
         if (switchTree->position == StringSwitchTree::LENGTH_SWITCH_MARKER) {
-            body += indent+"switch ("+valueType->generateGetLength(value)+") {\n";
+            body += indent+"switch ("+valueType->generateGetLength(indent+"\t", value)+") {\n";
             for (const std::map<int, std::unique_ptr<StringSwitchTree> >::value_type &branch : switchTree->branches) {
                 body += indent+"\tcase "+std::to_string(branch.first)+":\n";
                 body += generateSwitchTree(caseGenerator, branch.second.get(), valueType, value, indent+"\t\t", branch.first > knownMinLength ? branch.first : knownMinLength);
@@ -210,11 +210,11 @@ std::string ParserGenerator::generateSwitchTree(SwitchTreeCaseGenerator *caseGen
             std::string switchIndent = indent;
             bool lengthCondition = switchTree->position >= knownMinLength;
             if (lengthCondition) {
-                body += indent+"if ("+valueType->generateGetLength(value)+" > "+std::to_string(switchTree->position)+") {\n";
+                body += indent+"if ("+valueType->generateGetLength(indent+"\t", value)+" > "+std::to_string(switchTree->position)+") {\n";
                 knownMinLength = switchTree->position+1;
                 switchIndent += "\t";
             }
-            body += switchIndent+"switch ("+valueType->generateGetCharAt(value, std::to_string(switchTree->position).c_str())+") {\n";
+            body += switchIndent+"switch ("+valueType->generateGetCharAt(switchIndent+"\t", value, std::to_string(switchTree->position).c_str())+") {\n";
             for (const std::map<int, std::unique_ptr<StringSwitchTree> >::value_type &branch : switchTree->branches) {
                 body += switchIndent+"\tcase "+Generator::charLiteral(char(branch.first))+":\n";
                 body += generateSwitchTree(caseGenerator, branch.second.get(), valueType, value, switchIndent+"\t\t", knownMinLength);
