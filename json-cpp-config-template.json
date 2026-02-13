@@ -1,0 +1,116 @@
+{
+    "inputs": [
+        "my_structure_header.h"
+    ],
+    "includes": [
+        "<string>"
+    ],
+    "settings": {
+        "jsonIOMode": "NULL_TERMINATED_STRING",
+        "noThrow": false,
+        "strictSyntaxCheck": false,
+        "checkMissingKeys": false,
+        "checkRepeatingKeys": false,
+        "ignoreExtraKeys": true,
+        "checkIntegerOverflow": true,
+        "escapeForwardSlash": false,
+        "skipEmptyFields": true,
+        "nanPolicy": "SERIALIZER_ERROR",
+        "infPolicy": "EXPONENT_OVERFLOW",
+        "cppLineEndings": "SAME_AS_INPUT",
+        "cppIndentation": "\t"
+    },
+    "parsers": [ {
+        "name": "ExampleParser",
+        "types": [
+            "MyStructure"
+        ],
+        "replacementIncludes": [ ],
+        "headerOutput": "generated/ExampleParser.h",
+        "sourceOutput": "generated/ExampleParser.cpp"
+    } ],
+    "serializers": [ {
+        "name": "ExampleSerializer",
+        "types": [
+            "MyStructure"
+        ],
+        "replacementIncludes": [ ],
+        "headerOutput": "generated/ExampleSerializer.h",
+        "sourceOutput": "generated/ExampleSerializer.cpp"
+    } ],
+    "stringType": "std::string",
+    "typeAliases": {
+        "String": "std::string"
+    },
+    "stringTypes": [ {
+        "name": "std::string",
+        "api": {
+            "clear": "$S.clear()",
+            "getLength": "$S.size()",
+            "getCharAt": "$S[$I]",
+            "appendChar": "$S.push_back($X)",
+            "appendCStr": "$S += $X",
+            "appendStringLiteral": "$S += $X",
+            "equalsStringLiteral": "$S == $X",
+            "iterateChars": "for (char $E : $S) { $F }"
+        }
+    } ],
+    "constStringTypes": [ {
+        "name": "ConstString",
+        "stringType": "std::string",
+        "api": {
+            "copyFromString": "$S = $X",
+            "moveFromString": "$S = std::move($X)",
+            "iterateChars": "for (char $E : $S) { $F }"
+        }
+    } ],
+    "arrayContainerTypes": [ {
+        "name": "std::vector<$T>",
+        "api": {
+            "clear": "$S.clear()",
+            "refAppended": "($S.emplace_back(), $S.back())",
+            "iterateElements": "for ($T const &$E : $S) { $F }"
+        }
+    } ],
+    "fixedArrayContainerTypes": [ {
+        "name": "FixedArray<$T>",
+        "arrayContainerType": "std::vector",
+        "api": {
+            "copyFromArrayContainer": "$S = $X",
+            "moveFromArrayContainer": "$S = std::move($X)",
+            "iterateElements": "for ($T const &$E : $S) { $F }"
+        }
+    } ],
+    "staticArrayContainerTypes": [ {
+        "name": "std::array<$T, $N>",
+        "api": {
+            "refByIndex": "$S[$I]"
+        }
+    } ],
+    "objectContainerTypes": [ {
+        "name": "std::map<std::string, $T>",
+        "keyType": "std::string",
+        "api": {
+            "clear": "$S.clear()",
+            "refByKey": "$S[$K]",
+            "iterateElements": "for (const std::pair<$U, $T> &$I : $S) { $U const &$K = $I.first; $T const &$V = $I.second; $F }"
+        }
+    } ],
+    "objectMapContainerTypes": [ {
+        "name": "std::map<$K, $T>",
+        "api": {
+            "clear": "$S.clear()",
+            "refByKey": "$S[$K]",
+            "iterateElements": "for (const std::pair<$U, $T> &$I : $S) { $U const &$K = $I.first; $T const &$V = $I.second; $F }"
+        }
+    } ],
+    "optionalContainerTypes": [ {
+        "name": "std::optional<$T>",
+        "api": {
+            "clear": "$S.reset()",
+            "refInitialized": "($S = $T()).value()",
+            "hasValue": "$S.has_value()",
+            "getValue": "$S.value()"
+        }
+    } ]
+}

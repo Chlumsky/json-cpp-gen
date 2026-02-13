@@ -218,7 +218,7 @@ An intermediate (dynamic) array type must be specified for the parser
 
 Note: `$N` is array length.
 
-### Object (with implicit key type)
+### Object (with predefined key type)
 
 ```json
 "objectContainerTypes": [ {
@@ -237,7 +237,7 @@ The `refByKey` operation must create the element if it doesn't already exist
 and return a modifiable reference to its value.
 The `iterateElements` operation must provide keys and values separately as `$K` and `$V`.
 
-### Object map (with explicit key type)
+### Object map (with arbitrary key type)
 
 ```json
 "objectMapContainerTypes": [ {

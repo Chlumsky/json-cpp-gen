@@ -3,6 +3,9 @@
         "src/NameFormat.h",
         "src/Configuration.h"
     ],
+    "includes": [
+        "<string>"
+    ],
     "settings": {
         "jsonIOMode": "NULL_TERMINATED_STRING",
         "noThrow": false,

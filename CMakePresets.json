@@ -1,0 +1,139 @@
+{
+    "version": 4,
+    "cmakeMinimumRequired": {
+        "major": 3,
+        "minor": 23,
+        "patch": 0
+    },
+    "configurePresets": [
+        {
+            "name": "release-only",
+            "displayName": "Release only configuration",
+            "hidden": true,
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release"
+            }
+        }, {
+            "name": "debug-only",
+            "displayName": "Debug only configuration",
+            "hidden": true,
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug"
+            }
+        }, {
+            "name": "clang",
+            "displayName": "Clang compiler configuration",
+            "hidden": true,
+            "cacheVariables": {
+                "CMAKE_CXX_COMPILER": "clang++"
+            }
+        }, {
+            "name": "win64",
+            "displayName": "Windows 64-bit configuration",
+            "architecture": "x64",
+            "binaryDir": "${sourceDir}/build/win64",
+            "condition": {
+                "type": "equals",
+                "lhs": "${hostSystemName}",
+                "rhs": "Windows"
+            }
+        }, {
+            "name": "win32",
+            "displayName": "Windows 32-bit configuration",
+            "architecture": "Win32",
+            "binaryDir": "${sourceDir}/build/win32",
+            "condition": {
+                "type": "equals",
+                "lhs": "${hostSystemName}",
+                "rhs": "Windows"
+            }
+        }, {
+            "name": "osx-base",
+            "displayName": "Mac OS base configuration",
+            "hidden": true,
+            "binaryDir": "${sourceDir}/build/osx",
+            "condition": {
+                "type": "equals",
+                "lhs": "${hostSystemName}",
+                "rhs": "Darwin"
+            }
+        }, {
+            "name": "linux-base",
+            "displayName": "Linux base configuration",
+            "hidden": true,
+            "binaryDir": "${sourceDir}/build/linux",
+            "condition": {
+                "type": "equals",
+                "lhs": "${hostSystemName}",
+                "rhs": "Linux"
+            }
+        }, {
+            "name": "osx-rel",
+            "displayName": "Mac OS release configuration",
+            "inherits": [ "osx-base", "release-only" ],
+            "binaryDir": "${sourceDir}/build/osx-rel"
+        }, {
+            "name": "osx-dbg",
+            "displayName": "Mac OS debug configuration",
+            "inherits": [ "osx-base", "debug-only" ],
+            "binaryDir": "${sourceDir}/build/osx-dbg"
+        }, {
+            "name": "linux-rel",
+            "displayName": "Linux release configuration",
+            "inherits": [ "linux-base", "release-only" ],
+            "binaryDir": "${sourceDir}/build/linux-rel"
+        }, {
+            "name": "linux-dbg",
+            "displayName": "Linux debug configuration",
+            "inherits": [ "linux-base", "debug-only" ],
+            "binaryDir": "${sourceDir}/build/linux-dbg"
+        }, {
+            "name": "linux-clang-rel",
+            "displayName": "Linux Clang release configuration",
+            "inherits": [ "linux-base", "clang", "release-only" ],
+            "binaryDir": "${sourceDir}/build/linux-clang-rel"
+        }, {
+            "name": "linux-clang-dbg",
+            "displayName": "Linux Clang debug configuration",
+            "inherits": [ "linux-base", "clang", "debug-only" ],
+            "binaryDir": "${sourceDir}/build/linux-clang-dbg"
+        }
+    ],
+    "buildPresets": [
+        {
+            "name": "win64-rel",
+            "configurePreset": "win64",
+            "configuration": "Release"
+        }, {
+            "name": "win64-dbg",
+            "configurePreset": "win64",
+            "configuration": "Debug"
+        }, {
+            "name": "win32-rel",
+            "configurePreset": "win32",
+            "configuration": "Release"
+        }, {
+            "name": "win32-dbg",
+            "configurePreset": "win32",
+            "configuration": "Debug"
+        }, {
+            "name": "osx-rel",
+            "configurePreset": "osx-rel"
+        }, {
+            "name": "osx-dbg",
+            "configurePreset": "osx-dbg"
+        }, {
+            "name": "linux-rel",
+            "configurePreset": "linux-rel"
+        }, {
+            "name": "linux-dbg",
+            "configurePreset": "linux-dbg"
+        }, {
+            "name": "linux-clang-rel",
+            "configurePreset": "linux-clang-rel"
+        }, {
+            "name": "linux-clang-dbg",
+            "configurePreset": "linux-clang-dbg"
+        }
+    ]
+}

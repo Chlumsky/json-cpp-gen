@@ -20,8 +20,8 @@ int main() {
     test_multipass_3();
     test_namespaces();
     if (testFailures)
-        fprintf(stderr, "TESTS FAILED %d TIMES!\n", testFailures);
+        fprintf(stderr, "\nTESTS FAILED %d TIMES!\n", testFailures);
     else
-        fprintf(stderr, "All tests successful\n");
+        fprintf(stderr, "\nAll tests successful\n");
     return testFailures;
 }
