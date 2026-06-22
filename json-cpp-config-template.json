@@ -42,6 +42,8 @@
     "typeAliases": {
         "String": "std::string"
     },
+    "signedIntegerTypes": [ "int32" ],
+    "unsignedIntegerTypes": [ "uint32" ],
     "stringTypes": [ {
         "name": "std::string",
         "api": {

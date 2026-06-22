@@ -187,6 +187,8 @@ struct Configuration {
 
     std::string stringType = "std::string";
     std::map<std::string, std::string> typeAliases;
+    std::vector<std::string> signedIntegerTypes;
+    std::vector<std::string> unsignedIntegerTypes;
     std::vector<StringDef> stringTypes;
     std::vector<ConstStringDef> constStringTypes;
     std::vector<ArrayContainerDef> arrayContainerTypes;

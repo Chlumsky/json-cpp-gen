@@ -1,6 +1,6 @@
 
 JSON-CPP-GEN
-Copyright (c) 2021 - 2023 Viktor Chlumsky
+Copyright (c) 2021 - 2026 Viktor Chlumsky
 https://github.com/Chlumsky/json-cpp-gen
 
 This software and its documentation can be copied, modified,

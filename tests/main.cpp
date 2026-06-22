@@ -10,6 +10,7 @@ void test_multipass_1();
 void test_multipass_2();
 void test_multipass_3();
 void test_namespaces();
+void test_type_aliases();
 
 int main() {
     test_basic_case();
@@ -19,6 +20,7 @@ int main() {
     test_multipass_2();
     test_multipass_3();
     test_namespaces();
+    test_type_aliases();
     if (testFailures)
         fprintf(stderr, "\nTESTS FAILED %d TIMES!\n", testFailures);
     else

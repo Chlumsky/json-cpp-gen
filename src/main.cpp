@@ -1,7 +1,7 @@
 
 //\\//\\//\\//\\//\\//\\//\\//\\//\\//\\//\\//\\//\\//
 //
-//  JSON-CPP-GEN v0.0.1 by Viktor Chlumsky (c) 2021 - 2022
+//  JSON-CPP-GEN v1.0.1 by Viktor Chlumsky (c) 2021 - 2026
 //  A generator of JSON parser & serializer C++ code from structure header files
 //
 //  Usage: json-cpp-gen configuration.json
@@ -14,6 +14,7 @@
 #include <string>
 #include "AbsPath.h"
 #include "TypeSet.h"
+#include "types/IntegerType.h"
 #include "types/StringType.h"
 #include "types/ConstStringType.h"
 #include "types/TypeAlias.h"
@@ -137,6 +138,18 @@ int main(int argc, const char *const *argv) {
 
     TypeSet typeSet;
     { // CUSTOM TYPE DEFINITIONS
+        for (const std::string &signedIntegerTypeName : config.signedIntegerTypes) {
+            if (QualifiedName::validate(signedIntegerTypeName))
+                typeSet.root().establishSymbol(QualifiedName(signedIntegerTypeName), false)->type = std::unique_ptr<Type>(new IntegerType(true, Generator::safeName(signedIntegerTypeName)));
+            else
+                fprintf(stderr, "Error: Signed integer type '%s' is not a simple type name\n", signedIntegerTypeName.c_str());
+        }
+        for (const std::string &unsignedIntegerTypeName : config.unsignedIntegerTypes) {
+            if (QualifiedName::validate(unsignedIntegerTypeName))
+                typeSet.root().establishSymbol(QualifiedName(unsignedIntegerTypeName), false)->type = std::unique_ptr<Type>(new IntegerType(false, Generator::safeName(unsignedIntegerTypeName)));
+            else
+                fprintf(stderr, "Error: Unsigned integer type '%s' is not a simple type name\n", unsignedIntegerTypeName.c_str());
+        }
         for (const Configuration::StringDef &stringDef : config.stringTypes) {
             if (QualifiedName::validate(stringDef.name))
                 typeSet.root().establishSymbol(QualifiedName(stringDef.name), false)->type = std::unique_ptr<Type>(new StringType(Generator::safeName(stringDef.name), stringDef.api));

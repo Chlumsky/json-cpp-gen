@@ -1326,6 +1326,12 @@ void ConfigurationParser::parseConfiguration(Configuration &value) {
                     continue;
                 }
                 break;
+            case 18:
+                if (buffer == "signedIntegerTypes") {
+                    parseStdVectorStdString(value.signedIntegerTypes);
+                    continue;
+                }
+                break;
             case 19:
                 if (buffer == "arrayContainerTypes") {
                     parseStdVectorConfigurationArrayContainerDef(value.arrayContainerTypes);
@@ -1333,9 +1339,19 @@ void ConfigurationParser::parseConfiguration(Configuration &value) {
                 }
                 break;
             case 20:
-                if (buffer == "objectContainerTypes") {
-                    parseStdVectorConfigurationObjectContainerDef(value.objectContainerTypes);
-                    continue;
+                switch (buffer[0]) {
+                    case 'o':
+                        if (buffer == "objectContainerTypes") {
+                            parseStdVectorConfigurationObjectContainerDef(value.objectContainerTypes);
+                            continue;
+                        }
+                        break;
+                    case 'u':
+                        if (buffer == "unsignedIntegerTypes") {
+                            parseStdVectorStdString(value.unsignedIntegerTypes);
+                            continue;
+                        }
+                        break;
                 }
                 break;
             case 22:

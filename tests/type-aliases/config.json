@@ -1,0 +1,39 @@
+{
+    "inputs": [
+        "@INPUTS_PATH@structures.h"
+    ],
+    "settings": {
+        "jsonIOMode": "NULL_TERMINATED_STRING",
+        "noThrow": false,
+        "strictSyntaxCheck": true,
+        "checkMissingKeys": true,
+        "checkRepeatingKeys": true,
+        "ignoreExtraKeys": false,
+        "checkIntegerOverflow": true,
+        "escapeForwardSlash": false,
+        "skipEmptyFields": true,
+        "nanPolicy": "SERIALIZER_ERROR",
+        "infPolicy": "EXPONENT_OVERFLOW"
+    },
+    "parsers": [ {
+        "name": "type_aliases::Parser",
+        "types": [
+            "type_aliases::MainStruct"
+        ],
+        "headerOutput": "@GEN_OUT_PATH@Parser.h",
+        "sourceOutput": "@GEN_OUT_PATH@Parser.cpp"
+    } ],
+    "serializers": [ {
+        "name": "type_aliases::Serializer",
+        "types": [
+            "type_aliases::MainStruct"
+        ],
+        "headerOutput": "@GEN_OUT_PATH@Serializer.h",
+        "sourceOutput": "@GEN_OUT_PATH@Serializer.cpp"
+    } ],
+    "typeAliases": {
+        "uint32": "std::uint32_t"
+    },
+    "signedIntegerTypes": [ "int16", "mint" ],
+    "unsignedIntegerTypes": [ "uint16" ]
+}
